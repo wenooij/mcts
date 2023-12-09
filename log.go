@@ -20,19 +20,26 @@ type EventLog struct {
 	parent   *EventLog
 	children map[Step]*EventLog
 
-	Step             Step
+	Depth int
+	Step  Step
+	Log   Log
+
 	NumRollouts      int
 	NumSelectHits    int
 	NumSelectSamples int
-	Log              Log
 }
 
 func newEventLog(parent *EventLog, step Step) *EventLog {
+	depth := 0
+	if parent != nil {
+		depth = parent.Depth + 1
+	}
 	return &EventLog{
 		parent:   parent,
 		children: make(map[string]*EventLog, 8),
 
-		Step: step,
+		Depth: depth,
+		Step:  step,
 	}
 }
 
