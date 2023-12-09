@@ -33,39 +33,6 @@ type SearchInterface interface {
 	Rollout(Log) Log
 }
 
-// Log is used to keep track of the objective function value
-// as well as aggregate events of interest.
-type Log interface {
-	// Clone creates a copy of the Log.
-	Clone() Log
-	// Merge in the provided EventLog.
-	Merge(Log)
-	// Score returns the objective function evaluation for this EventLog.
-	Score() float64
-}
-
-type EventLog struct {
-	parent           *EventLog
-	NumRollouts      int
-	NumSelectHits    int
-	NumSelectSamples int
-	Log              Log
-}
-
-func (e EventLog) Score() (float64, bool) {
-	if e.Log == nil {
-		return 0, false
-	}
-	return e.Log.Score(), true
-}
-
-func (e EventLog) NumParentRollouts() int {
-	if e.parent == nil {
-		return 0
-	}
-	return e.parent.NumRollouts
-}
-
 func LoadPlugin(path string) (SearchInterface, error) {
 	p, err := plugin.Open(path)
 	if err != nil {

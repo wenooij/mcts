@@ -11,16 +11,16 @@ type StatEntry struct {
 	Score    float64
 }
 
-func (n *logTree) statEntry() StatEntry {
-	score, _ := n.eventLog.Score()
+func (n *EventLog) statEntry() StatEntry {
+	score, _ := n.Score()
 	return StatEntry{
-		Step:     n.step,
-		EventLog: n.eventLog,
+		Step:     n.Step,
+		EventLog: *n,
 		Score:    score,
 	}
 }
 
-func (n *logTree) makeResult() Stat {
+func (n *EventLog) makeResult() Stat {
 	root := Stat{}
 	for stat := &root; ; {
 		stat.StatEntry = n.statEntry()
