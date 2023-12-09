@@ -74,15 +74,12 @@ func newSearchPlugin() *SearchPlugin {
 }
 
 type tictactoeNode struct {
-	parent   *tictactoeNode
 	depth    int
 	terminal bool
 	winner   byte
 	state    [9]byte
 	open     []byte
 	children map[mcts.Step]*tictactoeNode
-	step     mcts.Step
-	log      *tictactoeLog
 }
 
 func newRoot() *tictactoeNode {
@@ -104,23 +101,19 @@ func newRoot() *tictactoeNode {
 			7,
 			8,
 		},
-		log: &tictactoeLog{turn: X},
 	}
 }
 
 func newNode(parent *tictactoeNode, move mcts.Step) *tictactoeNode {
 	d := parent.depth + 1
 	n := &tictactoeNode{
-		parent:   parent,
 		depth:    d,
 		open:     make([]byte, len(parent.open)),
 		children: make(map[mcts.Step]*tictactoeNode, 9-d),
-		step:     move,
 	}
-	n.log = &tictactoeLog{turn: n.turn()}
 	copy(n.state[:], parent.state[:])
 	idx := move[0] - '0'
-	copy(n.open, n.parent.open)
+	copy(n.open, parent.open)
 	n.open = slices.DeleteFunc(n.open, func(i byte) bool { return i == idx })
 	n.state[idx] = move[1]
 	n.winner, n.terminal = n.computeTerminal()
