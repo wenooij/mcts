@@ -7,6 +7,9 @@ type Step = string
 
 // SearchInterface is a minimal interface to MCTS tree state.
 type SearchInterface interface {
+	// Log returns a new empty log for the current node.
+	Log() Log
+
 	// Apply the Step to the current node, if possible.
 	// Return true if the Step has been applied, false otherwise.
 	//

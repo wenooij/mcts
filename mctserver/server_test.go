@@ -18,7 +18,7 @@ func TestTicTacToeParallel(t *testing.T) {
 
 	// simulate 2*simulatedCoreFactor cores
 	const simulatedCoreFactor = 1
-	const baseTime = 10 * time.Second
+	const baseTime = 20 * time.Second
 	searchTime := simulatedCoreFactor * baseTime
 
 	mu := sync.Mutex{}
@@ -43,12 +43,14 @@ func TestTicTacToeParallel(t *testing.T) {
 			mu.Lock()
 			defer mu.Unlock()
 
-			fmt.Println(i, res.Step, res.EventLog.NumRollouts, res.Score, res.EventLog.Log.(*tictactoeLog))
-
-			for pv := res.PV; pv != nil; pv = pv.PV {
-				fmt.Println(i, pv.Step, pv.EventLog.NumRollouts, pv.Score, res.EventLog.Log.(*tictactoeLog))
+			formatStat := func(i int, e mcts.StatEntry) {
+				fmt.Printf("%-2d [%-6.1f] %-6s (%.1f kN)\n", i, e.EventLog.Log.Score()/float64(e.EventLog.NumRollouts), e.Step, float64(e.EventLog.NumRollouts)/1000)
 			}
 
+			formatStat(0, res.StatEntry)
+			for i, pv := 1, res.PV; pv != nil; i, pv = i+1, pv.PV {
+				formatStat(i, pv.StatEntry)
+			}
 		}(i)
 	}
 
@@ -160,14 +162,6 @@ type tictactoeLog struct {
 	scoreO float64
 }
 
-func (e *tictactoeLog) Clone() mcts.Log {
-	return &tictactoeLog{
-		turn:   e.turn,
-		scoreX: e.scoreX,
-		scoreO: e.scoreO,
-	}
-}
-
 func (e *tictactoeLog) Merge(lg mcts.Log) {
 	t := lg.(*tictactoeLog)
 	e.scoreX += t.scoreX
@@ -210,6 +204,10 @@ func (n *tictactoeNode) apply(m mcts.Step) *tictactoeNode {
 	child = newNode(n, m)
 	n.children[m] = child
 	return child
+}
+
+func (s *SearchPlugin) Log() mcts.Log {
+	return &tictactoeLog{turn: s.node.turn()}
 }
 
 func (s *SearchPlugin) Rollout() mcts.Log {

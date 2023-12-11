@@ -8,8 +8,6 @@ import (
 // Log is used to keep track of the objective function value
 // as well as aggregate events of interest.
 type Log interface {
-	// Clone creates a copy of the Log.
-	Clone() Log
 	// Merge in the provided EventLog.
 	Merge(Log)
 	// Score returns the objective function evaluation for this EventLog.
@@ -29,17 +27,13 @@ type EventLog struct {
 	NumSelectSamples int
 }
 
-func newEventLog(parent *EventLog, step Step) *EventLog {
-	depth := 0
-	if parent != nil {
-		depth = parent.Depth + 1
-	}
+func newEventLog(parent *EventLog, step Step, log Log) *EventLog {
 	return &EventLog{
 		parent:   parent,
 		children: make(map[string]*EventLog, 8),
 
-		Depth: depth,
-		Step:  step,
+		Step: step,
+		Log:  log,
 	}
 }
 
@@ -95,22 +89,18 @@ func (log *EventLog) bestChild() *EventLog {
 func (n *EventLog) backprop(log Log, numRollouts int) {
 	for e := n; e != nil; e = e.parent {
 		e.NumRollouts += numRollouts
-		if e.Log == nil {
-			e.Log = log.Clone()
-		} else {
-			e.Log.Merge(log)
-		}
+		e.Log.Merge(log)
 	}
 }
 
-func (n *EventLog) child(step Step) *EventLog {
+func (n *EventLog) child(step Step, s SearchInterface) *EventLog {
 	n.NumSelectSamples++
 	child, ok := n.children[step]
 	if ok {
 		n.NumSelectHits++
 		return child
 	}
-	child = newEventLog(n, step)
+	child = newEventLog(n, step, s.Log())
 	n.children[step] = child
 	return child
 }

@@ -16,7 +16,7 @@ type Search struct {
 
 func (c *Search) Search(s SearchInterface, done <-chan struct{}) Stat {
 	if c.root == nil {
-		c.root = newEventLog(nil, "")
+		c.root = newEventLog(nil, "", s.Log())
 	}
 	root := c.root
 	for {
@@ -27,12 +27,12 @@ func (c *Search) Search(s SearchInterface, done <-chan struct{}) Stat {
 			if child == nil {
 				if step = s.Expand(); step != "" {
 					s.Apply(step)
-					node = node.child(step)
+					node = node.child(step, s)
 				}
 				break
 			}
 			s.Apply(step)
-			node = node.child(step)
+			node = node.child(step, s)
 		}
 		frontier := node
 		frontierLog := s.Rollout()
