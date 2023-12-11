@@ -30,7 +30,7 @@ type SearchInterface interface {
 	// the Log of events, and returns it.
 	//
 	// Rollout is called repeatedly in Search for the random rollouts phase.
-	Rollout(Log) Log
+	Rollout() Log
 }
 
 func LoadPlugin(path string) (SearchInterface, error) {

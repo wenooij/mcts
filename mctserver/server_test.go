@@ -212,14 +212,11 @@ func (n *tictactoeNode) apply(m mcts.Step) *tictactoeNode {
 	return child
 }
 
-func (s *SearchPlugin) Rollout(log mcts.Log) mcts.Log {
+func (s *SearchPlugin) Rollout() mcts.Log {
 	frontier := s.node
 	defer func() { s.node = frontier }()
-	if log == nil {
-		log = &tictactoeLog{turn: s.node.turn()}
-	}
-	t := log.(*tictactoeLog)
-	for s.forward(t) {
+	log := &tictactoeLog{turn: s.node.turn()}
+	for s.forward(log) {
 	}
 	return log
 }

@@ -35,9 +35,9 @@ func (c *Search) Search(s SearchInterface, done <-chan struct{}) Stat {
 			node = node.child(step)
 		}
 		frontier := node
-		var frontierLog Log
-		for i := 0; i < rolloutsPerEpoch; i++ {
-			frontierLog = s.Rollout(frontierLog)
+		frontierLog := s.Rollout()
+		for i := 0; i < rolloutsPerEpoch-1; i++ {
+			frontierLog.Merge(s.Rollout())
 		}
 		frontier.backprop(frontierLog, rolloutsPerEpoch)
 		select {
