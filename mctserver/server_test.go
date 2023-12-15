@@ -18,7 +18,7 @@ func TestTicTacToeParallel(t *testing.T) {
 
 	// simulate 2*simulatedCoreFactor cores
 	const simulatedCoreFactor = 1
-	const baseTime = 20 * time.Second
+	const baseTime = 4 * time.Second
 	searchTime := simulatedCoreFactor * baseTime
 
 	mu := sync.Mutex{}
@@ -43,14 +43,7 @@ func TestTicTacToeParallel(t *testing.T) {
 			mu.Lock()
 			defer mu.Unlock()
 
-			formatStat := func(i int, e mcts.StatEntry) {
-				fmt.Printf("%-2d [%-6.1f] %-6s (%.1f kN)\n", i, e.EventLog.Log.Score()/float64(e.EventLog.NumRollouts), e.Step, float64(e.EventLog.NumRollouts)/1000)
-			}
-
-			formatStat(0, res.StatEntry)
-			for i, pv := 1, res.PV; pv != nil; i, pv = i+1, pv.PV {
-				formatStat(i, pv.StatEntry)
-			}
+			fmt.Println(res)
 		}(i)
 	}
 
