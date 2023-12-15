@@ -197,9 +197,8 @@ func (n *tictactoeNode) expand() mcts.Step {
 	return tictactoeStep{cell: i, turn: n.turn()}
 }
 
-func (s *SearchPlugin) Apply(m mcts.Step) bool {
+func (s *SearchPlugin) Apply(m mcts.Step) {
 	s.node = s.node.apply(m.(tictactoeStep))
-	return true
 }
 
 func (n *tictactoeNode) apply(m tictactoeStep) *tictactoeNode {

@@ -24,11 +24,10 @@ type SearchInterface interface {
 	// Log returns a new empty log for the current node.
 	Log() Log
 
-	// Apply the Step to the current node, if possible.
-	// Return true if the Step has been applied, false otherwise.
+	// Apply the Step to the current node.
 	//
 	// Apply is called multiple times in Search and after Search completes.
-	Apply(Step) bool
+	Apply(Step)
 
 	// Root resets the current search to root.
 	//

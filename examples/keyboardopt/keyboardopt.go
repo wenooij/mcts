@@ -91,16 +91,15 @@ func newKeyboardSearch(r *rand.Rand) *keyboardSearch {
 	}
 }
 
-func (g *keyboardSearch) Apply(step mcts.Step) bool {
+func (g *keyboardSearch) Apply(step mcts.Step) {
 	stepHash := step.Hash()
 	if child, ok := g.node.children[stepHash]; ok {
 		g.node = child
-		return true
+		return
 	}
 	child := g.node.newChildKeyboardNode(step)
 	g.node.children[stepHash] = child
 	g.node = child
-	return true
 }
 
 func (g *keyboardSearch) Root() {
