@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"maps"
 	"math/rand"
 	"slices"
@@ -25,8 +26,8 @@ var (
 )
 
 func init() {
-	for i := 0; i < bounds.X; i++ {
-		for j := 0; j < bounds.Y; j++ {
+	for i := byte(0); i < bounds.X; i++ {
+		for j := byte(0); j < bounds.Y; j++ {
 			if p := (Pt{i, j}); p.Valid() {
 				allSlots = append(allSlots, p)
 			}
@@ -35,7 +36,11 @@ func init() {
 }
 
 type Pt struct {
-	X, Y int
+	X, Y byte
+}
+
+func (p Pt) String() string {
+	return fmt.Sprintf("(%d,%d)", p.X, p.Y)
 }
 
 // ..........
@@ -44,14 +49,14 @@ type Pt struct {
 func NewRandomValidPt(r *rand.Rand) Pt {
 	i := r.Intn(26)
 	if i < 10 {
-		return Pt{i, 0}
+		return Pt{byte(i), 0}
 	}
 	i -= 10
 	if i < 9 {
-		return Pt{i, 1}
+		return Pt{byte(i), 1}
 	}
 	i -= 9
-	return Pt{i + 1, 2}
+	return Pt{byte(i) + 1, 2}
 }
 
 func (p Pt) Valid() bool {
@@ -113,8 +118,8 @@ func (a Layout) Swap(p1, p2 Pt) {
 
 func (a Layout) String() string {
 	var sb strings.Builder
-	for j := 0; j < a.Bounds.Y; j++ {
-		for i := 0; i < a.Bounds.X; i++ {
+	for j := byte(0); j < a.Bounds.Y; j++ {
+		for i := byte(0); i < a.Bounds.X; i++ {
 			k := a.Slots[Pt{i, j}]
 			if k == 0 {
 				k = '.'

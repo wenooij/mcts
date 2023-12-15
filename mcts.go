@@ -3,7 +3,21 @@ package mcts
 
 import "plugin"
 
-type Step = string
+// StepHash is a unique hash for a Step.
+//
+// It is suggested to keep Step's state at 64 or fewer bits
+// as there is currently no mechanism to handle collisions.
+type StepHash = uint64
+
+// Step represents an atomic change which can be applied to a search tree.
+type Step interface {
+	// Hash returns a unique hash for the Step.
+	// This can be precomputed if a Hash is expensive to calculate.
+	Hash() StepHash
+
+	// String returns the string representation of this Step.
+	String() string
+}
 
 // SearchInterface is a minimal interface to MCTS tree state.
 type SearchInterface interface {

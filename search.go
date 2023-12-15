@@ -61,7 +61,7 @@ func (s *Search) Reset() {
 func (c *Search) Search(s SearchInterface, done <-chan struct{}) Stat {
 	c.patchDefaults()
 	if c.root == nil {
-		c.root = newEventLog(c, nil, "", s.Log())
+		c.root = newEventLog(c, nil, nil, s.Log())
 	}
 	root := c.root
 	for {

@@ -18,6 +18,19 @@ var targetSample string
 
 const sampleLength = 1000
 
+type keySwapStep struct {
+	p1 Pt
+	p2 Pt
+}
+
+func (s keySwapStep) Hash() uint64 {
+	return uint64(s.p1.X) | uint64(s.p1.Y)<<8 | uint64(s.p2.X)<<16 | uint64(s.p2.Y)<<32
+}
+
+func (s keySwapStep) String() string {
+	return fmt.Sprintf("{%s:%s}", s.p1, s.p2)
+}
+
 type keyboardLog struct {
 	travelDistance int
 	keysTyped      int
@@ -37,8 +50,8 @@ func (g *keyboardLog) Merge(lg mcts.Log) {
 }
 
 type keyboardNode struct {
-	children map[string]*keyboardNode
-	step     string
+	children map[mcts.StepHash]*keyboardNode
+	step     mcts.Step
 
 	depth  int
 	layout Layout
@@ -46,33 +59,22 @@ type keyboardNode struct {
 
 func newRootKeyboardNode(r *rand.Rand) *keyboardNode {
 	return &keyboardNode{
-		children: make(map[string]*keyboardNode, len(allKeys)),
+		children: make(map[mcts.StepHash]*keyboardNode, len(allKeys)),
 		depth:    0,
 		layout:   NewRandomLayout(r),
 	}
 }
 
-func parseStep(step string) (Pt, Pt) {
-	var x1, y1 int
-	var x2, y2 int
-	if n, err := fmt.Sscan(step, &x1, &y1, &x2, &y2); err != nil {
-		panic(fmt.Errorf("parseStep: failed for step %q: %v at %d", step, err, n))
-	}
-	p1 := Pt{x1, y1}
-	p2 := Pt{x2, y2}
-	return p1, p2
-}
-
-func (n *keyboardNode) newChildKeyboardNode(step string) *keyboardNode {
+func (n *keyboardNode) newChildKeyboardNode(step mcts.Step) *keyboardNode {
 	depth := n.depth + 1
 	child := &keyboardNode{
-		children: make(map[string]*keyboardNode, len(allKeys)-depth),
+		children: make(map[mcts.StepHash]*keyboardNode, len(allKeys)-depth),
 		step:     step,
 		depth:    depth,
 		layout:   n.layout.Clone(),
 	}
-	p1, p2 := parseStep(step)
-	child.layout.Swap(p1, p2)
+	s := step.(keySwapStep)
+	child.layout.Swap(s.p1, s.p2)
 	return child
 }
 
@@ -89,13 +91,14 @@ func newKeyboardSearch(r *rand.Rand) *keyboardSearch {
 	}
 }
 
-func (g *keyboardSearch) Apply(step string) bool {
-	if child, ok := g.node.children[step]; ok {
+func (g *keyboardSearch) Apply(step mcts.Step) bool {
+	stepHash := step.Hash()
+	if child, ok := g.node.children[stepHash]; ok {
 		g.node = child
 		return true
 	}
 	child := g.node.newChildKeyboardNode(step)
-	g.node.children[step] = child
+	g.node.children[stepHash] = child
 	g.node = child
 	return true
 }
@@ -108,12 +111,12 @@ func (g *keyboardSearch) Log() mcts.Log {
 	return &keyboardLog{}
 }
 
-func (g *keyboardSearch) Expand() string {
+func (g *keyboardSearch) Expand() mcts.Step {
 	if g.node.depth >= 5 {
-		return ""
+		return nil
 	}
 	p1, p2 := NewRandomValidPt(g.r), NewRandomValidPt(g.r)
-	return fmt.Sprintf("%d %d %d %d", p1.X, p1.Y, p2.X, p2.Y)
+	return keySwapStep{p1, p2}
 }
 
 func (g *keyboardSearch) Rollout() mcts.Log {
@@ -151,8 +154,8 @@ func main() {
 
 	layout := NewRandomLayout(r)
 	for leaf := res.PV; leaf != nil; leaf = leaf.PV {
-		p1, p2 := parseStep(leaf.Step)
-		layout.Swap(p1, p2)
+		s := leaf.Step.(keySwapStep)
+		layout.Swap(s.p1, s.p2)
 	}
 
 	fmt.Println(layout)

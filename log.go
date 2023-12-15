@@ -16,7 +16,7 @@ type Log interface {
 
 type EventLog struct {
 	parent   *EventLog
-	children map[Step]*EventLog
+	children map[StepHash]*EventLog
 
 	Depth int
 	Step  Step
@@ -39,7 +39,7 @@ func newEventLog(c *Search, parent *EventLog, step Step, log Log) *EventLog {
 	}
 	return &EventLog{
 		parent:   parent,
-		children: make(map[string]*EventLog, 8),
+		children: make(map[StepHash]*EventLog, 8),
 
 		Depth: depth,
 		Step:  step,
@@ -49,25 +49,26 @@ func newEventLog(c *Search, parent *EventLog, step Step, log Log) *EventLog {
 	}
 }
 
-func (n *EventLog) expand(c *Search, s SearchInterface) (step Step, child *EventLog) {
+func (n *EventLog) expand(c *Search, s SearchInterface) (stepHash StepHash, child *EventLog) {
 	n.NumExpandSamples++
-	step = s.Expand()
-	if terminal := step == ""; terminal {
+	step := s.Expand()
+	if terminal := step == nil; terminal {
 		if !n.Terminal {
 			n.Terminal = true
 		} else {
 			n.NumExpandHits++
 		}
-		return "", nil
+		return 0, nil
 	}
+	stepHash = step.Hash()
 	var ok bool
-	if child, ok = n.children[step]; !ok {
+	if child, ok = n.children[stepHash]; !ok {
 		child = n.child(c, step, s)
 	} else {
 		// Add a sample hit when we have sampled it before.
 		n.NumExpandHits++
 	}
-	return step, child
+	return stepHash, child
 }
 
 func (n *EventLog) sampleBurnIn(c *Search) bool {
@@ -92,22 +93,21 @@ func (n *EventLog) selectChild(c *Search, s SearchInterface) (step Step, child *
 		// Try to further expand this node.
 		// Either we have new node (or not yet reached the sample burn-in)
 		// Or heuristics have told us to call Expand.
-		step, child = n.expand(c, s)
+		_, child = n.expand(c, s)
 		// Signal done at this node if we are at a terminal or at the burn-in depth.
-		terminal := step == ""
+		terminal := child == nil
 		if terminal || n.canStopHere(c) && n.stoppingHeuristic() {
-			return "", nil, true
+			return nil, nil, true
 		}
-		return step, child, false
+		return child.Step, child, false
 	}
 	// Otherwise, select an existing child to maximize MAB policy.
 	var (
-		maxStep   Step
 		maxChild  *EventLog
 		maxPolicy = -math.MaxFloat64
 	)
-	for k, e := range n.children {
-		if maxStep != "" {
+	for _, e := range n.children {
+		if maxChild != nil {
 			score, _ := e.Score()
 			policy := uct(score, e.NumRollouts, e.NumParentRollouts(), c.ExplorationParameter)
 			if policy < maxPolicy {
@@ -115,12 +115,13 @@ func (n *EventLog) selectChild(c *Search, s SearchInterface) (step Step, child *
 			}
 			maxPolicy = policy
 		}
-		maxStep = k
 		maxChild = e
 	}
 	// Signal done if the selected step is a terminal.
-	done = maxStep == ""
-	return maxStep, maxChild, done
+	if terminal := maxChild == nil; terminal {
+		return nil, nil, true
+	}
+	return maxChild.Step, maxChild, false
 }
 
 func (log *EventLog) bestChild() *EventLog {
@@ -151,12 +152,13 @@ func (n *EventLog) backprop(log Log, numRollouts int) {
 }
 
 func (n *EventLog) child(c *Search, step Step, s SearchInterface) *EventLog {
-	child, ok := n.children[step]
+	stepHash := step.Hash()
+	child, ok := n.children[stepHash]
 	if ok {
 		return child
 	}
 	child = newEventLog(c, n, step, s.Log())
-	n.children[step] = child
+	n.children[stepHash] = child
 	return child
 }
 
