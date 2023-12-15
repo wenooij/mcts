@@ -60,7 +60,7 @@ func NewRandomValidPt(r *rand.Rand) Pt {
 }
 
 func (p Pt) Valid() bool {
-	return p.X >= 0 && p.X <= 10 && p.Y >= 0 && p.Y < 3 &&
+	return p.X <= 10 && p.Y < 3 &&
 		p != Pt{9, 1} &&
 		!(p.Y == 2 && (p.X == 0 || p.X >= 8))
 }

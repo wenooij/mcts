@@ -35,14 +35,13 @@ func prettyFormatNumRollouts(n int) string {
 	return fmt.Sprintf("%.2f MN", float64(n)/1e6)
 }
 
-func (e *EventLog) prettyFormatExpandedPercent() string {
-	v := 0.
+func (e *EventLog) prettyFormatExpandStats() string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "%d / %d hits", e.NumExpandHits(), e.NumExpandSamples)
 	if e.MaxExpandSamples > 0 {
-		v = float64(e.NumExpandSamples) / float64(e.MaxExpandSamples)
-	} else if hits, samples := e.NumExpandHits, e.NumExpandSamples; samples != 0 {
-		v = float64(hits) / float64(samples)
+		fmt.Fprintf(&sb, "; %d max", e.MaxExpandSamples)
 	}
-	return fmt.Sprintf("%.1f%% explored", 100*v)
+	return sb.String()
 }
 
 func (e StatEntry) String() string {
@@ -50,7 +49,7 @@ func (e StatEntry) String() string {
 		e.EventLog.Log.Score()/float64(e.EventLog.NumRollouts),
 		e.Step,
 		prettyFormatNumRollouts(e.EventLog.NumRollouts),
-		e.EventLog.prettyFormatExpandedPercent(),
+		e.EventLog.prettyFormatExpandStats(),
 	)
 }
 

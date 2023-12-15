@@ -15,12 +15,12 @@ const (
 type Search struct {
 	root *EventLog
 
-	// MinSelectBurnInDepth is the minimum depth in which a rollout is allowed.
+	// MinSelectDepth is the minimum depth in which a rollout is allowed.
 	// Before this depth we will rely entirely on Expand to give us nodes.
 	// After this depth we may heuristically choose to Expand a nonterminal.
-	// MinSelectBurnInDepth doesn't apply when Expand returns an empty step.
+	// MinSelectDepth doesn't apply when Expand returns an empty step.
 	// Default is 0.
-	MinSelectBurnInDepth int
+	MinSelectDepth int
 
 	// ExtraExpandBurnInSamples is the extra calls to Expand on a node before we
 	// can start relying on sample heuristics.

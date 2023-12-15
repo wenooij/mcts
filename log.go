@@ -27,7 +27,7 @@ type EventLog struct {
 	Terminal bool
 	// Explored is set when tuneable explore threshold is reached
 	NumRollouts      int
-	NumExpandHits    int
+	NumExpandMisses  int
 	NumExpandSamples int
 	MaxExpandSamples int
 }
@@ -49,6 +49,10 @@ func newEventLog(c *Search, parent *EventLog, step Step, log Log) *EventLog {
 	}
 }
 
+func (n *EventLog) NumExpandHits() int {
+	return n.NumExpandSamples - n.NumExpandMisses
+}
+
 func (n *EventLog) expand(c *Search, s SearchInterface) (stepHash StepHash, child *EventLog) {
 	n.NumExpandSamples++
 	step := s.Expand()
@@ -56,7 +60,7 @@ func (n *EventLog) expand(c *Search, s SearchInterface) (stepHash StepHash, chil
 		if !n.Terminal {
 			n.Terminal = true
 		} else {
-			n.NumExpandHits++
+			n.NumExpandMisses++
 		}
 		return 0, nil
 	}
@@ -65,38 +69,39 @@ func (n *EventLog) expand(c *Search, s SearchInterface) (stepHash StepHash, chil
 	if child, ok = n.children[stepHash]; !ok {
 		child = n.child(c, step, s)
 	} else {
-		// Add a sample hit when we have sampled it before.
-		n.NumExpandHits++
+		// Add a sample miss when we have sampled it before.
+		n.NumExpandMisses++
 	}
 	return stepHash, child
 }
 
-func (n *EventLog) sampleBurnIn(c *Search) bool {
+func (n *EventLog) checkBurnIn(c *Search) bool {
 	return n.NumExpandSamples <= c.ExtraExpandBurnInSamples
 }
 
 func (n *EventLog) canStopHere(c *Search) bool {
-	return n.Depth >= c.MinSelectBurnInDepth
+	return n.Depth >= c.MinSelectDepth
 }
 
-func (n *EventLog) stoppingHeuristic() bool {
-	samples, hits := n.NumExpandSamples, n.NumExpandHits
-	return samples > 0 && hits > 0 && rand.Float64()*float64(samples) < float64(hits)
+func (n *EventLog) checkExpandLimit() bool {
+	return n.MaxExpandSamples <= 0 || n.NumExpandSamples < n.MaxExpandSamples
 }
 
-func (n *EventLog) fullyExplored() bool {
-	return n.MaxExpandSamples > 0 && n.NumExpandSamples < n.MaxExpandSamples
+func (n *EventLog) checkExpandHeuristic() bool {
+	samples, miss := n.NumExpandSamples, n.NumExpandMisses
+	return samples == 0 || miss == 0 || rand.Float64()*float64(samples) < float64(miss)
 }
 
 func (n *EventLog) selectChild(c *Search, s SearchInterface) (step Step, child *EventLog, done bool) {
-	if n.sampleBurnIn(c) || !n.fullyExplored() {
+	if n.checkBurnIn(c) || n.checkExpandLimit() && n.checkExpandHeuristic() {
 		// Try to further expand this node.
 		// Either we have new node (or not yet reached the sample burn-in)
 		// Or heuristics have told us to call Expand.
-		_, child = n.expand(c, s)
-		// Signal done at this node if we are at a terminal or at the burn-in depth.
-		terminal := child == nil
-		if terminal || n.canStopHere(c) && n.stoppingHeuristic() {
+		_, child := n.expand(c, s)
+		if done := child == nil || n.canStopHere(c); done {
+			return nil, nil, true
+		}
+		if n.canStopHere(c) {
 			return nil, nil, true
 		}
 		return child.Step, child, false

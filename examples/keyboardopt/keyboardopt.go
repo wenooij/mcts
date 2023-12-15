@@ -16,7 +16,7 @@ import (
 //go:embed targetsample.txt
 var targetSample string
 
-const sampleLength = 1000
+const sampleLength = 100
 
 type keySwapStep struct {
 	p1 Pt
@@ -43,6 +43,7 @@ func (g *keyboardLog) Score() float64 {
 	travelLoss := -float64(g.travelDistance)
 	return travelLoss / float64(g.keysTyped)
 }
+
 func (g *keyboardLog) Merge(lg mcts.Log) {
 	x := lg.(*keyboardLog)
 	g.travelDistance += x.travelDistance
@@ -111,7 +112,7 @@ func (g *keyboardSearch) Log() mcts.Log {
 }
 
 func (g *keyboardSearch) Expand() mcts.Step {
-	if g.node.depth >= 5 {
+	if g.node.depth >= 10 {
 		return nil
 	}
 	p1, p2 := NewRandomValidPt(g.r), NewRandomValidPt(g.r)
@@ -141,9 +142,9 @@ func main() {
 	}()
 
 	opts := mcts.Search{
-		MinSelectBurnInDepth:     0,
-		ExtraExpandBurnInSamples: 0,
-		MaxExpandSamples:         1,
+		MinSelectDepth:           5,
+		ExtraExpandBurnInSamples: 5,
+		MaxExpandSamples:         3,
 		RolloutsPerEpoch:         10,
 		ExplorationParameter:     math.Pi,
 	}
