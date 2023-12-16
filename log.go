@@ -94,7 +94,7 @@ func (n *EventLog[E]) checkExpandHeuristic() bool {
 }
 
 func (n *EventLog[E]) selectChild(c *Search[E], s SearchInterface[E]) (step E, child *EventLog[E], done bool) {
-	if n.BurnedIn {
+	if !n.BurnedIn {
 		n.burnIn(c, s, 1+c.SelectBurnInSamples)
 		n.BurnedIn = true
 	}
