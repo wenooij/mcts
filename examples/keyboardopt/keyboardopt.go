@@ -144,7 +144,7 @@ func main() {
 	opts := mcts.Search{
 		MinSelectDepth:       5,
 		SelectBurnInSamples:  5,
-		SelectSamples:        5,
+		MaxSelectSamples:     5,
 		RolloutsPerEpoch:     10,
 		ExplorationParameter: math.Pi,
 	}

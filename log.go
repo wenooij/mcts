@@ -47,7 +47,7 @@ func newEventLog(c *Search, s SearchInterface, parent *EventLog, step Step, log 
 		Step:  step,
 		Log:   log,
 
-		MaxSelectSamples: c.SelectSamples,
+		MaxSelectSamples: c.MaxSelectSamples,
 	}
 }
 

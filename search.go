@@ -6,6 +6,7 @@ import (
 
 const (
 	defaultRolloutsPerEpoch     = 3
+	defaultMaxSelectSamples     = 100
 	defaultExplorationParameter = math.Sqrt2
 )
 
@@ -27,10 +28,10 @@ type Search struct {
 	// Default is 0.
 	SelectBurnInSamples int
 
-	// SelectSamples is the num number of calls to Expand during selection
+	// MaxSelectSamples is the num number of calls to Expand during selection
 	// before relying on the MAB policy during selection.
-	// Default is 0.
-	SelectSamples int
+	// Default is 100.
+	MaxSelectSamples int
 
 	// RolloutsPerEpoch is the number of calls to SearchInterface's Rollout
 	// per Select epoch. This should be set in accordance to the expensiveness of Rollout
@@ -47,6 +48,9 @@ type Search struct {
 func (s *Search) patchDefaults() {
 	if s.RolloutsPerEpoch == 0 {
 		s.RolloutsPerEpoch = defaultRolloutsPerEpoch
+	}
+	if s.MaxSelectSamples == 0 {
+		s.MaxSelectSamples = defaultMaxSelectSamples
 	}
 	if s.ExplorationParameter == 0 {
 		s.ExplorationParameter = defaultExplorationParameter
