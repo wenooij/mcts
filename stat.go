@@ -36,12 +36,7 @@ func prettyFormatNumRollouts(n int) string {
 }
 
 func (e *EventLog[E]) prettyFormatExpandStats() string {
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "%d children, %d samples", len(e.children), e.NumExpandSamples)
-	if e.MaxSelectSamples > 0 {
-		fmt.Fprintf(&sb, "; %d max", e.MaxSelectSamples)
-	}
-	return sb.String()
+	return fmt.Sprintf("%d children; %d samples", len(e.children), e.NumExpandSamples)
 }
 
 func (e StatEntry[E]) String() string {

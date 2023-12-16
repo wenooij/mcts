@@ -88,30 +88,38 @@ func (n *EventLog[E]) canStopHere(c *Search[E]) bool {
 }
 
 func (n *EventLog[E]) checkExpandHeuristic() bool {
-	samples, miss := n.NumExpandSamples, n.NumExpandMisses
-	return samples == 0 || miss == 0 || rand.Float64()*float64(samples) < float64(miss)
+	samples := n.NumExpandSamples
+	if samples == 0 {
+		return true
+	}
+	r := rand.Float64() * float64(samples)
+	misses := float64(n.NumExpandMisses)
+	return misses < r
 }
 
 func (n *EventLog[E]) selectChild(c *Search[E], s SearchInterface[E]) (step E, child *EventLog[E], done bool) {
 	if !n.BurnedIn {
-		n.burnIn(c, s, 1+c.SelectBurnInSamples)
+		n.burnIn(c, s, c.SelectBurnInSamples)
 		n.BurnedIn = true
-	}
-	if n.NumExpandSamples < n.MaxSelectSamples+c.SelectBurnInSamples && n.checkExpandHeuristic() {
-		// Try to further expand this node.
-		// Either we have new node (or not yet reached the sample burn-in)
-		// Or heuristics have told us to call Expand.
-		_, child := n.expand(c, s)
-		if done := child == nil || n.canStopHere(c); done {
+		// Roll out from here, if possible.
+		if n.canStopHere(c) {
 			var sentinel E
 			return sentinel, nil, true
 		}
-		return child.Step, child, false
+	}
+	if n.NumExpandSamples < n.MaxSelectSamples+c.SelectBurnInSamples && n.checkExpandHeuristic() {
+		// Try to further expand this node.
+		n.expand(c, s)
+		// Roll out from here, if possible.
+		if n.canStopHere(c) {
+			var sentinel E
+			return sentinel, nil, true
+		}
 	}
 	// Otherwise, select an existing child to maximize MAB policy.
 	var (
 		maxChild  *EventLog[E]
-		maxPolicy = -math.MaxFloat64
+		maxPolicy = math.Inf(-1)
 	)
 	for _, e := range n.children {
 		if maxChild != nil {
@@ -123,6 +131,9 @@ func (n *EventLog[E]) selectChild(c *Search[E], s SearchInterface[E]) (step E, c
 			maxPolicy = policy
 		}
 		maxChild = e
+		if math.IsInf(maxPolicy, +1) {
+			break
+		}
 	}
 	// Signal done if the selected step is a terminal.
 	if terminal := maxChild == nil; terminal {
@@ -139,7 +150,7 @@ func (log *EventLog[E]) bestChild() *EventLog[E] {
 	// Select an existing child to maximize score.
 	var (
 		maxChild *EventLog[E]
-		maxScore = -math.MaxFloat64
+		maxScore = math.Inf(-1)
 	)
 	for _, e := range log.children {
 		score, _ := e.Score()

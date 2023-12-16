@@ -38,7 +38,7 @@ type keyboardLog struct {
 
 func (g *keyboardLog) Score() float64 {
 	if g.keysTyped == 0 {
-		return -math.MaxFloat64
+		return math.Inf(-1)
 	}
 	travelLoss := -float64(g.travelDistance)
 	return travelLoss / float64(g.keysTyped)

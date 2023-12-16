@@ -97,7 +97,7 @@ func (c *Search[E]) Search(s SearchInterface[E], done <-chan struct{}) Stat[E] {
 
 func uct(score float64, numRollouts, numParentRollouts int, explorationParameter float64) float64 {
 	if numRollouts == 0 || numParentRollouts == 0 {
-		return math.MaxFloat64
+		return math.Inf(+1)
 	}
 	explore := explorationParameter * math.Sqrt(math.Log(float64(numParentRollouts))/float64(numRollouts))
 	exploit := score / float64(numRollouts)
