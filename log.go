@@ -25,14 +25,16 @@ type EventLog struct {
 	// Terminal is true when we have sampled an empty
 	// step from this node at least once.
 	Terminal bool
+	// BurnIn has run on this node.
+	BurnedIn bool
 	// Explored is set when tuneable explore threshold is reached
 	NumRollouts      int
 	NumExpandMisses  int
 	NumExpandSamples int
-	MaxExpandSamples int
+	MaxSelectSamples int
 }
 
-func newEventLog(c *Search, parent *EventLog, step Step, log Log) *EventLog {
+func newEventLog(c *Search, s SearchInterface, parent *EventLog, step Step, log Log) *EventLog {
 	depth := 0
 	if parent != nil {
 		depth = parent.Depth + 1
@@ -45,7 +47,7 @@ func newEventLog(c *Search, parent *EventLog, step Step, log Log) *EventLog {
 		Step:  step,
 		Log:   log,
 
-		MaxExpandSamples: c.MaxExpandSamples,
+		MaxSelectSamples: c.SelectSamples,
 	}
 }
 
@@ -67,7 +69,7 @@ func (n *EventLog) expand(c *Search, s SearchInterface) (stepHash StepHash, chil
 	stepHash = step.Hash()
 	var ok bool
 	if child, ok = n.children[stepHash]; !ok {
-		child = n.child(c, step, s)
+		child = n.createChild(c, step, s)
 	} else {
 		// Add a sample miss when we have sampled it before.
 		n.NumExpandMisses++
@@ -75,16 +77,15 @@ func (n *EventLog) expand(c *Search, s SearchInterface) (stepHash StepHash, chil
 	return stepHash, child
 }
 
-func (n *EventLog) checkBurnIn(c *Search) bool {
-	return n.NumExpandSamples <= c.ExtraExpandBurnInSamples
+func (n *EventLog) burnIn(c *Search, s SearchInterface, runs int) {
+	for i := 0; i < runs; i++ {
+		step := s.Expand()
+		n.createChild(c, step, s)
+	}
 }
 
 func (n *EventLog) canStopHere(c *Search) bool {
 	return n.Depth >= c.MinSelectDepth
-}
-
-func (n *EventLog) checkExpandLimit() bool {
-	return n.MaxExpandSamples <= 0 || n.NumExpandSamples < n.MaxExpandSamples
 }
 
 func (n *EventLog) checkExpandHeuristic() bool {
@@ -93,15 +94,16 @@ func (n *EventLog) checkExpandHeuristic() bool {
 }
 
 func (n *EventLog) selectChild(c *Search, s SearchInterface) (step Step, child *EventLog, done bool) {
-	if n.checkBurnIn(c) || n.checkExpandLimit() && n.checkExpandHeuristic() {
+	if n.BurnedIn {
+		n.burnIn(c, s, 1+c.SelectBurnInSamples)
+		n.BurnedIn = true
+	}
+	if n.NumExpandSamples < n.MaxSelectSamples && n.checkExpandHeuristic() {
 		// Try to further expand this node.
 		// Either we have new node (or not yet reached the sample burn-in)
 		// Or heuristics have told us to call Expand.
 		_, child := n.expand(c, s)
 		if done := child == nil || n.canStopHere(c); done {
-			return nil, nil, true
-		}
-		if n.canStopHere(c) {
 			return nil, nil, true
 		}
 		return child.Step, child, false
@@ -156,13 +158,13 @@ func (n *EventLog) backprop(log Log, numRollouts int) {
 	}
 }
 
-func (n *EventLog) child(c *Search, step Step, s SearchInterface) *EventLog {
+func (n *EventLog) createChild(c *Search, step Step, s SearchInterface) *EventLog {
 	stepHash := step.Hash()
 	child, ok := n.children[stepHash]
 	if ok {
 		return child
 	}
-	child = newEventLog(c, n, step, s.Log())
+	child = newEventLog(c, s, n, step, s.Log())
 	n.children[stepHash] = child
 	return child
 }

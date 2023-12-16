@@ -38,8 +38,8 @@ func prettyFormatNumRollouts(n int) string {
 func (e *EventLog) prettyFormatExpandStats() string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d / %d hits", e.NumExpandHits(), e.NumExpandSamples)
-	if e.MaxExpandSamples > 0 {
-		fmt.Fprintf(&sb, "; %d max", e.MaxExpandSamples)
+	if e.MaxSelectSamples > 0 {
+		fmt.Fprintf(&sb, "; %d max", e.MaxSelectSamples)
 	}
 	return sb.String()
 }

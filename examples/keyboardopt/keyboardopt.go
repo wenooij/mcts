@@ -142,11 +142,11 @@ func main() {
 	}()
 
 	opts := mcts.Search{
-		MinSelectDepth:           5,
-		ExtraExpandBurnInSamples: 5,
-		MaxExpandSamples:         3,
-		RolloutsPerEpoch:         10,
-		ExplorationParameter:     math.Pi,
+		MinSelectDepth:       5,
+		SelectBurnInSamples:  5,
+		SelectSamples:        5,
+		RolloutsPerEpoch:     10,
+		ExplorationParameter: math.Pi,
 	}
 	res := opts.Search(s, done)
 

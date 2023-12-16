@@ -22,15 +22,15 @@ type Search struct {
 	// Default is 0.
 	MinSelectDepth int
 
-	// ExtraExpandBurnInSamples is the extra calls to Expand on a node before we
-	// can start relying on sample heuristics.
+	// SelectBurnInSamples is the number of calls to Expand
+	// before we start sampling from the node.
 	// Default is 0.
-	ExtraExpandBurnInSamples int
+	SelectBurnInSamples int
 
-	// MaxExpandSamples is the maximum number of calls to Expand on a node before we
-	// start relying on the MAB policy during selection.
-	// Default is 0 meaning unlimited samples.
-	MaxExpandSamples int
+	// SelectSamples is the num number of calls to Expand during selection
+	// before relying on the MAB policy during selection.
+	// Default is 0.
+	SelectSamples int
 
 	// RolloutsPerEpoch is the number of calls to SearchInterface's Rollout
 	// per Select epoch. This should be set in accordance to the expensiveness of Rollout
@@ -61,7 +61,7 @@ func (s *Search) Reset() {
 func (c *Search) Search(s SearchInterface, done <-chan struct{}) Stat {
 	c.patchDefaults()
 	if c.root == nil {
-		c.root = newEventLog(c, nil, nil, s.Log())
+		c.root = newEventLog(c, s, nil, nil, s.Log())
 	}
 	root := c.root
 	for {
