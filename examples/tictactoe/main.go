@@ -1,54 +1,13 @@
-package mctserver
+package main
 
 import (
 	"fmt"
 	"math/rand"
 	"slices"
-	"sync"
-	"testing"
 	"time"
 
 	"github.com/wenooij/mcts"
 )
-
-func TestTicTacToeParallel(t *testing.T) {
-	const workers = 1
-
-	var wg sync.WaitGroup
-
-	// simulate 2*simulatedCoreFactor cores
-	const simulatedCoreFactor = 1
-	const baseTime = 4 * time.Second
-	searchTime := simulatedCoreFactor * baseTime
-
-	mu := sync.Mutex{}
-
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		go func(i int) {
-			defer wg.Done()
-
-			si := NewPlugin()
-
-			done := make(chan struct{})
-			timer := time.After(searchTime)
-			go func() {
-				<-timer
-				done <- struct{}{}
-			}()
-
-			c := new(mcts.Search)
-			res := c.Search(si, done)
-
-			mu.Lock()
-			defer mu.Unlock()
-
-			fmt.Println(res)
-		}(i)
-	}
-
-	wg.Wait()
-}
 
 const (
 	X = byte('x')
@@ -78,7 +37,7 @@ func (s tictactoeStep) Hash() uint64 {
 }
 
 func (s tictactoeStep) String() string {
-	return fmt.Sprintf("%c%c", s.cell, s.turn)
+	return fmt.Sprintf("%c%c", '0'+s.cell, s.turn)
 }
 
 type tictactoeNode struct {
@@ -242,4 +201,20 @@ func (s *SearchPlugin) forward(log *tictactoeLog) bool {
 
 func NewPlugin() mcts.SearchInterface {
 	return newSearchPlugin()
+}
+
+func main() {
+	si := NewPlugin()
+
+	done := make(chan struct{})
+	timer := time.After(10 * time.Second)
+	go func() {
+		<-timer
+		done <- struct{}{}
+	}()
+
+	c := new(mcts.Search)
+	res := c.Search(si, done)
+
+	fmt.Println(res)
 }
