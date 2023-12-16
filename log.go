@@ -47,7 +47,7 @@ func newEventLog[E Step](c *Search[E], s SearchInterface[E], parent *EventLog[E]
 		Step:  step,
 		Log:   log,
 
-		MaxSelectSamples: c.MaxSelectSamples,
+		MaxSelectSamples: c.MaxSpeculativeSamples,
 	}
 }
 
@@ -87,17 +87,17 @@ func (n *EventLog[E]) canStopHere(c *Search[E]) bool {
 	return n.Depth >= c.MinSelectDepth
 }
 
-func (n *EventLog[E]) checkExpandHeuristic() bool {
+func (n *EventLog[E]) checkExpandHeuristic(rng *rand.Rand) bool {
 	samples := n.NumExpandSamples
 	if samples == 0 {
 		return true
 	}
-	r := rand.Float64() * float64(samples)
+	r := rng.Float64() * float64(samples)
 	misses := float64(n.NumExpandMisses)
 	return misses < r
 }
 
-func (n *EventLog[E]) selectChild(c *Search[E], s SearchInterface[E]) (step E, child *EventLog[E], done bool) {
+func (n *EventLog[E]) selectChild(r *rand.Rand, c *Search[E], s SearchInterface[E]) (step E, child *EventLog[E], done bool) {
 	if !n.BurnedIn {
 		n.burnIn(c, s, c.SelectBurnInSamples)
 		n.BurnedIn = true
@@ -107,7 +107,7 @@ func (n *EventLog[E]) selectChild(c *Search[E], s SearchInterface[E]) (step E, c
 			return sentinel, nil, true
 		}
 	}
-	if n.NumExpandSamples < n.MaxSelectSamples+c.SelectBurnInSamples && n.checkExpandHeuristic() {
+	if n.NumExpandSamples < n.MaxSelectSamples+c.SelectBurnInSamples && n.checkExpandHeuristic(r) {
 		// Try to further expand this node.
 		n.expand(c, s)
 		// Roll out from here, if possible.

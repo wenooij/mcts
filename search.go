@@ -2,6 +2,8 @@ package mcts
 
 import (
 	"math"
+	"math/rand"
+	"time"
 )
 
 const (
@@ -17,41 +19,51 @@ const (
 type Search[E Step] struct {
 	root *EventLog[E]
 
+	// Seed provides repeatable randomness to the search.
+	// By default Seed is set to the current UNIX timestamp nanos.
+	Seed int64
+
 	// MinSelectDepth is the minimum depth in which a rollout is allowed.
-	// Before this depth we will rely entirely on Expand to give us nodes.
-	// After this depth we may heuristically choose to Expand a nonterminal.
-	// MinSelectDepth doesn't apply when Expand returns an empty step.
+	// This is useful for search which need a few steps to get set up,
+	// or when rolling out before MinSelectDepth is not well defined.
+	// MinSelectDepth doesn't apply if Expand returns an empty step.
 	// Default is 0.
 	MinSelectDepth int
 
-	// SelectBurnInSamples is the number of calls to Expand
-	// before we start sampling from the node.
+	// SelectBurnInSamples is the number of guaranteed Expand calls
+	// applied initially before we start sampling from the node.
 	// Default is 0.
 	SelectBurnInSamples int
 
-	// MaxSelectSamples is the number of calls to Expand during selection
-	// before relying on the MAB policy during selection.
+	// MaxSpeculativeSamples is the maximum number of speculative calls to Expand after optional burn in.
+	// This applies a limit to the heuristic which calls Expand automatically in proportion to the hit-rate
+	// of new steps. As the hit rate decreases, we call Expand less, up to this limit.
+	// If set to 0, speculative samples are disabled, but be sure SelectBurnInSamples is nonzero to guarantee
+	// Expand is called.
 	// Default is 100.
-	MaxSelectSamples int
+	MaxSpeculativeSamples int
 
-	// RolloutsPerEpoch is the number of calls to SearchInterface's Rollout
-	// per Select epoch. This should be set in accordance to the expensiveness of Rollout
-	// to ensure exploration is done.
+	// RolloutsPerEpoch is a tuneable number of calls to Rollout per Search epoch.
+	// This value should be high enough to amortize the cost of selecting a node
+	// but not too high that it would take too much time away from other searches.
 	// Default is 100.
 	RolloutsPerEpoch int
 
-	// ExplorationParameter is a tunable parameter which weights the explore side of the
+	// ExplorationParameter is a tuneable parameter which weights the explore side of the
 	// MAB policy.
 	// Zero will use the default value of √2.
 	ExplorationParameter float64
 }
 
 func (s *Search[E]) patchDefaults() {
+	if s.Seed == 0 {
+		s.Seed = time.Now().UnixNano()
+	}
 	if s.RolloutsPerEpoch == 0 {
 		s.RolloutsPerEpoch = defaultRolloutsPerEpoch
 	}
-	if s.MaxSelectSamples == 0 {
-		s.MaxSelectSamples = defaultMaxSelectSamples
+	if s.MaxSpeculativeSamples == 0 {
+		s.MaxSpeculativeSamples = defaultMaxSelectSamples
 	}
 	if s.ExplorationParameter == 0 {
 		s.ExplorationParameter = defaultExplorationParameter
@@ -65,6 +77,7 @@ func (s *Search[E]) Reset() {
 
 func (c *Search[E]) Search(s SearchInterface[E], done <-chan struct{}) Stat[E] {
 	c.patchDefaults()
+	r := rand.New(rand.NewSource(c.Seed))
 	if c.root == nil {
 		var sentinel E
 		c.root = newEventLog(c, s, nil, sentinel, s.Log())
@@ -74,7 +87,7 @@ func (c *Search[E]) Search(s SearchInterface[E], done <-chan struct{}) Stat[E] {
 		s.Root()
 		node := root
 		for {
-			step, child, done := node.selectChild(c, s)
+			step, child, done := node.selectChild(r, c, s)
 			if done {
 				break
 			}
