@@ -79,8 +79,7 @@ func (n *EventLog[E]) expand(c *Search[E], s SearchInterface[E]) (step E, child 
 
 func (n *EventLog[E]) burnIn(c *Search[E], s SearchInterface[E], runs int) {
 	for i := 0; i < runs; i++ {
-		step := s.Expand()
-		n.createChild(c, step, s)
+		n.expand(c, s)
 	}
 }
 
@@ -98,7 +97,7 @@ func (n *EventLog[E]) selectChild(c *Search[E], s SearchInterface[E]) (step E, c
 		n.burnIn(c, s, 1+c.SelectBurnInSamples)
 		n.BurnedIn = true
 	}
-	if n.NumExpandSamples < n.MaxSelectSamples && n.checkExpandHeuristic() {
+	if n.NumExpandSamples < n.MaxSelectSamples+c.SelectBurnInSamples && n.checkExpandHeuristic() {
 		// Try to further expand this node.
 		// Either we have new node (or not yet reached the sample burn-in)
 		// Or heuristics have told us to call Expand.

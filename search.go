@@ -29,7 +29,7 @@ type Search[E Step] struct {
 	// Default is 0.
 	SelectBurnInSamples int
 
-	// MaxSelectSamples is the num number of calls to Expand during selection
+	// MaxSelectSamples is the number of calls to Expand during selection
 	// before relying on the MAB policy during selection.
 	// Default is 100.
 	MaxSelectSamples int

@@ -33,10 +33,6 @@ type tictactoeStep struct {
 	turn byte
 }
 
-func (s tictactoeStep) Key() tictactoeStep {
-	return s
-}
-
 func (s tictactoeStep) String() string {
 	if s == (tictactoeStep{}) {
 		return "#"
@@ -62,15 +58,9 @@ func newRoot() *tictactoeNode {
 		},
 		children: make(map[tictactoeStep]*tictactoeNode, 9),
 		open: []byte{
-			0,
-			1,
-			2,
-			3,
-			4,
-			5,
-			6,
-			7,
-			8,
+			0, 1, 2,
+			3, 4, 5,
+			6, 7, 8,
 		},
 	}
 }
@@ -213,9 +203,9 @@ func main() {
 	}()
 
 	opts := mcts.Search[tictactoeStep]{
-		MinSelectDepth:       6,
-		SelectBurnInSamples:  9,
-		MaxSelectSamples:     10000,
+		MinSelectDepth:       0,
+		SelectBurnInSamples:  100,
+		MaxSelectSamples:     20,
 		RolloutsPerEpoch:     10000,
 		ExplorationParameter: math.Sqrt2 / 10,
 	}
