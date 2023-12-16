@@ -5,12 +5,12 @@ import (
 	"strings"
 )
 
-type Stat struct {
-	StatEntry
-	PV *Stat
+type Stat[E Step] struct {
+	StatEntry[E]
+	PV *Stat[E]
 }
 
-func (s Stat) String() string {
+func (s Stat[E]) String() string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%-2d %s", 0, s.StatEntry.String())
 	for i, pv := 1, s.PV; pv != nil; i, pv = i+1, pv.PV {
@@ -19,9 +19,9 @@ func (s Stat) String() string {
 	return sb.String()
 }
 
-type StatEntry struct {
-	Step     Step
-	EventLog EventLog
+type StatEntry[E Step] struct {
+	Step     E
+	EventLog EventLog[E]
 	Score    float64
 }
 
@@ -35,7 +35,7 @@ func prettyFormatNumRollouts(n int) string {
 	return fmt.Sprintf("%.2f MN", float64(n)/1e6)
 }
 
-func (e *EventLog) prettyFormatExpandStats() string {
+func (e *EventLog[E]) prettyFormatExpandStats() string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "%d / %d hits", e.NumExpandHits(), e.NumExpandSamples)
 	if e.MaxSelectSamples > 0 {
@@ -44,7 +44,7 @@ func (e *EventLog) prettyFormatExpandStats() string {
 	return sb.String()
 }
 
-func (e StatEntry) String() string {
+func (e StatEntry[E]) String() string {
 	return fmt.Sprintf("[%-4.3f] %-6s (%s; %s)\n",
 		e.EventLog.Log.Score()/float64(e.EventLog.NumRollouts),
 		e.Step,
@@ -53,23 +53,23 @@ func (e StatEntry) String() string {
 	)
 }
 
-func (n *EventLog) statEntry() StatEntry {
+func (n *EventLog[E]) statEntry() StatEntry[E] {
 	score, _ := n.Score()
-	return StatEntry{
+	return StatEntry[E]{
 		Step:     n.Step,
 		EventLog: *n,
 		Score:    score,
 	}
 }
 
-func (n *EventLog) makeResult() Stat {
-	root := Stat{}
+func (n *EventLog[E]) makeResult() Stat[E] {
+	root := Stat[E]{}
 	for stat := &root; ; {
 		stat.StatEntry = n.statEntry()
 		if n = n.bestChild(); n == nil {
 			break
 		}
-		next := &Stat{}
+		next := &Stat[E]{}
 		stat.PV = next
 		stat = next
 	}

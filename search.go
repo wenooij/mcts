@@ -11,10 +11,11 @@ const (
 )
 
 // Search contains options used to run the MCTS Search.
+//
 // It also maintains a continuation which supports repeated calls to Search
 // using the same search tree.
-type Search struct {
-	root *EventLog
+type Search[E Step] struct {
+	root *EventLog[E]
 
 	// MinSelectDepth is the minimum depth in which a rollout is allowed.
 	// Before this depth we will rely entirely on Expand to give us nodes.
@@ -45,7 +46,7 @@ type Search struct {
 	ExplorationParameter float64
 }
 
-func (s *Search) patchDefaults() {
+func (s *Search[E]) patchDefaults() {
 	if s.RolloutsPerEpoch == 0 {
 		s.RolloutsPerEpoch = defaultRolloutsPerEpoch
 	}
@@ -58,14 +59,15 @@ func (s *Search) patchDefaults() {
 }
 
 // Reset deletes the search continuation so the next call to Search starts from scratch.
-func (s *Search) Reset() {
+func (s *Search[E]) Reset() {
 	s.root = nil
 }
 
-func (c *Search) Search(s SearchInterface, done <-chan struct{}) Stat {
+func (c *Search[E]) Search(s SearchInterface[E], done <-chan struct{}) Stat[E] {
 	c.patchDefaults()
 	if c.root == nil {
-		c.root = newEventLog(c, s, nil, nil, s.Log())
+		var sentinel E
+		c.root = newEventLog(c, s, nil, sentinel, s.Log())
 	}
 	root := c.root
 	for {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"slices"
 	"time"
@@ -32,11 +33,14 @@ type tictactoeStep struct {
 	turn byte
 }
 
-func (s tictactoeStep) Hash() uint64 {
-	return uint64(s.cell) | uint64(s.turn)<<8
+func (s tictactoeStep) Key() tictactoeStep {
+	return s
 }
 
 func (s tictactoeStep) String() string {
+	if s == (tictactoeStep{}) {
+		return "#"
+	}
 	return fmt.Sprintf("%c%c", '0'+s.cell, s.turn)
 }
 
@@ -46,7 +50,7 @@ type tictactoeNode struct {
 	winner   byte
 	state    [9]byte
 	open     []byte
-	children map[mcts.StepHash]*tictactoeNode
+	children map[tictactoeStep]*tictactoeNode
 }
 
 func newRoot() *tictactoeNode {
@@ -56,7 +60,7 @@ func newRoot() *tictactoeNode {
 			0, 0, 0,
 			0, 0, 0,
 		},
-		children: make(map[mcts.StepHash]*tictactoeNode, 9),
+		children: make(map[tictactoeStep]*tictactoeNode, 9),
 		open: []byte{
 			0,
 			1,
@@ -76,7 +80,7 @@ func newNode(parent *tictactoeNode, step tictactoeStep) *tictactoeNode {
 	n := &tictactoeNode{
 		depth:    d,
 		open:     make([]byte, len(parent.open)),
-		children: make(map[mcts.StepHash]*tictactoeNode, 9-d),
+		children: make(map[tictactoeStep]*tictactoeNode, 9-d),
 	}
 	copy(n.state[:], parent.state[:])
 	idx := step.cell
@@ -144,30 +148,29 @@ func (s *SearchPlugin) Root() {
 	s.node = s.root
 }
 
-func (s *SearchPlugin) Expand() mcts.Step {
+func (s *SearchPlugin) Expand() tictactoeStep {
 	return s.node.expand()
 }
 
-func (n *tictactoeNode) expand() mcts.Step {
+func (n *tictactoeNode) expand() tictactoeStep {
 	if n.terminal {
-		return nil
+		return tictactoeStep{}
 	}
 	i := n.open[rand.Intn(len(n.open))]
 	return tictactoeStep{cell: i, turn: n.turn()}
 }
 
-func (s *SearchPlugin) Apply(m mcts.Step) {
-	s.node = s.node.apply(m.(tictactoeStep))
+func (s *SearchPlugin) Apply(step tictactoeStep) {
+	s.node = s.node.apply(step)
 }
 
-func (n *tictactoeNode) apply(m tictactoeStep) *tictactoeNode {
-	stepHash := m.Hash()
-	child, ok := n.children[stepHash]
+func (n *tictactoeNode) apply(step tictactoeStep) *tictactoeNode {
+	child, ok := n.children[step]
 	if ok {
 		return child
 	}
-	child = newNode(n, m)
-	n.children[stepHash] = child
+	child = newNode(n, step)
+	n.children[step] = child
 	return child
 }
 
@@ -186,7 +189,7 @@ func (s *SearchPlugin) Rollout() mcts.Log {
 
 func (s *SearchPlugin) forward(log *tictactoeLog) bool {
 	step := s.node.expand()
-	if step == nil {
+	if step == (tictactoeStep{}) {
 		switch s.node.winner {
 		case X:
 			log.scoreX++
@@ -195,16 +198,12 @@ func (s *SearchPlugin) forward(log *tictactoeLog) bool {
 		}
 		return false
 	}
-	s.node = s.node.apply(step.(tictactoeStep))
+	s.node = s.node.apply(step)
 	return true
 }
 
-func NewPlugin() mcts.SearchInterface {
-	return newSearchPlugin()
-}
-
 func main() {
-	si := NewPlugin()
+	si := newSearchPlugin()
 
 	done := make(chan struct{})
 	timer := time.After(10 * time.Second)
@@ -213,8 +212,14 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	c := new(mcts.Search)
-	res := c.Search(si, done)
+	opts := mcts.Search[tictactoeStep]{
+		MinSelectDepth:       6,
+		SelectBurnInSamples:  9,
+		MaxSelectSamples:     10000,
+		RolloutsPerEpoch:     10000,
+		ExplorationParameter: math.Sqrt2 / 10,
+	}
+	res := opts.Search(si, done)
 
 	fmt.Println(res)
 }
