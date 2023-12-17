@@ -2,6 +2,7 @@ package mcts
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 )
 
@@ -57,11 +58,11 @@ func (n *EventLog[E]) statEntry() StatEntry[E] {
 	}
 }
 
-func (n *EventLog[E]) makeResult() Stat[E] {
+func (n *EventLog[E]) makeResult(r *rand.Rand) Stat[E] {
 	root := Stat[E]{}
 	for stat := &root; ; {
 		stat.StatEntry = n.statEntry()
-		if n = n.bestChild(); n == nil {
+		if n = n.bestChild(r); n == nil {
 			break
 		}
 		next := &Stat[E]{}

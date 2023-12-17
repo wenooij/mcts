@@ -16,7 +16,8 @@ type Log interface {
 
 type EventLog[E Step] struct {
 	parent   *EventLog[E]
-	children map[E]*EventLog[E]
+	childSet map[E]*EventLog[E]
+	children []*EventLog[E]
 
 	Depth int
 	Step  E
@@ -41,7 +42,8 @@ func newEventLog[E Step](c *Search[E], s SearchInterface[E], parent *EventLog[E]
 	}
 	return &EventLog[E]{
 		parent:   parent,
-		children: make(map[E]*EventLog[E], 8),
+		children: make([]*EventLog[E], 0, 8),
+		childSet: make(map[E]*EventLog[E], 8),
 
 		Depth: depth,
 		Step:  step,
@@ -68,7 +70,7 @@ func (n *EventLog[E]) expand(c *Search[E], s SearchInterface[E]) (step E, child 
 		return step, nil
 	}
 	var ok bool
-	if child, ok = n.children[step]; !ok {
+	if _, ok = n.childSet[step]; !ok {
 		child = n.createChild(c, step, s)
 	} else {
 		// Add a sample miss when we have sampled it before.
@@ -121,6 +123,9 @@ func (n *EventLog[E]) selectChild(r *rand.Rand, c *Search[E], s SearchInterface[
 		maxChild  *EventLog[E]
 		maxPolicy = math.Inf(-1)
 	)
+	// Don't rely on the default map ordering.
+	// Also required to make search repeatable.
+	r.Shuffle(len(n.children), func(i, j int) { n.children[i], n.children[j] = n.children[j], n.children[i] })
 	for _, e := range n.children {
 		if maxChild != nil {
 			score, _ := e.Score()
@@ -143,7 +148,7 @@ func (n *EventLog[E]) selectChild(r *rand.Rand, c *Search[E], s SearchInterface[
 	return maxChild.Step, maxChild, false
 }
 
-func (log *EventLog[E]) bestChild() *EventLog[E] {
+func (log *EventLog[E]) bestChild(r *rand.Rand) *EventLog[E] {
 	if log == nil || len(log.children) == 0 {
 		return nil
 	}
@@ -152,6 +157,9 @@ func (log *EventLog[E]) bestChild() *EventLog[E] {
 		maxChild *EventLog[E]
 		maxScore = math.Inf(-1)
 	)
+	// Don't rely on the default map ordering.
+	// Also required to make search repeatable.
+	r.Shuffle(len(log.children), func(i, j int) { log.children[i], log.children[j] = log.children[j], log.children[i] })
 	for _, e := range log.children {
 		score, _ := e.Score()
 		score /= float64(e.NumRollouts)
@@ -171,12 +179,13 @@ func (n *EventLog[E]) backprop(log Log, numRollouts int) {
 }
 
 func (n *EventLog[E]) createChild(c *Search[E], step E, s SearchInterface[E]) *EventLog[E] {
-	child, ok := n.children[step]
+	child, ok := n.childSet[step]
 	if ok {
 		return child
 	}
 	child = newEventLog(c, s, n, step, s.Log())
-	n.children[step] = child
+	n.childSet[step] = child
+	n.children = append(n.children, child)
 	return child
 }
 

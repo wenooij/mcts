@@ -77,11 +77,11 @@ func (s *Search[E]) Reset() {
 
 func (c *Search[E]) Search(s SearchInterface[E], done <-chan struct{}) Stat[E] {
 	c.patchDefaults()
-	r := rand.New(rand.NewSource(c.Seed))
 	if c.root == nil {
 		var sentinel E
 		c.root = newEventLog(c, s, nil, sentinel, s.Log())
 	}
+	r := rand.New(rand.NewSource(c.Seed))
 	root := c.root
 	for {
 		s.Root()
@@ -102,7 +102,7 @@ func (c *Search[E]) Search(s SearchInterface[E], done <-chan struct{}) Stat[E] {
 		frontier.backprop(frontierLog, c.RolloutsPerEpoch)
 		select {
 		case <-done:
-			return root.makeResult()
+			return root.makeResult(r)
 		default:
 		}
 	}

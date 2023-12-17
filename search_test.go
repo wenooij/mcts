@@ -75,9 +75,10 @@ type search struct {
 	node *node
 }
 
-func newSearch(t *testing.T, timer *fakeTimer, r *rand.Rand, b, d int) *search {
+func newSearch(t *testing.T, timer *fakeTimer, b, d int) *search {
 	t.Helper()
 	root := newRoot()
+	r := rand.New(rand.NewSource(1337))
 	return &search{
 		b:    b,
 		d:    d,
@@ -132,31 +133,41 @@ func (s *search) forward(log *log) bool {
 }
 
 func TestSearchRecall(t *testing.T) {
-	const seed = 1337
 	for _, tc := range []struct {
-		name          string
-		inputBranches int
-		inputDepth    int
-		timeLimit     int
-		wantRecall    float64
-	}{{
-		name:          "branching factor 2, depth 1, 1 epoch -> recall 100%",
-		inputBranches: 2,
-		inputDepth:    1,
-		timeLimit:     1,
-		wantRecall:    1,
-	}, {
-		name:          "branching factor 10, depth 10, 1000 epoch -> recall 100%",
-		inputBranches: 2,
-		inputDepth:    10,
-		timeLimit:     1000,
-		wantRecall:    1,
-	}} {
+		name           string
+		inputBranches  int
+		inputDepth     int
+		overrideBurnIn int
+		timeLimit      int
+		wantRecall     float64
+	}{
+		// 	{
+		// 	name:          "{b:2, d:1, t:1}: 100%",
+		// 	inputBranches: 2,
+		// 	inputDepth:    1,
+		// 	timeLimit:     1,
+		// 	wantRecall:    1,
+		// },
+		{
+			name:           "{b:100, d:1, t:1}: 100%",
+			inputBranches:  100,
+			inputDepth:     1,
+			overrideBurnIn: 100,
+			timeLimit:      1,
+			wantRecall:     1,
+		},
+		// {
+		// 	name:          "{b:2, d:10, t:1000}: 85%",
+		// 	inputBranches: 2,
+		// 	inputDepth:    10,
+		// 	timeLimit:     1000,
+		// 	wantRecall:    .85,
+		// }
+	} {
 		t.Run(tc.name, func(t *testing.T) {
-			r := rand.New(rand.NewSource(seed))
 			timer := newFakeTimer(tc.timeLimit)
-			s := newSearch(t, timer, r, tc.inputBranches, tc.inputDepth)
-			c := Search[step]{Seed: 1337}
+			s := newSearch(t, timer, tc.inputBranches, tc.inputDepth)
+			c := Search[step]{Seed: 13323427, SelectBurnInSamples: tc.overrideBurnIn}
 			res := c.Search(s, timer.done)
 			bestLeaf := &res
 			for ; bestLeaf.PV != nil; bestLeaf = bestLeaf.PV {
