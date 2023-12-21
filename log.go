@@ -8,8 +8,8 @@ import (
 // Log is used to keep track of the objective function value
 // as well as aggregate events of interest.
 type Log interface {
-	// Merge in the provided EventLog.
-	Merge(Log)
+	// Merge the provided event Log and return the result.
+	Merge(Log) Log
 	// Score returns the objective function evaluation for this EventLog.
 	Score() float64
 }
@@ -174,7 +174,7 @@ func (log *EventLog[E]) bestChild(r *rand.Rand) *EventLog[E] {
 func (n *EventLog[E]) backprop(log Log, numRollouts int) {
 	for e := n; e != nil; e = e.parent {
 		e.NumRollouts += numRollouts
-		e.Log.Merge(log)
+		e.Log = e.Log.Merge(log)
 	}
 }
 

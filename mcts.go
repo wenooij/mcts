@@ -29,13 +29,12 @@ type SearchInterface[E Step] interface {
 
 	// Expand returns the next Step to explore for the current node.
 	//
-	// Expand is called during the select-expansion phase before the rollout.
-	// Expand should return steps in a manner that guarantees all Steps are
-	// visited or it samples Steps fairly (for instance, at random).
+	// Expand is called during the selection phase before the rollout.
+	// Expand may return Steps in any order but must return a Step if called.
+	// An empty Step marks the node is marked as terminal (among its other options).
 	Expand() E
 
-	// Rollout performs one random rollout from the current node, merges
-	// the Log of events, and returns it.
+	// Rollout performs one random rollout from the current node and returns an event Log.
 	//
 	// Rollout is called repeatedly in Search for the random rollouts phase.
 	Rollout() Log

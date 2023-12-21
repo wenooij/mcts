@@ -121,10 +121,11 @@ type tictactoeLog struct {
 	scoreO float64
 }
 
-func (e *tictactoeLog) Merge(lg mcts.Log) {
+func (e *tictactoeLog) Merge(lg mcts.Log) mcts.Log {
 	t := lg.(*tictactoeLog)
 	e.scoreX += t.scoreX
 	e.scoreO += t.scoreO
+	return e
 }
 
 func (e *tictactoeLog) Score() float64 {

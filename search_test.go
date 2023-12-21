@@ -58,8 +58,9 @@ type log struct {
 	score float64
 }
 
-func (e *log) Merge(lg Log) {
+func (e *log) Merge(lg Log) Log {
 	e.score += lg.(*log).score
+	return e
 }
 
 func (e *log) Score() float64 {

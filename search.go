@@ -97,7 +97,7 @@ func (c *Search[E]) Search(s SearchInterface[E], done <-chan struct{}) Stat[E] {
 		frontier := node
 		frontierLog := s.Rollout()
 		for i := 0; i < c.RolloutsPerEpoch-1; i++ {
-			frontierLog.Merge(s.Rollout())
+			frontierLog = frontierLog.Merge(s.Rollout())
 		}
 		frontier.backprop(frontierLog, c.RolloutsPerEpoch)
 		select {

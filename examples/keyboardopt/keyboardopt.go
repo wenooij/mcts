@@ -44,10 +44,11 @@ func (g *keyboardLog) Score() float64 {
 	return travelLoss / float64(g.keysTyped)
 }
 
-func (g *keyboardLog) Merge(lg mcts.Log) {
+func (g *keyboardLog) Merge(lg mcts.Log) mcts.Log {
 	x := lg.(*keyboardLog)
 	g.travelDistance += x.travelDistance
 	g.keysTyped += x.keysTyped
+	return g
 }
 
 type keyboardNode struct {
