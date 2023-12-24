@@ -71,3 +71,22 @@ func (n *EventLog[E]) makeResult(r *rand.Rand) Stat[E] {
 	}
 	return root
 }
+
+func (r Search[E]) Score(pv ...E) []float64 {
+	node := r.root
+	res := make([]float64, 0, 1+len(pv))
+	for i := 0; ; i++ {
+		e := node.statEntry()
+		res = append(res, e.Score)
+		if i >= len(pv) {
+			break
+		}
+		s := pv[i]
+		child, ok := node.childSet[s]
+		if !ok {
+			break
+		}
+		node = child
+	}
+	return res
+}
