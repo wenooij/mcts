@@ -2,6 +2,7 @@ package mcts
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 )
@@ -21,44 +22,44 @@ func (s Stat[E]) String() string {
 }
 
 type StatEntry[E Step] struct {
-	Step     E
-	EventLog EventLog[E]
-	Score    float64
+	Step    E
+	LogNode topo[E]
+	Score   float64
 }
 
-func prettyFormatNumRollouts(n int) string {
+func prettyFormatNumRollouts(n float64) string {
 	if n < 1000 {
-		return fmt.Sprintf("%d N", n)
+		return fmt.Sprintf("%.0f N", n)
 	}
 	if n < 1e6 {
-		return fmt.Sprintf("%.2f kN", float64(n)/1e3)
+		return fmt.Sprintf("%.2f kN", n/1e3)
 	}
-	return fmt.Sprintf("%.2f MN", float64(n)/1e6)
+	return fmt.Sprintf("%.2f MN", n/1e6)
 }
 
-func (e *EventLog[E]) prettyFormatExpandStats() string {
+func (e *topo[E]) prettyFormatExpandStats() string {
 	return fmt.Sprintf("%d children; %d samples", len(e.children), e.expandHeuristic.samples)
 }
 
 func (e StatEntry[E]) String() string {
 	return fmt.Sprintf("[%-4.3f] %-6s (%s; %s)\n",
-		e.EventLog.Log.Score()/float64(e.EventLog.NumRollouts),
+		e.LogNode.Log.Score()/float64(e.LogNode.numRollouts),
 		e.Step,
-		prettyFormatNumRollouts(e.EventLog.NumRollouts),
-		e.EventLog.prettyFormatExpandStats(),
+		prettyFormatNumRollouts(e.LogNode.numRollouts),
+		e.LogNode.prettyFormatExpandStats(),
 	)
 }
 
-func (n *EventLog[E]) statEntry() StatEntry[E] {
+func (n *topo[E]) statEntry() StatEntry[E] {
 	score, _ := n.Score()
 	return StatEntry[E]{
-		Step:     n.Step,
-		EventLog: *n,
-		Score:    score,
+		Step:    n.Step,
+		LogNode: *n,
+		Score:   score,
 	}
 }
 
-func (n *EventLog[E]) makeResult(r *rand.Rand) Stat[E] {
+func (n *topo[E]) makeResult(r *rand.Rand) Stat[E] {
 	root := Stat[E]{}
 	for stat := &root; ; {
 		stat.StatEntry = n.statEntry()
@@ -89,4 +90,29 @@ func (r Search[E]) Score(pv ...E) []float64 {
 		node = child
 	}
 	return res
+}
+
+func (log *topo[E]) bestChild(r *rand.Rand) *topo[E] {
+	if log == nil || len(log.children) == 0 {
+		return nil
+	}
+	// Select an existing child to maximize score.
+	var (
+		maxChild *topo[E]
+		maxScore = math.Inf(-1)
+	)
+	// Don't rely on the default map ordering.
+	// Also required to make search repeatable.
+	r.Shuffle(len(log.children), func(i, j int) {
+		log.children[i], log.children[j] = log.children[j], log.children[i]
+	})
+	for _, e := range log.children {
+		score, _ := e.Score()
+		score /= float64(e.numRollouts)
+		if maxScore < score {
+			maxChild = e
+			maxScore = score
+		}
+	}
+	return maxChild
 }

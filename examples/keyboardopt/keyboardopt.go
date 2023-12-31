@@ -141,11 +141,11 @@ func main() {
 	}()
 
 	opts := mcts.Search[keySwapStep]{
-		MinSelectDepth:        5,
-		SelectBurnInSamples:   5,
-		MaxSpeculativeSamples: 5,
-		RolloutsPerEpoch:      10,
-		ExplorationParameter:  math.Pi,
+		MinExpandDepth:           5,
+		ExpandBurnInSamples:      5,
+		MaxSpeculativeExpansions: 5,
+		RolloutsPerEpoch:         10,
+		ExplorationParameter:     math.Pi,
 	}
 	res := opts.Search(s, done)
 

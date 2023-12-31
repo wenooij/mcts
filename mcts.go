@@ -11,15 +11,20 @@ type Step interface {
 	fmt.Stringer
 }
 
+// Log is used to keep track of the objective function value
+// as well as aggregate events of interest.
+type Log interface {
+	// Merge the provided event Log and return the result.
+	Merge(Log) Log
+
+	// Score returns the objective function evaluation for this Log.
+	Score() float64
+}
+
 // SearchInterface is a minimal interface to MCTS tree state.
-type SearchInterface[E Step] interface {
+type SearchInterface[S Step] interface {
 	// Log returns a new empty log for the current node.
 	Log() Log
-
-	// Apply the Step to the current node.
-	//
-	// Apply is called multiple times in Search and after Search completes.
-	Apply(E)
 
 	// Root resets the current search to root.
 	//
@@ -27,12 +32,17 @@ type SearchInterface[E Step] interface {
 	// and after Search completes.
 	Root()
 
+	// Apply the Step to the current node.
+	//
+	// Apply is called multiple times in Search and after Search completes.
+	Apply(S)
+
 	// Expand returns the next Step to explore for the current node.
 	//
 	// Expand is called during the selection phase before the rollout.
 	// Expand may return Steps in any order but must return a Step if called.
 	// An empty Step marks the node is marked as terminal (among its other options).
-	Expand() E
+	Expand() S
 
 	// Rollout performs one random rollout from the current node and returns an event Log.
 	//

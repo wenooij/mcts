@@ -32,23 +32,23 @@ func (s step) String() string {
 	return strconv.FormatInt(int64(s), 10)
 }
 
-type node struct {
+type testNode struct {
 	depth    int
 	value    float64
-	children map[step]*node
+	children map[step]*testNode
 }
 
-func newRoot() *node {
-	return &node{
-		children: make(map[step]*node, 5),
+func newRootForTest() *testNode {
+	return &testNode{
+		children: make(map[step]*testNode, 5),
 	}
 }
 
-func (n *node) createChild(s step) *node {
-	child := &node{
+func (n *testNode) createChild(s step) *testNode {
+	child := &testNode{
 		depth:    n.depth + 1,
 		value:    float64(n.value) + float64(s),
-		children: make(map[step]*node, 5),
+		children: make(map[step]*testNode, 5),
 	}
 	n.children[s] = child
 	return child
@@ -72,13 +72,13 @@ type search struct {
 	d    int
 	t    *fakeTimer
 	r    *rand.Rand
-	root *node
-	node *node
+	root *testNode
+	node *testNode
 }
 
 func newSearch(t *testing.T, timer *fakeTimer, b, d int) *search {
 	t.Helper()
-	root := newRoot()
+	root := newRootForTest()
 	r := rand.New(rand.NewSource(1337))
 	return &search{
 		b:    b,
@@ -141,39 +141,35 @@ func TestSearchRecall(t *testing.T) {
 		overrideBurnIn int
 		timeLimit      int
 		wantRecall     float64
-	}{
-		// 	{
-		// 	name:          "{b:2, d:1, t:1}: 100%",
-		// 	inputBranches: 2,
-		// 	inputDepth:    1,
-		// 	timeLimit:     1,
-		// 	wantRecall:    1,
-		// },
-		{
-			name:           "{b:100, d:1, t:1}: 100%",
-			inputBranches:  100,
-			inputDepth:     1,
-			overrideBurnIn: 100,
-			timeLimit:      1,
-			wantRecall:     1,
-		},
-		// {
-		// 	name:          "{b:2, d:10, t:1000}: 85%",
-		// 	inputBranches: 2,
-		// 	inputDepth:    10,
-		// 	timeLimit:     1000,
-		// 	wantRecall:    .85,
-		// }
-	} {
+	}{{
+		name:          "{b:2, d:1, t:1}: 100%",
+		inputBranches: 2,
+		inputDepth:    1,
+		timeLimit:     1,
+		wantRecall:    1,
+	}, {
+		name:           "{b:100, d:1, t:1}: 100%",
+		inputBranches:  100,
+		inputDepth:     1,
+		overrideBurnIn: 100,
+		timeLimit:      1,
+		wantRecall:     1,
+	}, {
+		name:          "{b:2, d:10, t:1000}: 85%",
+		inputBranches: 2,
+		inputDepth:    10,
+		timeLimit:     1000,
+		wantRecall:    .85,
+	}} {
 		t.Run(tc.name, func(t *testing.T) {
 			timer := newFakeTimer(tc.timeLimit)
 			s := newSearch(t, timer, tc.inputBranches, tc.inputDepth)
-			c := Search[step]{Seed: 13323427, SelectBurnInSamples: tc.overrideBurnIn}
+			c := Search[step]{Seed: 13323427, ExpandBurnInSamples: tc.overrideBurnIn}
 			res := c.Search(s, timer.done)
 			bestLeaf := &res
 			for ; bestLeaf.PV != nil; bestLeaf = bestLeaf.PV {
 			}
-			score := bestLeaf.Score / float64(bestLeaf.EventLog.NumRollouts)
+			score := bestLeaf.Score / bestLeaf.LogNode.numRollouts
 			bestScore := float64(tc.inputDepth * tc.inputBranches)
 			gotRecall := score / bestScore
 			if gotRecall < 0 || gotRecall > 1 {

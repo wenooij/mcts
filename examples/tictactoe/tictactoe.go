@@ -204,11 +204,11 @@ func main() {
 	}()
 
 	opts := mcts.Search[tictactoeStep]{
-		MinSelectDepth:        0,
-		SelectBurnInSamples:   100,
-		MaxSpeculativeSamples: 20,
-		RolloutsPerEpoch:      10000,
-		ExplorationParameter:  math.Sqrt2 / 10,
+		MinExpandDepth:           0,
+		ExpandBurnInSamples:      100,
+		MaxSpeculativeExpansions: 20,
+		RolloutsPerEpoch:         10000,
+		ExplorationParameter:     math.Sqrt2 / 10,
 	}
 	res := opts.Search(si, done)
 
