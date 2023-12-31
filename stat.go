@@ -37,7 +37,7 @@ func prettyFormatNumRollouts(n int) string {
 }
 
 func (e *EventLog[E]) prettyFormatExpandStats() string {
-	return fmt.Sprintf("%d children; %d samples", len(e.children), e.NumExpandSamples)
+	return fmt.Sprintf("%d children; %d samples", len(e.children), e.expandHeuristic.samples)
 }
 
 func (e StatEntry[E]) String() string {

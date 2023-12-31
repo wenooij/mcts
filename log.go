@@ -27,12 +27,10 @@ type EventLog[E Step] struct {
 	// step from this node at least once.
 	Terminal bool
 	// BurnIn has run on this node.
-	BurnedIn bool
-	// Explored is set when tuneable explore threshold is reached
+	BurnedIn         bool
 	NumRollouts      int
-	NumExpandMisses  int
-	NumExpandSamples int
 	MaxSelectSamples int
+	expandHeuristic  expandHeuristic
 }
 
 func newEventLog[E Step](c *Search[E], s SearchInterface[E], parent *EventLog[E], step E, log Log) *EventLog[E] {
@@ -53,28 +51,24 @@ func newEventLog[E Step](c *Search[E], s SearchInterface[E], parent *EventLog[E]
 	}
 }
 
-func (n *EventLog[E]) NumExpandHits() int {
-	return n.NumExpandSamples - n.NumExpandMisses
-}
-
 func (n *EventLog[E]) expand(c *Search[E], s SearchInterface[E]) (step E, child *EventLog[E]) {
-	n.NumExpandSamples++
 	step = s.Expand()
 	var sentinel E
 	if terminal := step == sentinel; terminal {
 		if !n.Terminal {
+			n.expandHeuristic.Hit()
 			n.Terminal = true
 		} else {
-			n.NumExpandMisses++
+			n.expandHeuristic.Miss()
 		}
 		return step, nil
 	}
 	var ok bool
 	if _, ok = n.childSet[step]; !ok {
+		n.expandHeuristic.Hit()
 		child = n.createChild(c, step, s)
 	} else {
-		// Add a sample miss when we have sampled it before.
-		n.NumExpandMisses++
+		n.expandHeuristic.Miss()
 	}
 	return step, child
 }
@@ -89,16 +83,6 @@ func (n *EventLog[E]) canStopHere(c *Search[E]) bool {
 	return n.Depth >= c.MinSelectDepth
 }
 
-func (n *EventLog[E]) checkExpandHeuristic(rng *rand.Rand) bool {
-	samples := n.NumExpandSamples
-	if samples == 0 {
-		return true
-	}
-	r := rng.Float64() * float64(samples)
-	misses := float64(n.NumExpandMisses)
-	return misses < r
-}
-
 func (n *EventLog[E]) selectChild(r *rand.Rand, c *Search[E], s SearchInterface[E]) (step E, child *EventLog[E], done bool) {
 	if !n.BurnedIn {
 		n.burnIn(c, s, c.SelectBurnInSamples)
@@ -109,7 +93,7 @@ func (n *EventLog[E]) selectChild(r *rand.Rand, c *Search[E], s SearchInterface[
 			return sentinel, nil, true
 		}
 	}
-	if n.NumExpandSamples < n.MaxSelectSamples+c.SelectBurnInSamples && n.checkExpandHeuristic(r) {
+	if n.expandHeuristic.samples < n.MaxSelectSamples+c.SelectBurnInSamples && n.expandHeuristic.Test(r) {
 		// Try to further expand this node.
 		n.expand(c, s)
 		// Roll out from here, if possible.
