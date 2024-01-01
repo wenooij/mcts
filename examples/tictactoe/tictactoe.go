@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
 	"slices"
 	"time"
@@ -89,6 +88,9 @@ func (n *tictactoeNode) turn() byte {
 }
 
 func (n *tictactoeNode) computeTerminal() (winner byte, terminal bool) {
+	if n.depth < 4 {
+		return 0, false
+	}
 	s := n.state
 	test := func(i, j, k int) bool {
 		c := s[i]

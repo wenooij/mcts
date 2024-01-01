@@ -63,7 +63,7 @@ func (n *topo[E]) makeResult(r *rand.Rand) Stat[E] {
 	root := Stat[E]{}
 	for stat := &root; ; {
 		stat.StatEntry = n.statEntry()
-		if n = n.bestChild(r); n == nil {
+		if n = n.mostChild(r); n == nil {
 			break
 		}
 		next := &Stat[E]{}
@@ -92,21 +92,40 @@ func (r Search[E]) Score(pv ...E) []float64 {
 	return res
 }
 
-func (log *topo[E]) bestChild(r *rand.Rand) *topo[E] {
+func (log *topo[S]) mostChild(r *rand.Rand) *topo[S] {
 	if log == nil || len(log.children) == 0 {
 		return nil
 	}
-	// Select an existing child to maximize score.
+	// Select an existing child to maximize runs.
 	var (
-		maxChild *topo[E]
+		maxChildren []*topo[S]
+		maxRuns     = -1.0
+	)
+	for _, e := range log.children {
+		if maxRuns < e.numRollouts {
+			maxChildren = append(maxChildren[:0], e)
+			maxRuns = e.numRollouts
+		} else if maxRuns == e.numRollouts {
+			maxChildren = append(maxChildren, e)
+		}
+	}
+	return bestChild(r, maxChildren)
+}
+
+func bestChild[S Step](r *rand.Rand, children []*topo[S]) *topo[S] {
+	if len(children) == 0 {
+		return nil
+	}
+	if len(children) == 1 {
+		return children[0]
+	}
+	var (
+		maxChild *topo[S]
 		maxScore = math.Inf(-1)
 	)
 	// Don't rely on the default map ordering.
-	// Also required to make search repeatable.
-	r.Shuffle(len(log.children), func(i, j int) {
-		log.children[i], log.children[j] = log.children[j], log.children[i]
-	})
-	for _, e := range log.children {
+	r.Shuffle(len(children), func(i, j int) { children[i], children[j] = children[j], children[i] })
+	for _, e := range children {
 		score, _ := e.Score()
 		score /= float64(e.numRollouts)
 		if maxScore < score {

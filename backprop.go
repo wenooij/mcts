@@ -14,6 +14,9 @@ func (b *backprop[S]) Init(frontier *topo[S], log Log) {
 }
 
 func (b *backprop[S]) Backprop(log Log, numRollouts int) {
+	if numRollouts == 0 {
+		return
+	}
 	for ; b != nil; b = b.parent {
 		b.Log = b.Log.Merge(log)
 		b.numRollouts += float64(numRollouts)

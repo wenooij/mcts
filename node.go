@@ -4,7 +4,6 @@ import "math/rand"
 
 type node[S Step] struct {
 	selector[S]
-	expandLimits[S]
 	expandBurnIn[S]
 	expander[S]
 	expandHeuristic
@@ -13,11 +12,10 @@ type node[S Step] struct {
 }
 
 func (n *node[S]) Init(s *Search[S], si SearchInterface[S], parent, topo *topo[S], step S, log Log, r *rand.Rand) {
-	n.selector.Init(topo, r, s.ExplorationParameter)
+	n.selector.Init(topo, s.ExplorationParameter)
 	n.expandBurnIn.Init(&n.expander, s.ExpandBurnInSamples)
-	n.expandLimits.Init(parent, &n.expandHeuristic, s.MinExpandDepth, s.MaxSpeculativeExpansions)
 	n.expander.Init(s, si, topo, &n.expandHeuristic, r)
-	n.expandHeuristic.Init(r)
+	n.expandHeuristic.Init(s.MaxSpeculativeExpansions)
 	n.rolloutRunner.Init(si, n, s.RolloutsPerEpoch)
 	n.backprop.Init(topo, si.Log())
 }

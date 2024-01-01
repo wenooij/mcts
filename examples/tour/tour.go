@@ -167,7 +167,6 @@ func main() {
 
 	opts := mcts.Search[tourStep]{
 		Seed:                     seed,
-		MinExpandDepth:           0,
 		ExpandBurnInSamples:      n,
 		MaxSpeculativeExpansions: 1,
 		RolloutsPerEpoch:         10000,

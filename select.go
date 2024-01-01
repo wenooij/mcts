@@ -7,22 +7,20 @@ import (
 
 type selector[S Step] struct {
 	*topo[S]
-	r *rand.Rand
 
 	terminal bool
 
 	explorationParameter float64
 }
 
-func (s *selector[S]) Init(n *topo[S], r *rand.Rand, exploarationParameter float64) {
+func (s *selector[S]) Init(n *topo[S], exploarationParameter float64) {
 	s.topo = n
-	s.r = r
 	s.explorationParameter = exploarationParameter
 }
 
-func (s *selector[S]) Select() (*topo[S], bool) {
+func (s *selector[S]) Select(r *rand.Rand) (*topo[S], bool) {
 	// Test the expand heuristic.
-	if s.TryBurnIn(); s.expandHeuristic.Test() && s.expandLimits.Test() {
+	if s.TryBurnIn() || s.expandHeuristic.Test(r) {
 		// Heuristics suggest there may be new moves at this node
 		// and expand limits do not prohibit expanding from this depth.
 		return nil, false

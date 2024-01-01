@@ -141,7 +141,6 @@ func main() {
 	}()
 
 	opts := mcts.Search[keySwapStep]{
-		MinExpandDepth:           5,
 		ExpandBurnInSamples:      5,
 		MaxSpeculativeExpansions: 5,
 		RolloutsPerEpoch:         10,

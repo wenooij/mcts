@@ -8,6 +8,7 @@ type topo[S Step] struct {
 	childSet map[S]*topo[S]
 	children []*topo[S]
 	Step     S
+	depth    int
 }
 
 func (t *topo[S]) Init(parent *topo[S], n *node[S], step S) {
@@ -16,6 +17,9 @@ func (t *topo[S]) Init(parent *topo[S], n *node[S], step S) {
 	t.childSet = make(map[S]*topo[S])
 	t.children = make([]*topo[S], 0)
 	t.Step = step
+	if parent != nil {
+		t.depth = parent.depth + 1
+	}
 }
 
 func newTopoNode[S Step](s *Search[S], si SearchInterface[S], parent *topo[S], step S, log Log, r *rand.Rand) *topo[S] {

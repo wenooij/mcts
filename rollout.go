@@ -16,7 +16,10 @@ func (r *rolloutRunner[S]) Init(si SearchInterface[S], frontier *node[S], rollou
 func (r *rolloutRunner[S]) Rollout() (log Log, numRollouts int) {
 	log = r.SearchInterface.Log()
 	for i := 0; i < r.rolloutsPerEpoch; i++ {
-		log = log.Merge(r.SearchInterface.Rollout())
+		if res := r.SearchInterface.Rollout(); res != nil {
+			log = log.Merge(res)
+			numRollouts++
+		}
 	}
-	return log, r.rolloutsPerEpoch
+	return log, numRollouts
 }

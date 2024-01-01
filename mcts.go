@@ -30,6 +30,8 @@ type SearchInterface[S Step] interface {
 	//
 	// Root is called multiple times in Search before the selection phase
 	// and after Search completes.
+	//
+	// Root may delete the checkpointed state from the last Rollout if any.
 	Root()
 
 	// Apply the Step to the current node.
@@ -47,5 +49,11 @@ type SearchInterface[S Step] interface {
 	// Rollout performs one random rollout from the current node and returns an event Log.
 	//
 	// Rollout is called repeatedly in Search for the random rollouts phase.
+	//
+	// The rollout should start from the frontier node. The implementation is responsible
+	// for checkpointing and restoring the state on or after each call to Rollout.
+	// A call to Root may delete the checkpointed state.
+	//
+	// Rollout may return a nil Log to indicate the Rollout had no result and should be ignored.
 	Rollout() Log
 }
