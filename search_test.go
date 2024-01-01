@@ -114,13 +114,13 @@ func (s *search) Log() Log {
 	return new(log)
 }
 
-func (s *search) Rollout() Log {
+func (s *search) Rollout() (Log, int) {
 	frontier := s.node
 	defer func() { s.node = frontier }()
 	log := new(log)
 	for s.forward(log) {
 	}
-	return log
+	return log, 1
 }
 
 func (s *search) forward(log *log) bool {

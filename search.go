@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	defaultRolloutsPerEpoch     = 20
 	defaultMaxSelectSamples     = 100
 	defaultExplorationParameter = math.Sqrt2
 )
@@ -28,12 +27,6 @@ type Search[S Step] struct {
 	// Default is 0.
 	ExpandBurnInSamples int
 
-	// RolloutsPerEpoch is a tuneable number of calls to Rollout per Search epoch.
-	// This value should be high enough to amortize the cost of selecting a node
-	// but not too high that it would take too much time away from other searches.
-	// Default is 20.
-	RolloutsPerEpoch int
-
 	// MaxSpeculativeExpansions is the maximum number of speculative calls to Expand after optional burn in.
 	// This applies a limit to the heuristic which calls Expand automatically in proportion to the hit-rate
 	// of new steps. As the hit rate decreases, we call Expand less, up to this limit.
@@ -51,9 +44,6 @@ type Search[S Step] struct {
 func (s *Search[S]) patchDefaults() {
 	if s.Seed == 0 {
 		s.Seed = time.Now().UnixNano()
-	}
-	if s.RolloutsPerEpoch == 0 {
-		s.RolloutsPerEpoch = defaultRolloutsPerEpoch
 	}
 	if s.ExplorationParameter == 0 {
 		s.ExplorationParameter = defaultExplorationParameter
@@ -89,7 +79,7 @@ func (s *Search[S]) Search(si SearchInterface[S], done <-chan struct{}) Stat[S] 
 			frontier = expand
 			si.Apply(expand.Step)
 		}
-		frontier.Backprop(frontier.Rollout())
+		frontier.Backprop(frontier.Rollout(si))
 		select {
 		case <-done:
 			return root.makeResult(r)

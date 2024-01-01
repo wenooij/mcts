@@ -138,12 +138,12 @@ func (g *tourSearch) Expand() tourStep {
 	return step
 }
 
-func (g *tourSearch) Rollout() mcts.Log {
+func (g *tourSearch) Rollout() (mcts.Log, int) {
 	for len(g.node.remaining) > 0 {
 		idx := g.r.Intn(len(g.node.remaining))
 		g.Apply(g.node.remaining[idx])
 	}
-	return tourDistanceLog(g.node.distance)
+	return tourDistanceLog(g.node.distance), 1
 }
 
 func main() {
@@ -169,7 +169,6 @@ func main() {
 		Seed:                     seed,
 		ExpandBurnInSamples:      n,
 		MaxSpeculativeExpansions: 1,
-		RolloutsPerEpoch:         10000,
 		ExplorationParameter:     2500,
 	}
 	res := opts.Search(s, done)

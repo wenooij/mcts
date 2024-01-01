@@ -118,7 +118,7 @@ func (g *keyboardSearch) Expand() keySwapStep {
 	return keySwapStep{p1, p2, true}
 }
 
-func (g *keyboardSearch) Rollout() mcts.Log {
+func (g *keyboardSearch) Rollout() (mcts.Log, int) {
 	i := rand.Intn(len(targetSample))
 	end := i + sampleLength
 	if end > len(targetSample) {
@@ -127,7 +127,7 @@ func (g *keyboardSearch) Rollout() mcts.Log {
 	sample := targetSample[i:end]
 
 	score, hits := g.node.layout.Test(sample)
-	return &keyboardLog{score, hits}
+	return &keyboardLog{score, hits}, 1
 }
 
 func main() {
@@ -143,7 +143,6 @@ func main() {
 	opts := mcts.Search[keySwapStep]{
 		ExpandBurnInSamples:      5,
 		MaxSpeculativeExpansions: 5,
-		RolloutsPerEpoch:         10,
 		ExplorationParameter:     math.Pi,
 	}
 	res := opts.Search(s, done)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"slices"
 	"time"
@@ -171,13 +172,13 @@ func (s *SearchPlugin) Log() mcts.Log {
 	return &tictactoeLog{turn: s.node.turn()}
 }
 
-func (s *SearchPlugin) Rollout() mcts.Log {
+func (s *SearchPlugin) Rollout() (mcts.Log, int) {
 	frontier := s.node
 	defer func() { s.node = frontier }()
 	log := &tictactoeLog{turn: s.node.turn()}
 	for s.forward(log) {
 	}
-	return log
+	return log, 1
 }
 
 func (s *SearchPlugin) forward(log *tictactoeLog) bool {
@@ -206,10 +207,8 @@ func main() {
 	}()
 
 	opts := mcts.Search[tictactoeStep]{
-		MinExpandDepth:           0,
 		ExpandBurnInSamples:      100,
 		MaxSpeculativeExpansions: 20,
-		RolloutsPerEpoch:         10000,
 		ExplorationParameter:     math.Sqrt2 / 10,
 	}
 	res := opts.Search(si, done)
