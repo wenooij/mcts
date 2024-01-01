@@ -142,16 +142,16 @@ func (s *SearchPlugin) Root() {
 	s.node = s.root
 }
 
-func (s *SearchPlugin) Expand() tictactoeStep {
+func (s *SearchPlugin) Expand() ([]tictactoeStep, bool) {
 	return s.node.expand()
 }
 
-func (n *tictactoeNode) expand() tictactoeStep {
+func (n *tictactoeNode) expand() ([]tictactoeStep, bool) {
 	if n.terminal {
-		return tictactoeStep{}
+		return nil, true
 	}
 	i := n.open[rand.Intn(len(n.open))]
-	return tictactoeStep{cell: i, turn: n.turn()}
+	return []tictactoeStep{{cell: i, turn: n.turn()}}, false
 }
 
 func (s *SearchPlugin) Apply(step tictactoeStep) {
@@ -182,8 +182,8 @@ func (s *SearchPlugin) Rollout() (mcts.Log, int) {
 }
 
 func (s *SearchPlugin) forward(log *tictactoeLog) bool {
-	step := s.node.expand()
-	if step == (tictactoeStep{}) {
+	steps, _ := s.node.expand()
+	if len(steps) == 0 {
 		switch s.node.winner {
 		case X:
 			log.scoreX++
@@ -192,7 +192,7 @@ func (s *SearchPlugin) forward(log *tictactoeLog) bool {
 		}
 		return false
 	}
-	s.node = s.node.apply(step)
+	s.node = s.node.apply(steps[0])
 	return true
 }
 

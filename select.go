@@ -26,14 +26,20 @@ func (s *selector[S]) Select(r *rand.Rand) (*topo[S], bool) {
 		return nil, false
 	}
 	// Otherwise, select an existing child to maximize MAB policy.
+	child := s.childByPolicy(r)
+	return child, child != nil
+}
+
+// childByPolicy selects an existing child to maximize MAB policy or returns nil
+func (t *topo[S]) childByPolicy(r *rand.Rand) *topo[S] {
 	var (
 		maxChild  *topo[S]
 		maxPolicy = math.Inf(-1)
 	)
-	for _, e := range s.children {
+	for _, e := range t.children {
 		if maxChild != nil {
 			score, _ := e.Score()
-			policy := uct(score, e.numRollouts, e.NumParentRollouts(), s.explorationParameter)
+			policy := uct(score, e.numRollouts, e.NumParentRollouts(), t.explorationParameter)
 			if policy < maxPolicy {
 				continue
 			}
@@ -46,10 +52,9 @@ func (s *selector[S]) Select(r *rand.Rand) (*topo[S], bool) {
 	}
 	if maxChild == nil {
 		// There are no children for some reason.
-		return nil, false
+		return nil
 	}
-	// Apply the step and return the max-policy child.
-	return maxChild, true
+	return maxChild
 }
 
 func uct(score, numRollouts, numParentRollouts float64, explorationParameter float64) float64 {

@@ -37,12 +37,17 @@ type SearchInterface[S Step] interface {
 	// Apply is called multiple times in Search and after Search completes.
 	Apply(S)
 
-	// Expand returns the next Step to explore for the current node.
+	// Expand returns more Steps to explore for the current node and whether
+	// the node is a terminal.
 	//
 	// Expand is called during the selection phase before the rollout.
-	// Expand may return Steps in any order but must return a Step if called.
-	// An empty Step marks the node is marked as terminal (among its other options).
-	Expand() S
+	//
+	// By default, speculative expansion will call Expand multiple times
+	// during the selection phase. This allows Expand to return a subset of the options
+	// at a given time.
+	//
+	// terminal is only recorded when set to true.
+	Expand() (steps []S, terminal bool)
 
 	// Rollout performs random rollouts from the current node and returns an event Log
 	// and number of rollouts performed.

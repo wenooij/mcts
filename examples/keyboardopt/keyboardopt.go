@@ -110,12 +110,12 @@ func (g *keyboardSearch) Log() mcts.Log {
 	return &keyboardLog{}
 }
 
-func (g *keyboardSearch) Expand() keySwapStep {
+func (g *keyboardSearch) Expand() ([]keySwapStep, bool) {
 	if g.node.depth >= 10 {
-		return keySwapStep{}
+		return nil, true
 	}
 	p1, p2 := NewRandomValidPt(g.r), NewRandomValidPt(g.r)
-	return keySwapStep{p1, p2, true}
+	return []keySwapStep{{p1, p2, true}}, false
 }
 
 func (g *keyboardSearch) Rollout() (mcts.Log, int) {

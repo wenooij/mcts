@@ -19,26 +19,27 @@ func (e *expander[S]) Init(s *Search[S], si SearchInterface[S], n *topo[S], h *e
 }
 
 func (e *expander[S]) Expand() *topo[S] {
-	step := e.SearchInterface.Expand()
-	var sentinel S
-	if step == sentinel {
+	steps, terminal := e.SearchInterface.Expand()
+	if terminal {
 		// Handle the terminal step.
-		// Hit or miss based on whether we've seen it before.
-		if !e.terminal {
-			e.Miss()
-			e.terminal = true
-		} else {
-			e.Hit()
-		}
+		e.terminal = true
+	}
+	if len(steps) == 0 {
 		return nil
 	}
+	for _, s := range steps {
+		e.expandStep(s)
+	}
+	// Select the best child yet by MAB policy.
+	return e.childByPolicy(e.r)
+}
+
+func (e *expander[S]) expandStep(s S) {
 	// Handle the step.
 	// Hit or miss based on whether we've seen it before.
-	child, created := e.newChild(e.Search, e.SearchInterface, step, e.r)
-	if created {
+	if _, created := e.newChild(e.Search, e.SearchInterface, s, e.r); created {
 		e.Miss()
 	} else {
 		e.Hit()
 	}
-	return child
 }

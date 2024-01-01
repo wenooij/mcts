@@ -128,14 +128,14 @@ func (g *tourSearch) Log() mcts.Log {
 	return tourDistanceLog(0)
 }
 
-func (g *tourSearch) Expand() tourStep {
+func (g *tourSearch) Expand() ([]tourStep, bool) {
 	n := len(g.node.remaining)
 	if n == 0 {
-		return tourStep(0)
+		return nil, true
 	}
 	step := g.node.remaining[g.node.expandPtr%n]
 	g.node.expandPtr++
-	return step
+	return []tourStep{step}, false
 }
 
 func (g *tourSearch) Rollout() (mcts.Log, int) {
