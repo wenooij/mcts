@@ -18,9 +18,20 @@ const (
 type Search[S Step] struct {
 	root *topo[S]
 
+	// SearchInterface implements the search space and steps for the search problem.
+	SearchInterface[S]
+
+	// Done signals the Search to stop when set.
+	// When nil, the Search runs indefinitely.
+	Done <-chan struct{}
+
 	// Seed provides repeatable randomness to the search.
 	// By default Seed is set to the current UNIX timestamp nanos.
 	Seed int64
+
+	// Rand provides randomness to the search.
+	// If unset, it is automatically seeded based on the value from Seed.
+	Rand *rand.Rand
 
 	// ExpandBurnInSamples is the number of guaranteed Expand calls
 	// applied initially before we start sampling from the node.
@@ -48,41 +59,44 @@ func (s *Search[S]) patchDefaults() {
 	if s.ExplorationParameter == 0 {
 		s.ExplorationParameter = defaultExplorationParameter
 	}
+	if s.Rand == nil {
+		s.Rand = rand.New(rand.NewSource(s.Seed))
+	}
 }
 
 // Reset deletes the search continuation so the next call to Search starts from scratch.
 func (s *Search[S]) Reset() {
 	s.root = nil
+	s.Rand = nil
 }
 
-func (s *Search[S]) Search(si SearchInterface[S], done <-chan struct{}) Stat[S] {
+func (s *Search[S]) Search() Stat[S] {
 	s.patchDefaults()
-	r := rand.New(rand.NewSource(s.Seed))
 	if s.root == nil {
 		var sentinel S
-		s.root = newTopoNode(s, si, nil, sentinel, si.Log(), r)
+		s.root = newTopoNode(s, nil, sentinel, s.Log())
 	}
 	root := s.root
 	for {
 		node := root
-		si.Root()
+		s.Root()
 		for {
-			next, ok := node.Select(r)
+			next, ok := node.Select(s)
 			if !ok {
 				break
 			}
-			si.Apply(next.Step)
+			s.Apply(next.Step)
 			node = next
 		}
 		frontier := node
-		if expand := node.Expand(); expand != nil {
+		if expand := node.Expand(s); expand != nil {
 			frontier = expand
-			si.Apply(expand.Step)
+			s.Apply(expand.Step)
 		}
-		frontier.Backprop(frontier.Rollout(si))
+		frontier.Backprop(s.Rollout())
 		select {
-		case <-done:
-			return root.makeResult(r)
+		case <-s.Done:
+			return root.makeResult(s.Rand)
 		default:
 		}
 	}

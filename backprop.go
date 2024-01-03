@@ -1,19 +1,6 @@
 package mcts
 
-type backprop[S Step] struct {
-	parent      *backprop[S]
-	Log         Log
-	numRollouts float64
-}
-
-func (b *backprop[S]) Init(frontier *topo[S], log Log) {
-	if frontier.parent != nil {
-		b.parent = &frontier.parent.backprop
-	}
-	b.Log = log
-}
-
-func (b *backprop[S]) Backprop(log Log, numRollouts int) {
+func (b *topo[S]) Backprop(log Log, numRollouts int) {
 	if numRollouts == 0 {
 		return
 	}
@@ -23,14 +10,14 @@ func (b *backprop[S]) Backprop(log Log, numRollouts int) {
 	}
 }
 
-func (e backprop[S]) NumParentRollouts() float64 {
-	if e.parent == nil {
+func (e *topo[S]) NumParentRollouts(node *topo[S]) float64 {
+	if node.parent == nil {
 		return 0
 	}
-	return float64(e.parent.numRollouts)
+	return float64(node.parent.numRollouts)
 }
 
-func (e backprop[S]) Score() (float64, bool) {
+func (e *topo[S]) Score() (float64, bool) {
 	if e.Log == nil {
 		return 0, false
 	}

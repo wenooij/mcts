@@ -138,8 +138,11 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search[nimStep]{}
-	res := opts.Search(n, done)
+	opts := mcts.Search[nimStep]{
+		SearchInterface: n,
+		Done:            done,
+	}
+	res := opts.Search()
 
 	fmt.Println(res)
 }

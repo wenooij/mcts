@@ -210,8 +210,10 @@ func main() {
 		ExpandBurnInSamples:      100,
 		MaxSpeculativeExpansions: 20,
 		ExplorationParameter:     math.Sqrt2 / 10,
+		SearchInterface:          si,
+		Done:                     done,
 	}
-	res := opts.Search(si, done)
+	res := opts.Search()
 
 	fmt.Println(res)
 }

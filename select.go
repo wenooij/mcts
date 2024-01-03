@@ -2,44 +2,31 @@ package mcts
 
 import (
 	"math"
-	"math/rand"
 )
 
-type selector[S Step] struct {
-	*topo[S]
-
-	terminal bool
-
-	explorationParameter float64
-}
-
-func (s *selector[S]) Init(n *topo[S], exploarationParameter float64) {
-	s.topo = n
-	s.explorationParameter = exploarationParameter
-}
-
-func (s *selector[S]) Select(r *rand.Rand) (*topo[S], bool) {
+func (t *topo[S]) Select(s *Search[S]) (*topo[S], bool) {
 	// Test the expand heuristic.
-	if s.TryBurnIn() || s.expandHeuristic.Test(r) {
+	if t.Test(s) {
 		// Heuristics suggest there may be new moves at this node
 		// and expand limits do not prohibit expanding from this depth.
 		return nil, false
 	}
 	// Otherwise, select an existing child to maximize MAB policy.
-	child := s.childByPolicy(r)
+	child := t.childByPolicy(s)
 	return child, child != nil
 }
 
 // childByPolicy selects an existing child to maximize MAB policy or returns nil
-func (t *topo[S]) childByPolicy(r *rand.Rand) *topo[S] {
+func (t *topo[S]) childByPolicy(s *Search[S]) *topo[S] {
 	var (
 		maxChild  *topo[S]
 		maxPolicy = math.Inf(-1)
 	)
+	numParentRollouts := t.numRollouts
 	for _, e := range t.children {
 		if maxChild != nil {
 			score, _ := e.Score()
-			policy := uct(score, e.numRollouts, e.NumParentRollouts(), t.explorationParameter)
+			policy := uct(score, e.numRollouts, numParentRollouts, s.ExplorationParameter)
 			if policy < maxPolicy {
 				continue
 			}

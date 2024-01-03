@@ -144,8 +144,10 @@ func main() {
 		ExpandBurnInSamples:      5,
 		MaxSpeculativeExpansions: 5,
 		ExplorationParameter:     math.Pi,
+		SearchInterface:          s,
+		Done:                     done,
 	}
-	res := opts.Search(s, done)
+	res := opts.Search()
 
 	fmt.Println(res)
 

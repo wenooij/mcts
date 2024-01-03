@@ -164,8 +164,8 @@ func TestSearchRecall(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			timer := newFakeTimer(tc.timeLimit)
 			s := newSearch(t, timer, tc.inputBranches, tc.inputDepth)
-			c := Search[step]{Seed: 13323427, ExpandBurnInSamples: tc.overrideBurnIn}
-			res := c.Search(s, timer.done)
+			c := &Search[step]{Seed: 13323427, ExpandBurnInSamples: tc.overrideBurnIn, Done: timer.done, SearchInterface: s}
+			res := c.Search()
 			bestLeaf := &res
 			for ; bestLeaf.PV != nil; bestLeaf = bestLeaf.PV {
 			}

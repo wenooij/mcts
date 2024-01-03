@@ -1,25 +1,7 @@
 package mcts
 
-import "math/rand"
-
-type expander[S Step] struct {
-	*Search[S]
-	SearchInterface[S]
-	*topo[S]
-	*expandHeuristic
-	r *rand.Rand
-}
-
-func (e *expander[S]) Init(s *Search[S], si SearchInterface[S], n *topo[S], h *expandHeuristic, r *rand.Rand) {
-	e.Search = s
-	e.SearchInterface = si
-	e.topo = n
-	e.expandHeuristic = h
-	e.r = r
-}
-
-func (e *expander[S]) Expand() *topo[S] {
-	steps, terminal := e.SearchInterface.Expand()
+func (e *topo[S]) Expand(s *Search[S]) *topo[S] {
+	steps, terminal := s.Expand()
 	if terminal {
 		// Handle the terminal step.
 		e.terminal = true
@@ -27,19 +9,19 @@ func (e *expander[S]) Expand() *topo[S] {
 	if len(steps) == 0 {
 		return nil
 	}
-	for _, s := range steps {
-		e.expandStep(s)
+	for _, step := range steps {
+		e.expandStep(s, step)
 	}
 	// Select the best child yet by MAB policy.
-	return e.childByPolicy(e.r)
+	return e.childByPolicy(s)
 }
 
-func (e *expander[S]) expandStep(s S) {
+func (t *topo[S]) expandStep(s *Search[S], step S) {
 	// Handle the step.
 	// Hit or miss based on whether we've seen it before.
-	if _, created := e.newChild(e.Search, e.SearchInterface, s, e.r); created {
-		e.Miss()
+	if _, created := t.newChild(s, step); created {
+		t.Miss()
 	} else {
-		e.Hit()
+		t.Hit()
 	}
 }

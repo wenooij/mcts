@@ -38,7 +38,7 @@ func prettyFormatNumRollouts(n float64) string {
 }
 
 func (e *topo[E]) prettyFormatExpandStats() string {
-	return fmt.Sprintf("%d children; %d samples", len(e.children), e.expandHeuristic.samples)
+	return fmt.Sprintf("%d children; %d samples", len(e.children), e.Samples())
 }
 
 func (e StatEntry[E]) String() string {

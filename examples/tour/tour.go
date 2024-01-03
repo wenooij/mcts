@@ -170,8 +170,10 @@ func main() {
 		ExpandBurnInSamples:      n,
 		MaxSpeculativeExpansions: 1,
 		ExplorationParameter:     2500,
+		SearchInterface:          s,
+		Done:                     done,
 	}
-	res := opts.Search(s, done)
+	res := opts.Search()
 
 	fmt.Println("map:")
 	for i, p := range tourMap {
