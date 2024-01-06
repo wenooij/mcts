@@ -62,13 +62,13 @@ type Search[S Step] struct {
 }
 
 func (s *Search[S]) patchDefaults() {
-	if s.Seed == 0 {
-		s.Seed = time.Now().UnixNano()
-	}
 	if s.ExplorationParameter == 0 {
 		s.ExplorationParameter = defaultExplorationParameter
 	}
 	if s.Rand == nil {
+		if s.Seed == 0 {
+			s.Seed = time.Now().UnixNano()
+		}
 		s.Rand = rand.New(rand.NewSource(s.Seed))
 	}
 }
