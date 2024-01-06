@@ -13,7 +13,8 @@ func (e *topo[S]) Expand(s *Search[S]) *topo[S] {
 		e.expandStep(s, step)
 	}
 	// Select the best child yet by MAB policy.
-	return e.childByPolicy(s)
+	child, _ := e.children.Min().Elem()
+	return child
 }
 
 func (t *topo[S]) expandStep(s *Search[S], step S) {

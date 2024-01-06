@@ -1,10 +1,12 @@
 package mcts
 
+import "github.com/wenooij/heapordered"
+
 type topo[S Step] struct {
 	parent *topo[S]
 	*node[S]
 	childSet map[S]*topo[S]
-	children []*topo[S]
+	children *heapordered.Tree[*topo[S]]
 	Step     S
 	depth    int
 }
@@ -28,9 +30,12 @@ func (t *topo[S]) Init(parent *topo[S], n *node[S], step S) {
 		parent:   parent,
 		node:     n,
 		childSet: make(map[S]*topo[S]),
-		children: make([]*topo[S], 0),
+		children: heapordered.NewTree[*topo[S]](t),
 		Step:     step,
 		depth:    parent.getDepth(),
+	}
+	if parent != nil {
+		t.parent.children.NewChildTree(t.children)
 	}
 }
 
@@ -49,6 +54,5 @@ func (parent *topo[S]) newChild(s *Search[S], step S) (child *topo[S], created b
 	}
 	child = newTopoNode(s, parent, step, s.Log())
 	parent.childSet[step] = child
-	parent.children = append(parent.children, child)
 	return child, true
 }

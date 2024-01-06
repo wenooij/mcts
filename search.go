@@ -46,6 +46,13 @@ type Search[S Step] struct {
 	// Default of 0 means no cap applied to speculative expansions.
 	MaxSpeculativeExpansions int
 
+	// InitialNodePriority is the value assigned to newly discovered nodes in the MAB priority data structure.
+	// Smaller values indicate higher priorities. In small state spaces this can be -∞ (i.e. all nodes should
+	// be tried at least once.) In larger state spaces, this can be determinetal to performance. The value should
+	// ideally be set to the expected score in that node. In practice, it must be determined experimentally.
+	// Defaults to 0.
+	InitialNodePriority float64
+
 	// ExplorationParameter is a tuneable parameter which weights the explore side of the
 	// MAB policy.
 	// Zero will use the default value of √2.

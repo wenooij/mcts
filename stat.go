@@ -38,7 +38,7 @@ func prettyFormatNumRollouts(n float64) string {
 }
 
 func (e *topo[E]) prettyFormatExpandStats() string {
-	return fmt.Sprintf("%d children; %d samples", len(e.children), e.Samples())
+	return fmt.Sprintf("%d children; %d samples", e.children.Len(), e.Samples())
 }
 
 func (e StatEntry[E]) String() string {
@@ -92,8 +92,8 @@ func (r Search[E]) Score(pv ...E) []float64 {
 	return res
 }
 
-func (log *topo[S]) mostChild(r *rand.Rand) *topo[S] {
-	if log == nil || len(log.children) == 0 {
+func (t *topo[S]) mostChild(r *rand.Rand) *topo[S] {
+	if t == nil || t.children.Len() == 0 {
 		return nil
 	}
 	// Select an existing child to maximize runs.
@@ -101,7 +101,7 @@ func (log *topo[S]) mostChild(r *rand.Rand) *topo[S] {
 		maxChildren []*topo[S]
 		maxRuns     = -1.0
 	)
-	for _, e := range log.children {
+	for _, e := range t.childSet {
 		if maxRuns < e.numRollouts {
 			maxChildren = append(maxChildren[:0], e)
 			maxRuns = e.numRollouts
