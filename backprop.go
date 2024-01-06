@@ -14,12 +14,12 @@ func backprop[S Step](n *heapordered.Tree[*node[S]], log Log, numRollouts int) {
 		e, _ := n.Elem()
 		e.Log = e.Log.Merge(log)
 		e.numRollouts += float64(numRollouts)
-		e.priority = -ucb1(e.Log.Score(), e.numRollouts, float64(numRollouts)+NumParentRollouts(n), e.exploreParam)
+		e.priority = -ucb1(e.Log.Score(), e.numRollouts, float64(numRollouts)+numParentRollouts(n), e.exploreParam)
 		n.Fix()
 	}
 }
 
-func NumParentRollouts[S Step](n *heapordered.Tree[*node[S]]) float64 {
+func numParentRollouts[S Step](n *heapordered.Tree[*node[S]]) float64 {
 	parent := n.Parent()
 	if parent == nil {
 		return 0
