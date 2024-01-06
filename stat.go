@@ -157,7 +157,7 @@ func (v Variation[S]) String() string {
 	}
 	for i := 0; i < len(v); i++ {
 		e := v[i]
-		fmt.Fprintf(&sb, "%-2d ", i+1)
+		fmt.Fprintf(&sb, "%-2d ", i)
 		e.appendString(&sb)
 		fmt.Fprintln(&sb)
 	}
@@ -171,8 +171,8 @@ func (v Variation[S]) String() string {
 func (r Search[S]) Stat(vs ...S) Variation[S] {
 	n := r.root
 	res := make(Variation[S], 0, 1+len(vs))
+	res = append(res, makeStatEntry(n))
 	for i, s := range vs {
-		res = append(res, makeStatEntry(n))
 		child := getChild(n, s)
 		if child == nil {
 			// No existing child.
@@ -184,6 +184,7 @@ func (r Search[S]) Stat(vs ...S) Variation[S] {
 		}
 		// Add the StatEntry and continue down the line.
 		n = child
+		res = append(res, makeStatEntry(n))
 	}
 	return res
 }
