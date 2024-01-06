@@ -213,7 +213,7 @@ func main() {
 		SearchInterface:          si,
 		Done:                     done,
 	}
-	res := opts.Search()
+	opts.Search()
 
-	fmt.Println(res)
+	fmt.Println(opts.PV())
 }

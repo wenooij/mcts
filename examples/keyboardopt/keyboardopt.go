@@ -147,13 +147,14 @@ func main() {
 		SearchInterface:          s,
 		Done:                     done,
 	}
-	res := opts.Search()
+	opts.Search()
 
-	fmt.Println(res)
+	pv := opts.PV()
+	fmt.Println(pv)
 
 	layout := NewRandomLayout(r)
-	for leaf := res.PV; leaf != nil; leaf = leaf.PV {
-		s := leaf.Step
+	for _, e := range pv {
+		s := e.Step
 		layout.Swap(s.p1, s.p2)
 	}
 

@@ -1,6 +1,9 @@
 package mcts
 
-func (e *topo[S]) Expand(s *Search[S]) *topo[S] {
+import "github.com/wenooij/heapordered"
+
+func expand[S Step](s *Search[S], n *heapordered.Tree[*node[S]]) *heapordered.Tree[*node[S]] {
+	e, _ := n.Elem()
 	steps, terminal := s.Expand()
 	if terminal {
 		// Handle the terminal step.
@@ -10,19 +13,19 @@ func (e *topo[S]) Expand(s *Search[S]) *topo[S] {
 		return nil
 	}
 	for _, step := range steps {
-		e.expandStep(s, step)
+		expandStep(s, n, step)
 	}
 	// Select the best child yet by MAB policy.
-	child, _ := e.children.Min().Elem()
-	return child
+	return n.Min()
 }
 
-func (t *topo[S]) expandStep(s *Search[S], step S) {
+func expandStep[S Step](s *Search[S], parent *heapordered.Tree[*node[S]], step S) {
 	// Handle the step.
 	// Hit or miss based on whether we've seen it before.
-	if _, created := t.newChild(s, step); created {
-		t.Miss()
+	e, _ := parent.Elem()
+	if _, created := getOrCreateChild(s, parent, step); created {
+		e.Miss()
 	} else {
-		t.Hit()
+		e.Hit()
 	}
 }

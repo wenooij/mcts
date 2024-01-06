@@ -4,6 +4,8 @@ import (
 	"math"
 	"math/rand"
 	"time"
+
+	"github.com/wenooij/heapordered"
 )
 
 const (
@@ -16,7 +18,7 @@ const (
 // It also maintains a continuation which supports repeated calls to Search
 // using the same search tree.
 type Search[S Step] struct {
-	root *topo[S]
+	root *heapordered.Tree[*node[S]]
 
 	// SearchInterface implements the search space and steps for the search problem.
 	SearchInterface[S]
@@ -77,33 +79,35 @@ func (s *Search[S]) Reset() {
 	s.Rand = nil
 }
 
-func (s *Search[S]) Search() Stat[S] {
+func (s *Search[S]) Search() {
 	s.patchDefaults()
 	if s.root == nil {
-		var sentinel S
-		s.root = newTopoNode(s, nil, sentinel, s.Log())
+		s.root = newTree(s)
 	}
-	root := s.root
 	for {
-		node := root
+		n := s.root
 		s.Root()
 		for {
-			next, ok := node.Select(s)
+			child, ok := selectChild(s, n)
 			if !ok {
 				break
 			}
-			s.Apply(next.Step)
-			node = next
+			e, _ := child.Elem()
+			s.Apply(e.Step)
+			n = child
 		}
-		frontier := node
-		if expand := node.Expand(s); expand != nil {
-			frontier = expand
-			s.Apply(expand.Step)
+		if expand := expand(s, n); expand != nil {
+			n = expand
+			e, _ := n.Elem()
+			s.Apply(e.Step)
 		}
-		frontier.Backprop(s.Rollout())
+		frontier := n
+		log, numRollouts := s.Rollout()
+		backprop(frontier, log, numRollouts)
 		select {
 		case <-s.Done:
-			return root.makeResult(s.Rand)
+			// Done signal. Complete the Search.
+			return
 		default:
 		}
 	}

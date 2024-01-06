@@ -173,7 +173,7 @@ func main() {
 		SearchInterface:          s,
 		Done:                     done,
 	}
-	res := opts.Search()
+	opts.Search()
 
 	fmt.Println("map:")
 	for i, p := range tourMap {
@@ -181,8 +181,8 @@ func main() {
 	}
 
 	for i := 1; i <= n; i++ {
-		fmt.Println(i, opts.Score(tourStep(i)))
+		fmt.Println(i, opts.Stat(tourStep(i)))
 	}
 
-	fmt.Println(res)
+	fmt.Println(opts.PV())
 }

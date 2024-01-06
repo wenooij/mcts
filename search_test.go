@@ -165,11 +165,10 @@ func TestSearchRecall(t *testing.T) {
 			timer := newFakeTimer(tc.timeLimit)
 			s := newSearch(t, timer, tc.inputBranches, tc.inputDepth)
 			c := &Search[step]{Seed: 13323427, ExpandBurnInSamples: tc.overrideBurnIn, Done: timer.done, SearchInterface: s}
-			res := c.Search()
-			bestLeaf := &res
-			for ; bestLeaf.PV != nil; bestLeaf = bestLeaf.PV {
-			}
-			score := bestLeaf.Score / bestLeaf.LogNode.numRollouts
+			c.Search()
+			pv := c.PV()
+			bestLeaf := pv[len(pv)-1]
+			score := bestLeaf.Score
 			bestScore := float64(tc.inputDepth * tc.inputBranches)
 			gotRecall := score / bestScore
 			if gotRecall < 0 || gotRecall > 1 {

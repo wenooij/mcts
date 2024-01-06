@@ -5,133 +5,185 @@ import (
 	"math"
 	"math/rand"
 	"strings"
+
+	"github.com/wenooij/heapordered"
+	"golang.org/x/exp/maps"
 )
 
-type Stat[E Step] struct {
-	StatEntry[E]
-	PV *Stat[E]
+type StatEntry[S Step] struct {
+	Step             S
+	Score            float64
+	RawScore         float64
+	NumRollouts      float64
+	NumChildren      int
+	NumExpandSamples float64
 }
 
-func (s Stat[E]) String() string {
-	var sb strings.Builder
-	fmt.Fprintf(&sb, "%-2d %s", 0, s.StatEntry.String())
-	for i, pv := 1, s.PV; pv != nil; i, pv = i+1, pv.PV {
-		fmt.Fprintf(&sb, "%-2d %s", i, pv.StatEntry.String())
+func makeStatEntry[S Step](n *heapordered.Tree[*node[S]]) StatEntry[S] {
+	e, _ := n.Elem()
+	return StatEntry[S]{
+		Step:             e.Step,
+		RawScore:         e.Log.Score(),
+		Score:            e.NormScore(),
+		NumRollouts:      e.numRollouts,
+		NumChildren:      n.Len(),
+		NumExpandSamples: float64(e.Samples()),
 	}
+}
+
+func (e StatEntry[S]) String() string {
+	var sb strings.Builder
+	e.appendString(&sb)
 	return sb.String()
 }
 
-type StatEntry[E Step] struct {
-	Step    E
-	LogNode topo[E]
-	Score   float64
-}
-
-func prettyFormatNumRollouts(n float64) string {
-	if n < 1000 {
-		return fmt.Sprintf("%.0f N", n)
+func (e StatEntry[S]) appendString(sb *strings.Builder) {
+	fmt.Fprintf(sb, "[%-4.3f] %-6s (", e.Score, e.Step)
+	// Format NumRollouts.
+	switch n := e.NumRollouts; {
+	case n < 1000:
+		fmt.Fprintf(sb, "%.0f N; ", n)
+	case n < 1e6:
+		fmt.Fprintf(sb, "%.2f kN; ", n/1e3)
+	default:
+		fmt.Fprintf(sb, "%.2f MN; ", n/1e6)
 	}
-	if n < 1e6 {
-		return fmt.Sprintf("%.2f kN", n/1e3)
+	// Format expand stats.
+	fmt.Fprintf(sb, "%d children; %d samples)", e.NumChildren, int(e.NumExpandSamples))
+}
+
+// PV returns the principal variation for this Search.
+//
+// This is the line that the Search has searched deepest
+// and is usually the best one.
+//
+// Use Stat to test arbitrary sequences.
+func (r Search[S]) PV() Variation[S] {
+	return makePV(r.root, r.Rand)
+}
+
+// Best returns the best Step for this Search root or nil.
+func (r Search[S]) Best() *StatEntry[S] {
+	if r.root == nil {
+		return nil
 	}
-	return fmt.Sprintf("%.2f MN", n/1e6)
+	child := mostChild(r.root, r.Rand)
+	e := makeStatEntry(child)
+	return &e
 }
 
-func (e *topo[E]) prettyFormatExpandStats() string {
-	return fmt.Sprintf("%d children; %d samples", e.children.Len(), e.Samples())
-}
-
-func (e StatEntry[E]) String() string {
-	return fmt.Sprintf("[%-4.3f] %-6s (%s; %s)\n",
-		e.LogNode.Log.Score()/float64(e.LogNode.numRollouts),
-		e.Step,
-		prettyFormatNumRollouts(e.LogNode.numRollouts),
-		e.LogNode.prettyFormatExpandStats(),
-	)
-}
-
-func (n *topo[E]) statEntry() StatEntry[E] {
-	score, _ := n.Score()
-	return StatEntry[E]{
-		Step:    n.Step,
-		LogNode: *n,
-		Score:   score,
-	}
-}
-
-func (n *topo[E]) makeResult(r *rand.Rand) Stat[E] {
-	root := Stat[E]{}
-	for stat := &root; ; {
-		stat.StatEntry = n.statEntry()
-		if n = n.mostChild(r); n == nil {
+func makePV[S Step](root *heapordered.Tree[*node[S]], r *rand.Rand) Variation[S] {
+	var pv Variation[S]
+	pv = append(pv, makeStatEntry(root))
+	for root != nil {
+		child := mostChild(root, r)
+		if child == nil {
 			break
 		}
-		next := &Stat[E]{}
-		stat.PV = next
-		stat = next
+		pv = append(pv, makeStatEntry(child))
+		root = child
 	}
-	return root
+	return pv
 }
 
-func (r Search[E]) Score(pv ...E) []float64 {
-	node := r.root
-	res := make([]float64, 0, 1+len(pv))
-	for i := 0; ; i++ {
-		e := node.statEntry()
-		res = append(res, e.Score)
-		if i >= len(pv) {
-			break
-		}
-		s := pv[i]
-		child, ok := node.childSet[s]
-		if !ok {
-			break
-		}
-		node = child
-	}
-	return res
-}
-
-func (t *topo[S]) mostChild(r *rand.Rand) *topo[S] {
-	if t == nil || t.children.Len() == 0 {
+func mostChild[S Step](n *heapordered.Tree[*node[S]], r *rand.Rand) *heapordered.Tree[*node[S]] {
+	if n == nil || n.Len() == 0 {
 		return nil
 	}
 	// Select an existing child to maximize runs.
 	var (
-		maxChildren []*topo[S]
-		maxRuns     = -1.0
+		maxChildren []*heapordered.Tree[*node[S]]
+		maxRollouts float64
 	)
-	for _, e := range t.childSet {
-		if maxRuns < e.numRollouts {
-			maxChildren = append(maxChildren[:0], e)
-			maxRuns = e.numRollouts
-		} else if maxRuns == e.numRollouts {
-			maxChildren = append(maxChildren, e)
+	e, _ := n.Elem()
+	children := maps.Values(e.childSet)
+	r.Shuffle(len(children), func(i, j int) { children[i], children[j] = children[j], children[i] })
+	for _, child := range children {
+		e, _ := child.Elem()
+		if e.numRollouts == maxRollouts {
+			maxChildren = append(maxChildren, child)
+		} else if e.numRollouts > maxRollouts {
+			maxChildren = maxChildren[:0]
+			maxChildren = append(maxChildren, child)
+			maxRollouts = e.numRollouts
 		}
 	}
-	return bestChild(r, maxChildren)
+	if maxRollouts == 0 && len(maxChildren) > 0 {
+		// Random choice based on no information.
+		// Pick the first one.
+		return maxChildren[0]
+	}
+	return bestNode(r, maxChildren)
 }
 
-func bestChild[S Step](r *rand.Rand, children []*topo[S]) *topo[S] {
-	if len(children) == 0 {
+func bestNode[S Step](r *rand.Rand, nodes []*heapordered.Tree[*node[S]]) *heapordered.Tree[*node[S]] {
+	switch len(nodes) {
+	case 0:
 		return nil
-	}
-	if len(children) == 1 {
-		return children[0]
+	case 1:
+		return nodes[0]
 	}
 	var (
-		maxChild *topo[S]
+		maxChild *heapordered.Tree[*node[S]]
 		maxScore = math.Inf(-1)
 	)
 	// Don't rely on the default map ordering.
-	r.Shuffle(len(children), func(i, j int) { children[i], children[j] = children[j], children[i] })
-	for _, e := range children {
-		score, _ := e.Score()
-		score /= float64(e.numRollouts)
-		if maxScore < score {
-			maxChild = e
+	r.Shuffle(len(nodes), func(i, j int) { nodes[i], nodes[j] = nodes[j], nodes[i] })
+	for _, node := range nodes {
+		e, _ := node.Elem()
+		score, ok := e.Score()
+		if ok && e.numRollouts != 0 {
+			score /= float64(e.numRollouts)
+		} else {
+			score = math.Inf(-1)
+		}
+		if maxChild == nil || score > maxScore {
+			maxChild = node
 			maxScore = score
 		}
 	}
 	return maxChild
+}
+
+// Variation is a sequence of Steps with Search statistics.
+//
+// The first element in the Variation is the root mode and will have the zero value for the Step.
+type Variation[S Step] []StatEntry[S]
+
+func (v Variation[S]) String() string {
+	var sb strings.Builder
+	if len(v) == 0 {
+		return "\n"
+	}
+	for i := 0; i < len(v); i++ {
+		e := v[i]
+		fmt.Fprintf(&sb, "%-2d ", i+1)
+		e.appendString(&sb)
+		fmt.Fprintln(&sb)
+	}
+	return sb.String()
+}
+
+// Stat returns a sequence of Search stats for the given variation according to this Search.
+//
+// Stat will return all a slice of StatEntries equal to one plus the length of the input vs.
+// If Search did not encounter those steps yet, the NumRollouts value will be 0.
+func (r Search[S]) Stat(vs ...S) Variation[S] {
+	n := r.root
+	res := make(Variation[S], 0, 1+len(vs))
+	for i, s := range vs {
+		res = append(res, makeStatEntry(n))
+		child := getChild(n, s)
+		if child == nil {
+			// No existing child.
+			// Add dummy stat entries and break.
+			for _, s := range vs[i:] {
+				res = append(res, StatEntry[S]{Step: s})
+			}
+			break
+		}
+		// Add the StatEntry and continue down the line.
+		n = child
+	}
+	return res
 }
