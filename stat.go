@@ -62,6 +62,13 @@ func (r Search[S]) PV() Variation[S] {
 	return makePV(r.root, r.Rand)
 }
 
+// AnyV returns stats for a random variation for this Search.
+//
+// AnyV is useful for statistical sampling of the Search tree.
+func (r Search[S]) AnyV() Variation[S] {
+	return makeAnyV(r.root, r.Rand)
+}
+
 // Best returns the best Step for this Search root or nil.
 func (r Search[S]) Best() *StatEntry[S] {
 	if r.root == nil {
@@ -145,10 +152,44 @@ func bestNode[S Step](r *rand.Rand, nodes []*heapordered.Tree[*node[S]]) *heapor
 	return maxChild
 }
 
+func makeAnyV[S Step](root *heapordered.Tree[*node[S]], r *rand.Rand) Variation[S] {
+	var av Variation[S]
+	av = append(av, makeStatEntry(root))
+	for root != nil {
+		child := anyChild(root, r)
+		if child == nil {
+			break
+		}
+		av = append(av, makeStatEntry(child))
+		root = child
+	}
+	return av
+}
+
+func anyChild[S Step](root *heapordered.Tree[*node[S]], r *rand.Rand) *heapordered.Tree[*node[S]] {
+	switch root.Len() {
+	case 0:
+		return nil
+	case 1:
+		return root.Min()
+	}
+	e, _ := root.Elem()
+	keys := maps.Keys(e.childSet)
+	return e.childSet[keys[r.Intn(len(keys))]]
+}
+
 // Variation is a sequence of Steps with Search statistics.
 //
 // The first element in the Variation is the root mode and will have the zero value for the Step.
 type Variation[S Step] []StatEntry[S]
+
+func (v Variation[S]) Leaf() *StatEntry[S] {
+	if len(v) == 0 {
+		return nil
+	}
+	leaf := v[len(v)-1]
+	return &leaf
+}
 
 func (v Variation[S]) String() string {
 	var sb strings.Builder

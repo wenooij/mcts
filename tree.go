@@ -22,12 +22,13 @@ type node[S Step] struct {
 	Step     S
 }
 
-func newNode[S Step](s *Search[S]) *node[S] {
+func newNode[S Step](s *Search[S], step S) *node[S] {
 	return &node[S]{
 		Log:          s.Log(),
 		exploreParam: s.ExplorationParameter,
-		priority:     s.InitialNodePriority,
+		priority:     s.NodePolicy(step),
 		childSet:     make(map[S]*heapordered.Tree[*node[S]]),
+		Step:         step,
 	}
 }
 
@@ -49,7 +50,8 @@ func (e *node[S]) NormScore() float64 {
 }
 
 func newTree[S Step](s *Search[S]) *heapordered.Tree[*node[S]] {
-	root := newNode[S](s)
+	var sentinel S
+	root := newNode[S](s, sentinel)
 	return heapordered.NewTree(root)
 }
 
@@ -58,8 +60,7 @@ func getOrCreateChild[S Step](s *Search[S], parent *heapordered.Tree[*node[S]], 
 	if child, ok := root.childSet[step]; ok {
 		return child, false
 	}
-	node := newNode[S](s)
-	node.Step = step
+	node := newNode[S](s, step)
 	child = parent.NewChild(node)
 	root.childSet[step] = child
 	return child, true

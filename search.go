@@ -17,6 +17,9 @@ const (
 //
 // It also maintains a continuation which supports repeated calls to Search
 // using the same search tree.
+//
+// Many of the hyperparameters have drastic impacts on Search performance and need
+// to be experimentally tuned first. See FitParams in the model subpackage for more info.
 type Search[S Step] struct {
 	root *heapordered.Tree[*node[S]]
 
@@ -48,12 +51,14 @@ type Search[S Step] struct {
 	// Default of 0 means no cap applied to speculative expansions.
 	MaxSpeculativeExpansions int
 
-	// InitialNodePriority is the value assigned to newly discovered nodes in the MAB priority data structure.
+	// NodePolicy enables newly discovered nodes to be initialized with dynamic priories in the MAB priority data structure.
+	//
 	// Smaller values indicate higher priorities. In small state spaces this can be -∞ (i.e. all nodes should
-	// be tried at least once.) In larger state spaces, this can be determinetal to performance. The value should
-	// ideally be set to the expected score in that node. In practice, it must be determined experimentally.
-	// Defaults to 0.
-	InitialNodePriority float64
+	// be tried at least once.) In larger state spaces, this can be determinetal to performance.
+	// The policy value should approximate the negation of the expected score in that node.
+	//
+	// Defaults to a fixed priority of -∞.
+	NodePolicy func(s S) float64
 
 	// ExplorationParameter is a tuneable parameter which weights the explore side of the
 	// MAB policy.
@@ -65,6 +70,10 @@ func (s *Search[S]) patchDefaults() {
 	if s.ExplorationParameter == 0 {
 		s.ExplorationParameter = defaultExplorationParameter
 	}
+	if s.NodePolicy == nil {
+		var ninf = math.Inf(-1)
+		s.NodePolicy = func(s S) float64 { return ninf }
+	}
 	if s.Rand == nil {
 		if s.Seed == 0 {
 			s.Seed = time.Now().UnixNano()
@@ -73,37 +82,30 @@ func (s *Search[S]) patchDefaults() {
 	}
 }
 
-// Reset deletes the search continuation so the next call to Search starts from scratch.
+// Init create a new root for the search if it doesn't exist yet.
+// Init additionally patches default parameter values.
+func (s *Search[S]) Init() bool {
+	if s.root != nil {
+		return false
+	}
+	s.patchDefaults()
+	s.root = newTree(s)
+	return true
+}
+
+// Reset deletes the search continuation and RNG so the next call to Search starts from scratch.
 func (s *Search[S]) Reset() {
 	s.root = nil
 	s.Rand = nil
 }
 
+// Search runs the search until Done is signalled.
+//
+// If reproducible results are required, use Init and SearchEpoch directly.
 func (s *Search[S]) Search() {
-	s.patchDefaults()
-	if s.root == nil {
-		s.root = newTree(s)
-	}
+	s.Init()
 	for {
-		n := s.root
-		s.Root()
-		for {
-			child, ok := selectChild(s, n)
-			if !ok {
-				break
-			}
-			e, _ := child.Elem()
-			s.Apply(e.Step)
-			n = child
-		}
-		if expand := expand(s, n); expand != nil {
-			n = expand
-			e, _ := n.Elem()
-			s.Apply(e.Step)
-		}
-		frontier := n
-		log, numRollouts := s.Rollout()
-		backprop(frontier, log, numRollouts)
+		s.SearchEpoch()
 		select {
 		case <-s.Done:
 			// Done signal. Complete the Search.
@@ -111,4 +113,27 @@ func (s *Search[S]) Search() {
 		default:
 		}
 	}
+}
+
+// SearchEpoch runs a single epoch of search.
+func (s *Search[S]) SearchEpoch() {
+	n := s.root
+	s.Root()
+	for {
+		child, ok := selectChild(s, n)
+		if !ok {
+			break
+		}
+		e, _ := child.Elem()
+		s.Apply(e.Step)
+		n = child
+	}
+	if expand := expand(s, n); expand != nil {
+		n = expand
+		e, _ := n.Elem()
+		s.Apply(e.Step)
+	}
+	frontier := n
+	log, numRollouts := s.Rollout()
+	backprop(frontier, log, numRollouts)
 }
