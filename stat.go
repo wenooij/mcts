@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"slices"
 	"strings"
 
 	"github.com/wenooij/heapordered"
@@ -174,8 +175,11 @@ func anyChild[S Step](root *heapordered.Tree[*node[S]], r *rand.Rand) *heaporder
 		return root.Min()
 	}
 	e, _ := root.Elem()
-	keys := maps.Keys(e.childSet)
-	return e.childSet[keys[r.Intn(len(keys))]]
+	steps := slices.DeleteFunc(maps.Keys(e.childSet), func(s S) bool { e, _ := e.childSet[s].Elem(); return e.numRollouts == 0 })
+	if len(steps) == 0 {
+		return nil
+	}
+	return e.childSet[steps[r.Intn(len(steps))]]
 }
 
 // Variation is a sequence of Steps with Search statistics.

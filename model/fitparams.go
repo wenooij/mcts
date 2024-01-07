@@ -1,3 +1,4 @@
+// Package model provides the model fitting utility FitParams.
 package model
 
 import (
@@ -29,10 +30,6 @@ func FitParams[S mcts.Step](s *mcts.Search[S]) {
 	for i := 0; i < numAnyVSamples; i++ {
 		// Sample score from random variations using reservoir sampling.
 		for _, e := range s.AnyV() {
-			if math.IsInf(e.Score, -1) {
-				// Nodes with no rollouts have the score -∞.
-				continue
-			}
 			if len(scoreSamples) < cap(scoreSamples) {
 				scoreSamples = append(scoreSamples, e.Score)
 			} else if j := s.Rand.Intn(numScores); j < numScoreSamples {
