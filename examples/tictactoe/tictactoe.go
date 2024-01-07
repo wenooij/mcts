@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
 	"slices"
 	"time"
 
 	"github.com/wenooij/mcts"
+	"github.com/wenooij/mcts/model"
 )
 
 const (
@@ -16,15 +16,14 @@ const (
 )
 
 type SearchPlugin struct {
-	root *tictactoeNode
 	node *tictactoeNode
 }
 
 func newSearchPlugin() *SearchPlugin {
-	root := newRoot()
+	var n tictactoeNode
+	n.Root()
 	return &SearchPlugin{
-		root: root,
-		node: root,
+		node: &n,
 	}
 }
 
@@ -46,39 +45,22 @@ type tictactoeNode struct {
 	winner   byte
 	state    [9]byte
 	open     []byte
-	children map[tictactoeStep]*tictactoeNode
 }
 
-func newRoot() *tictactoeNode {
-	return &tictactoeNode{
-		state: [...]byte{
-			0, 0, 0,
-			0, 0, 0,
-			0, 0, 0,
-		},
-		children: make(map[tictactoeStep]*tictactoeNode, 9),
-		open: []byte{
-			0, 1, 2,
-			3, 4, 5,
-			6, 7, 8,
-		},
-	}
-}
-
-func newNode(parent *tictactoeNode, step tictactoeStep) *tictactoeNode {
-	d := parent.depth + 1
-	n := &tictactoeNode{
-		depth:    d,
-		open:     make([]byte, len(parent.open)),
-		children: make(map[tictactoeStep]*tictactoeNode, 9-d),
-	}
-	copy(n.state[:], parent.state[:])
-	idx := step.cell
-	copy(n.open, parent.open)
-	n.open = slices.DeleteFunc(n.open, func(i byte) bool { return i == idx })
-	n.state[idx] = step.turn
-	n.winner, n.terminal = n.computeTerminal()
-	return n
+func (n *tictactoeNode) Root() {
+	n.depth = 0
+	n.terminal = false
+	n.winner = 0
+	copy(n.state[:], []byte{
+		0, 0, 0,
+		0, 0, 0,
+		0, 0, 0,
+	})
+	n.open = append(n.open[:0],
+		0, 1, 2,
+		3, 4, 5,
+		6, 7, 8,
+	)
 }
 
 func (n *tictactoeNode) turn() byte {
@@ -139,14 +121,11 @@ func (e *tictactoeLog) Score() float64 {
 }
 
 func (s *SearchPlugin) Root() {
-	s.node = s.root
+	s.node.Root()
 }
 
 func (s *SearchPlugin) Expand() ([]tictactoeStep, bool) {
-	return s.node.expand()
-}
-
-func (n *tictactoeNode) expand() ([]tictactoeStep, bool) {
+	n := s.node
 	if n.terminal {
 		return nil, true
 	}
@@ -155,17 +134,12 @@ func (n *tictactoeNode) expand() ([]tictactoeStep, bool) {
 }
 
 func (s *SearchPlugin) Apply(step tictactoeStep) {
-	s.node = s.node.apply(step)
-}
-
-func (n *tictactoeNode) apply(step tictactoeStep) *tictactoeNode {
-	child, ok := n.children[step]
-	if ok {
-		return child
-	}
-	child = newNode(n, step)
-	n.children[step] = child
-	return child
+	n := s.node
+	n.depth++
+	idx := step.cell
+	n.open = slices.DeleteFunc(n.open, func(i byte) bool { return i == idx })
+	n.state[idx] = step.turn
+	n.winner, n.terminal = n.computeTerminal()
 }
 
 func (s *SearchPlugin) Log() mcts.Log {
@@ -173,8 +147,6 @@ func (s *SearchPlugin) Log() mcts.Log {
 }
 
 func (s *SearchPlugin) Rollout() (mcts.Log, int) {
-	frontier := s.node
-	defer func() { s.node = frontier }()
 	log := &tictactoeLog{turn: s.node.turn()}
 	for s.forward(log) {
 	}
@@ -182,7 +154,7 @@ func (s *SearchPlugin) Rollout() (mcts.Log, int) {
 }
 
 func (s *SearchPlugin) forward(log *tictactoeLog) bool {
-	steps, _ := s.node.expand()
+	steps, _ := s.Expand()
 	if len(steps) == 0 {
 		switch s.node.winner {
 		case X:
@@ -192,7 +164,7 @@ func (s *SearchPlugin) forward(log *tictactoeLog) bool {
 		}
 		return false
 	}
-	s.node = s.node.apply(steps[0])
+	s.Apply(steps[0])
 	return true
 }
 
@@ -207,12 +179,11 @@ func main() {
 	}()
 
 	opts := mcts.Search[tictactoeStep]{
-		ExpandBurnInSamples:      100,
-		MaxSpeculativeExpansions: 20,
-		ExplorationParameter:     math.Sqrt2 / 10,
-		SearchInterface:          si,
-		Done:                     done,
+		SearchInterface: si,
+		Done:            done,
 	}
+	model.FitParams(&opts)
+	fmt.Printf("Using c=%.4f\n---\n", opts.ExplorationParameter)
 	opts.Search()
 
 	fmt.Println(opts.PV())
