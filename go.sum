@@ -2,5 +2,7 @@ github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/wenooij/heapordered v0.0.0-20240106024756-89bb0f5ff9cd h1:d52hxKzo4YkRMzZy/noUNozFj8/b8VZq6gaLuPuF94w=
 github.com/wenooij/heapordered v0.0.0-20240106024756-89bb0f5ff9cd/go.mod h1:YeuEtIWDc+439SGM3YWrj43aWNjo1G3B82xo4ScxRO4=
+github.com/wenooij/heapordered v0.0.0-20240106192900-6de04909bffa h1:PJCHVI60rrPS9B81cInXHnWdrh4dOxAmV3q3JXAuKVo=
+github.com/wenooij/heapordered v0.0.0-20240106192900-6de04909bffa/go.mod h1:YeuEtIWDc+439SGM3YWrj43aWNjo1G3B82xo4ScxRO4=
 golang.org/x/exp v0.0.0-20240103183307-be819d1f06fc h1:ao2WRsKSzW6KuUY9IWPwWahcHCgR0s52IfwutMfEbdM=
 golang.org/x/exp v0.0.0-20240103183307-be819d1f06fc/go.mod h1:iRJReGqOEeBhDZGkGbynYwcHlctCvnjTYIamk7uXpHI=
