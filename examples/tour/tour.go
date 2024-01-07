@@ -1,21 +1,28 @@
+// Package tour implements a toy Travelling-Salesman solver.
+// Use https://www.lancaster.ac.uk/fas/psych/software/TSP/TSP.html to validate the results.
 package main
 
 import (
+	"flag"
 	"fmt"
+	"math"
 	"math/rand"
-	"slices"
 	"time"
 
 	"github.com/wenooij/mcts"
+	"github.com/wenooij/mcts/model"
 )
 
-type tourStep int
+type tourStep struct {
+	i int
+	j int
+}
 
 func (s tourStep) String() string {
-	if s == 0 {
+	if s.i == s.j {
 		return "#"
 	}
-	return fmt.Sprintf("{%d}", int(s))
+	return fmt.Sprintf("{%d,%d}", s.i, s.j)
 }
 
 type tourDistanceLog float64
@@ -28,100 +35,76 @@ type tourPos struct {
 	Y int
 }
 
-func makeTourPos(r *rand.Rand) tourPos {
-	return tourPos{
-		X: rand.Intn(100) - 50,
-		Y: rand.Intn(100) - 50,
+func newTourPos(r *rand.Rand) *tourPos {
+	return &tourPos{
+		X: r.Intn(100) + 1,
+		Y: r.Intn(100) + 1,
 	}
 }
 
-func abs(n int) int {
-	if n < 0 {
-		return -n
-	}
-	return n
-}
-
-func (p tourPos) DistanceTo(p2 tourPos) int {
+func (p *tourPos) DistanceTo(p2 *tourPos) tourDistanceLog {
 	dx, dy := p2.X-p.X, p2.Y-p.Y
-	return dx*dx + dy*dy
+	return tourDistanceLog(math.Sqrt(float64(dx*dx + dy*dy)))
 }
 
-func makeTourMap(n int, r *rand.Rand) map[tourStep]tourPos {
-	m := make(map[tourStep]tourPos, n)
-	for i := tourStep(1); i <= tourStep(n); i++ {
-		m[i] = makeTourPos(r)
-	}
-	return m
-}
-
-type tourNode struct {
-	tourMap   map[tourStep]tourPos
-	remaining []tourStep
-	children  map[tourStep]*tourNode
-	step      tourStep
-
-	distance  tourDistanceLog
-	expandPtr int
-}
-
-func newRootTourNode(n int, tourMap map[tourStep]tourPos, r *rand.Rand) *tourNode {
-	return &tourNode{
-		remaining: makeRemainingTourSteps(n, r),
-		tourMap:   tourMap,
-		children:  make(map[tourStep]*tourNode, n),
-	}
-}
-
-func makeRemainingTourSteps(n int, r *rand.Rand) []tourStep {
-	m := make([]tourStep, n)
+func makeTourMap(n int, r *rand.Rand) map[int]*tourPos {
+	m := make(map[int]*tourPos, n)
 	for i := 0; i < n; i++ {
-		m[i] = tourStep(i + 1)
+		m[i] = newTourPos(r)
 	}
 	r.Shuffle(len(m), func(i, j int) { m[i], m[j] = m[j], m[i] })
 	return m
 }
 
-func (n *tourNode) newChildTourNode(step tourStep, r *rand.Rand) *tourNode {
-	child := &tourNode{
-		tourMap:   n.tourMap,
-		remaining: slices.Clone(n.remaining),
-		children:  make(map[tourStep]*tourNode, len(n.remaining)-1),
-		step:      step,
+type tourNode struct {
+	tour  []int
+	step  tourStep
+	depth int
+}
+
+func rootTour(n int) []int {
+	tour := make([]int, n)
+	for i := 0; i < n; i++ {
+		tour[i] = i
 	}
-	child.remaining = slices.DeleteFunc(child.remaining, func(i tourStep) bool { return i == step })
-	r.Shuffle(len(child.remaining), func(i, j int) {
-		child.remaining[i], child.remaining[j] = child.remaining[j], child.remaining[i]
-	})
-	child.distance = n.distance + tourDistanceLog(n.tourMap[n.step].DistanceTo(n.tourMap[step]))
-	return child
+	return tour
+}
+
+func (n *tourNode) applyChildTourNode(tourMap map[int]*tourPos, step tourStep) {
+	n.tour[step.i], n.tour[step.j] = n.tour[step.j], n.tour[step.i]
+	n.step = step
+	n.depth++
 }
 
 type tourSearch struct {
+	m    map[int]*tourPos
 	r    *rand.Rand
-	root *tourNode
+	root []int
 	node *tourNode
 }
 
-func newTourSearch(n int, tourMap map[tourStep]tourPos, r *rand.Rand) *tourSearch {
-	return &tourSearch{
+func newTourSearch(tourMap map[int]*tourPos, r *rand.Rand) *tourSearch {
+	s := &tourSearch{
+		m:    tourMap,
 		r:    r,
-		root: newRootTourNode(n, tourMap, r),
+		root: rootTour(len(tourMap)),
+		node: new(tourNode),
 	}
+	s.Root()
+	return s
 }
 
 func (g *tourSearch) Apply(step tourStep) {
-	if child, ok := g.node.children[step]; ok {
-		g.node = child
-		return
-	}
-	child := g.node.newChildTourNode(step, g.r)
-	g.node.children[step] = child
-	g.node = child
+	g.node.applyChildTourNode(g.m, step)
 }
 
 func (g *tourSearch) Root() {
-	g.node = g.root
+	if len(g.node.tour) == 0 {
+		g.node.tour = make([]int, len(g.root))
+	}
+	copy(g.node.tour, g.root)
+	g.node.depth = 0
+	g.node.step = tourStep{}
 }
 
 func (g *tourSearch) Log() mcts.Log {
@@ -129,60 +112,109 @@ func (g *tourSearch) Log() mcts.Log {
 }
 
 func (g *tourSearch) Expand() ([]tourStep, bool) {
-	n := len(g.node.remaining)
-	if n == 0 {
+	if g.node.depth >= len(g.node.tour)/2+1 {
 		return nil, true
 	}
-	step := g.node.remaining[g.node.expandPtr%n]
-	g.node.expandPtr++
-	return []tourStep{step}, false
+	steps := make([]tourStep, 0, len(g.node.tour))
+	i := g.node.tour[g.node.depth]
+	for j := 0; j < len(g.node.tour); j++ {
+		steps = append(steps, tourStep{i, j})
+	}
+	return steps, false
 }
 
 func (g *tourSearch) Rollout() (mcts.Log, int) {
-	for len(g.node.remaining) > 0 {
-		idx := g.r.Intn(len(g.node.remaining))
-		g.Apply(g.node.remaining[idx])
+	for {
+		steps, terminal := g.Expand()
+		if terminal {
+			break
+		}
+		g.Apply(steps[rand.Intn(len(steps))])
 	}
-	return tourDistanceLog(g.node.distance), 1
+	// Calculate tour distance.
+	distance := tourDistanceLog(0)
+	first := g.m[g.node.tour[0]]
+	last := first
+	for _, e := range g.node.tour[1:] {
+		curr := g.m[e]
+		distance += last.DistanceTo(curr)
+		last = curr
+	}
+	distance += last.DistanceTo(first)
+	return distance, 1
 }
 
 func main() {
-	const n = 30
-	const seed = 1337
+	seed := flag.Int64("seed", time.Now().UnixNano(), "Random seed")
+	randomMap := flag.Bool("randomize_map", false, "Randomize the tour map")
+	flag.Parse()
 
-	r := rand.New(rand.NewSource(seed))
-	tourMap := makeTourMap(n, r)
-	// map[tourStep]tourPos{
-	// 	1: {-21, +45},
-	// 	2: {+34, -38},
-	// 	3: {+42, +37},
-	// }
-	s := newTourSearch(n, tourMap, r)
+	r := rand.New(rand.NewSource(*seed))
+	pos := []*tourPos{
+		{54, 66},
+		{34, 29},
+		{30, 31},
+		{45, 54},
+		{72, 47},
+		{30, 7},
+		{46, 62},
+		{36, 84},
+		{13, 81},
+		{68, 69},
+	}
+	n := len(pos)
+	tourMap := make(map[int]*tourPos, n)
+	for i, p := range pos {
+		tourMap[i] = p
+	}
+	if *randomMap {
+		tourMap = makeTourMap(10, r)
+	}
+	for i := 0; i < n; i++ {
+		p := tourMap[i]
+		fmt.Printf("%d,%d\n", p.X, p.Y)
+	}
+	fmt.Println("---")
+	s := newTourSearch(tourMap, r)
 
 	done := make(chan struct{})
 	go func() {
-		<-time.After(10 * time.Second)
+		<-time.After(60 * time.Second)
 		done <- struct{}{}
 	}()
 
 	opts := mcts.Search[tourStep]{
-		Seed:                     seed,
-		ExpandBurnInSamples:      n,
+		Rand:                     r,
+		Seed:                     *seed,
+		ExpandBurnInSamples:      1,
 		MaxSpeculativeExpansions: 1,
-		ExplorationParameter:     2500,
-		SearchInterface:          s,
-		Done:                     done,
+		// InitialNodePriority:      100,
+		SearchInterface: s,
+		Done:            done,
 	}
+	model.FitParams(&opts)
+	fmt.Printf("Using c=%.4f\n---\n", opts.ExplorationParameter)
 	opts.Search()
 
-	fmt.Println("map:")
-	for i, p := range tourMap {
-		fmt.Println(i, p)
-	}
+	pv := opts.PV()
+	fmt.Println(pv)
+	fmt.Println("---")
 
-	for i := 1; i <= n; i++ {
-		fmt.Println(i, opts.Stat(tourStep(i)))
+	// Reconstruct and print the best tour.
+	// Results can be pasted into the tool.
+	// https://www.lancaster.ac.uk/fas/psych/software/TSP/TSP.html.
+	tour := make([]int, len(s.root))
+	copy(tour, s.root)
+	for _, e := range pv {
+		tour[e.Step.i], tour[e.Step.j] = tour[e.Step.j], tour[e.Step.i]
 	}
-
-	fmt.Println(opts.PV())
+	for i, e := range tour {
+		fmt.Printf("%d", e+1)
+		if i+1 < len(tour) {
+			fmt.Print(" ")
+		}
+	}
+	fmt.Println()
+	fmt.Println("---")
+	fmt.Println(-pv.Leaf().Score)
 }
