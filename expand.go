@@ -4,9 +4,9 @@ import "github.com/wenooij/heapordered"
 
 func expand[S Step](s *Search[S], n *heapordered.Tree[*node[S]]) *heapordered.Tree[*node[S]] {
 	e, _ := n.Elem()
-	steps, terminal := s.Expand()
-	if terminal {
-		// Handle the terminal step.
+	steps, nonterminal := s.Expand()
+	if !nonterminal {
+		// Record the terminal state for later use in PV analysis.
 		e.terminal = true
 	}
 	if len(steps) == 0 {
@@ -19,7 +19,7 @@ func expand[S Step](s *Search[S], n *heapordered.Tree[*node[S]]) *heapordered.Tr
 	return n.Min()
 }
 
-func expandStep[S Step](s *Search[S], parent *heapordered.Tree[*node[S]], step S) {
+func expandStep[S Step](s *Search[S], parent *heapordered.Tree[*node[S]], step FrontierStep[S]) {
 	// Handle the step.
 	// Hit or miss based on whether we've seen it before.
 	e, _ := parent.Elem()

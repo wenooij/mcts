@@ -51,15 +51,6 @@ type Search[S Step] struct {
 	// Default of 0 means no cap applied to speculative expansions.
 	MaxSpeculativeExpansions int
 
-	// NodePolicy enables newly discovered nodes to be initialized with dynamic priories in the MAB priority data structure.
-	//
-	// Smaller values indicate higher priorities. In small state spaces this can be -∞ (i.e. all nodes should
-	// be tried at least once.) In larger state spaces, this can be determinetal to performance.
-	// The policy value should approximate the negation of the expected score in that node.
-	//
-	// Defaults to a fixed priority of -∞.
-	NodePolicy func(s S) float64
-
 	// ExplorationParameter is a tuneable parameter which weights the explore side of the
 	// MAB policy.
 	// Zero will use the default value of √2.
@@ -69,10 +60,6 @@ type Search[S Step] struct {
 func (s *Search[S]) patchDefaults() {
 	if s.ExplorationParameter == 0 {
 		s.ExplorationParameter = defaultExplorationParameter
-	}
-	if s.NodePolicy == nil {
-		var ninf = math.Inf(-1)
-		s.NodePolicy = func(s S) float64 { return ninf }
 	}
 	if s.Rand == nil {
 		if s.Seed == 0 {
@@ -125,13 +112,13 @@ func (s *Search[S]) SearchEpoch() {
 			break
 		}
 		e, _ := child.Elem()
-		s.Apply(e.Step)
+		s.Select(e.Step)
 		n = child
 	}
 	if expand := expand(s, n); expand != nil {
 		n = expand
 		e, _ := n.Elem()
-		s.Apply(e.Step)
+		s.Select(e.Step)
 	}
 	frontier := n
 	log, numRollouts := s.Rollout()

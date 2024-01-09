@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/wenooij/mcts"
+	"github.com/wenooij/mcts/model"
 )
 
 type nimStep struct {
@@ -72,21 +73,21 @@ func (n *nimState) Result() (nimResult, bool) {
 	return nimResult{}, false
 }
 
-func (n *nimState) Apply(s nimStep) {
+func (n *nimState) Select(s nimStep) {
 	n.piles[s.pile] -= nimPile(s.n)
 }
 
-func (n *nimState) Expand() (steps []nimStep, terminal bool) {
+func (n *nimState) Expand() (steps []mcts.FrontierStep[nimStep], terminal bool) {
 	for i, p := range n.piles {
 		switch p {
 		case 0:
 		case 1:
-			return []nimStep{{i, 1}}, false
+			return []mcts.FrontierStep[nimStep]{{Step: nimStep{i, 1}}}, true
 		default:
-			return []nimStep{{i, int(p)}, {i, int(p) - 1}}, false
+			return []mcts.FrontierStep[nimStep]{{Step: nimStep{i, int(p)}}, {Step: nimStep{i, int(p) - 1}}}, true
 		}
 	}
-	return nil, true
+	return nil, false
 }
 
 type nimResult struct {
@@ -121,7 +122,7 @@ func (n *nimState) Rollout() (mcts.Log, int) {
 		if len(s) == 0 {
 			panic("no Steps but Result returned !ok")
 		}
-		n.Apply(s[n.r.Intn(len(s))])
+		n.Select(s[n.r.Intn(len(s))].Step)
 	}
 }
 
@@ -142,6 +143,8 @@ func main() {
 		SearchInterface: n,
 		Done:            done,
 	}
+	model.FitParams(&opts)
+	fmt.Printf("Using c=%.4f\n---\n", opts.ExplorationParameter)
 	opts.Search()
 
 	fmt.Println(opts.PV())

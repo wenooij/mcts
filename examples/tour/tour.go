@@ -94,7 +94,7 @@ func newTourSearch(tourMap map[int]*tourPos, r *rand.Rand) *tourSearch {
 	return s
 }
 
-func (g *tourSearch) Apply(step tourStep) {
+func (g *tourSearch) Select(step tourStep) {
 	g.node.applyChildTourNode(g.m, step)
 }
 
@@ -111,25 +111,25 @@ func (g *tourSearch) Log() mcts.Log {
 	return tourDistanceLog(0)
 }
 
-func (g *tourSearch) Expand() ([]tourStep, bool) {
+func (g *tourSearch) Expand() ([]mcts.FrontierStep[tourStep], bool) {
 	if g.node.depth >= len(g.node.tour)/2+1 {
-		return nil, true
+		return nil, false
 	}
-	steps := make([]tourStep, 0, len(g.node.tour))
+	steps := make([]mcts.FrontierStep[tourStep], 0, len(g.node.tour))
 	i := g.node.tour[g.node.depth]
 	for j := 0; j < len(g.node.tour); j++ {
-		steps = append(steps, tourStep{i, j})
+		steps = append(steps, mcts.FrontierStep[tourStep]{Step: tourStep{i, j}})
 	}
-	return steps, false
+	return steps, true
 }
 
 func (g *tourSearch) Rollout() (mcts.Log, int) {
 	for {
-		steps, terminal := g.Expand()
-		if terminal {
+		steps, ok := g.Expand()
+		if !ok {
 			break
 		}
-		g.Apply(steps[rand.Intn(len(steps))])
+		g.Select(steps[rand.Intn(len(steps))].Step)
 	}
 	// Calculate tour distance.
 	distance := tourDistanceLog(0)
@@ -188,9 +188,8 @@ func main() {
 		Seed:                     *seed,
 		ExpandBurnInSamples:      1,
 		MaxSpeculativeExpansions: 1,
-		// InitialNodePriority:      100,
-		SearchInterface: s,
-		Done:            done,
+		SearchInterface:          s,
+		Done:                     done,
 	}
 	model.FitParams(&opts)
 	fmt.Printf("Using c=%.4f\n---\n", opts.ExplorationParameter)

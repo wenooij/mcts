@@ -11,6 +11,18 @@ type Step interface {
 	fmt.Stringer
 }
 
+// FrontierStep wraps a step with an explicit initial priority in the MAB priority data structure.
+//
+// Smaller values indicate higher priorities. In small state spaces this can be -∞ (i.e. all steps should
+// be tried at least once.) In larger state spaces, this can be counterproductive.
+// Ideally, the priority value should be set to -E[s(X)], where E[s(X)] is the expected score for node X.
+//
+// Priority only affects the initial value. The next priority is recomputed in backprop.
+type FrontierStep[S Step] struct {
+	Step     S
+	Priority float64
+}
+
 // Log is used to keep track of the objective function value
 // as well as aggregate events of interest.
 type Log interface {
@@ -32,22 +44,20 @@ type SearchInterface[S Step] interface {
 	// and after Search completes.
 	Root()
 
-	// Apply the Step to the current node.
+	// Select the Step in the current node.
 	//
-	// Apply is called multiple times in Search and after Search completes.
-	Apply(S)
+	// Select is called multiple times in Search and after Search completes.
+	Select(S)
 
-	// Expand returns more Steps to explore for the current node and whether
-	// the node is a terminal.
+	// Expand returns more Steps to explore and a boolean nonterminal which should be set to true
+	// when the current node is a nonterminal.
 	//
-	// Expand is called during the selection phase before the rollout.
+	// Expand is called after the selection phase to expand the frontier of a leaf node.
 	//
-	// By default, speculative expansion will call Expand multiple times
-	// during the selection phase. This allows Expand to return a subset of the options
-	// at a given time.
-	//
-	// terminal is only recorded when set to true.
-	Expand() (steps []S, terminal bool)
+	// Expand may return a subset of the available steps at any given call (including an empty slice.).
+	// By default, speculative expansion will call Expand multiple times (in the selection phase).
+	// It is permitted for terminal nodes to return a nonempty slice of steps.
+	Expand() (steps []FrontierStep[S], nonterminal bool)
 
 	// Rollout performs random rollouts from the current node and returns an event Log
 	// and number of rollouts performed.

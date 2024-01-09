@@ -95,14 +95,14 @@ func (s *search) Root() {
 	s.t.Tick()
 }
 
-func (s *search) Expand() (steps []step, terminal bool) {
+func (s *search) Expand() (steps []FrontierStep[step], ok bool) {
 	if s.node.depth == s.d {
-		return nil, true
+		return nil, false
 	}
-	return []step{step(s.r.Intn(s.b)) + 1}, false
+	return []FrontierStep[step]{{Step: step(s.r.Intn(s.b)) + 1}}, true
 }
 
-func (s *search) Apply(step step) {
+func (s *search) Select(step step) {
 	child, ok := s.node.children[step]
 	if !ok {
 		child = s.node.createChild(step)
@@ -129,7 +129,7 @@ func (s *search) forward(log *log) bool {
 		log.score += s.node.value
 		return false
 	}
-	s.Apply(step[0])
+	s.Select(step[0].Step)
 	return true
 }
 

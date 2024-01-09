@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/wenooij/mcts"
+	"github.com/wenooij/mcts/model"
 )
 
 //go:embed targetsample.txt
@@ -92,7 +93,7 @@ func newKeyboardSearch(r *rand.Rand) *keyboardSearch {
 	}
 }
 
-func (g *keyboardSearch) Apply(step keySwapStep) {
+func (g *keyboardSearch) Select(step keySwapStep) {
 	if child, ok := g.node.children[step]; ok {
 		g.node = child
 		return
@@ -110,12 +111,12 @@ func (g *keyboardSearch) Log() mcts.Log {
 	return &keyboardLog{}
 }
 
-func (g *keyboardSearch) Expand() ([]keySwapStep, bool) {
+func (g *keyboardSearch) Expand() ([]mcts.FrontierStep[keySwapStep], bool) {
 	if g.node.depth >= 10 {
-		return nil, true
+		return nil, false
 	}
 	p1, p2 := NewRandomValidPt(g.r), NewRandomValidPt(g.r)
-	return []keySwapStep{{p1, p2, true}}, false
+	return []mcts.FrontierStep[keySwapStep]{{Step: keySwapStep{p1, p2, true}}}, true
 }
 
 func (g *keyboardSearch) Rollout() (mcts.Log, int) {
@@ -147,6 +148,8 @@ func main() {
 		SearchInterface:          s,
 		Done:                     done,
 	}
+	model.FitParams(&opts)
+	fmt.Printf("Using c=%.4f\n---\n", opts.ExplorationParameter)
 	opts.Search()
 
 	pv := opts.PV()

@@ -124,16 +124,16 @@ func (s *SearchPlugin) Root() {
 	s.node.Root()
 }
 
-func (s *SearchPlugin) Expand() ([]tictactoeStep, bool) {
+func (s *SearchPlugin) Expand() ([]mcts.FrontierStep[tictactoeStep], bool) {
 	n := s.node
 	if n.terminal {
-		return nil, true
+		return nil, false
 	}
 	i := n.open[rand.Intn(len(n.open))]
-	return []tictactoeStep{{cell: i, turn: n.turn()}}, false
+	return []mcts.FrontierStep[tictactoeStep]{{Step: tictactoeStep{cell: i, turn: n.turn()}}}, true
 }
 
-func (s *SearchPlugin) Apply(step tictactoeStep) {
+func (s *SearchPlugin) Select(step tictactoeStep) {
 	n := s.node
 	n.depth++
 	idx := step.cell
@@ -164,7 +164,7 @@ func (s *SearchPlugin) forward(log *tictactoeLog) bool {
 		}
 		return false
 	}
-	s.Apply(steps[0])
+	s.Select(steps[0].Step)
 	return true
 }
 
