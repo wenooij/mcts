@@ -124,13 +124,13 @@ func (s *SearchPlugin) Root() {
 	s.node.Root()
 }
 
-func (s *SearchPlugin) Expand() ([]mcts.FrontierStep[tictactoeStep], bool) {
-	n := s.node
-	if n.terminal {
-		return nil, false
+func (s *SearchPlugin) Expand(steps []mcts.FrontierStep[tictactoeStep]) (n int) {
+	if len(steps) == 0 || s.node.terminal {
+		return 0
 	}
-	i := n.open[rand.Intn(len(n.open))]
-	return []mcts.FrontierStep[tictactoeStep]{{Step: tictactoeStep{cell: i, turn: n.turn()}}}, true
+	i := s.node.open[rand.Intn(len(s.node.open))]
+	steps[0] = mcts.FrontierStep[tictactoeStep]{Step: tictactoeStep{cell: i, turn: s.node.turn()}}
+	return 1
 }
 
 func (s *SearchPlugin) Select(step tictactoeStep) {
@@ -154,8 +154,8 @@ func (s *SearchPlugin) Rollout() (mcts.Log, int) {
 }
 
 func (s *SearchPlugin) forward(log *tictactoeLog) bool {
-	steps, _ := s.Expand()
-	if len(steps) == 0 {
+	var b [1]mcts.FrontierStep[tictactoeStep]
+	if n := s.Expand(b[:]); n == 0 {
 		switch s.node.winner {
 		case X:
 			log.scoreX++
@@ -164,7 +164,7 @@ func (s *SearchPlugin) forward(log *tictactoeLog) bool {
 		}
 		return false
 	}
-	s.Select(steps[0].Step)
+	s.Select(b[0].Step)
 	return true
 }
 

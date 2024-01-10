@@ -4,15 +4,13 @@ import "github.com/wenooij/heapordered"
 
 func expand[S Step](s *Search[S], n *heapordered.Tree[*node[S]]) *heapordered.Tree[*node[S]] {
 	e, _ := n.Elem()
-	steps, nonterminal := s.Expand()
-	if !nonterminal {
+	m := s.Expand(s.expandBuffer)
+	if m == 0 {
 		// Record the terminal state for later use in PV analysis.
 		e.terminal = true
-	}
-	if len(steps) == 0 {
 		return nil
 	}
-	for _, step := range steps {
+	for _, step := range s.expandBuffer[:m] {
 		expandStep(s, n, step)
 	}
 	// Select the best child yet by MAB policy.

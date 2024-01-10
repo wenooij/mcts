@@ -95,11 +95,11 @@ func (s *search) Root() {
 	s.t.Tick()
 }
 
-func (s *search) Expand() (steps []FrontierStep[step], ok bool) {
+func (s *search) Expand(steps []FrontierStep[step]) (n int) {
 	if s.node.depth == s.d {
-		return nil, false
+		return 0
 	}
-	return []FrontierStep[step]{{Step: step(s.r.Intn(s.b)) + 1}}, true
+	return copy(steps, []FrontierStep[step]{{Step: step(s.r.Intn(s.b)) + 1}})
 }
 
 func (s *search) Select(step step) {
@@ -124,12 +124,12 @@ func (s *search) Rollout() (Log, int) {
 }
 
 func (s *search) forward(log *log) bool {
-	step, _ := s.Expand()
-	if len(step) == 0 {
+	b := [1]FrontierStep[step]{}
+	if n := s.Expand(b[:]); n == 0 {
 		log.score += s.node.value
 		return false
 	}
-	s.Select(step[0].Step)
+	s.Select(b[0].Step)
 	return true
 }
 

@@ -111,25 +111,25 @@ func (g *tourSearch) Log() mcts.Log {
 	return tourDistanceLog(0)
 }
 
-func (g *tourSearch) Expand() ([]mcts.FrontierStep[tourStep], bool) {
-	if g.node.depth >= len(g.node.tour)/2+1 {
-		return nil, false
+func (g *tourSearch) Expand(steps []mcts.FrontierStep[tourStep]) (n int) {
+	if len(steps) == 0 || g.node.depth >= len(g.node.tour)/2+1 {
+		return 0
 	}
-	steps := make([]mcts.FrontierStep[tourStep], 0, len(g.node.tour))
 	i := g.node.tour[g.node.depth]
 	for j := 0; j < len(g.node.tour); j++ {
-		steps = append(steps, mcts.FrontierStep[tourStep]{Step: tourStep{i, j}})
+		steps[j] = mcts.FrontierStep[tourStep]{Step: tourStep{i, j}}
+		n++
 	}
-	return steps, true
+	return
 }
 
 func (g *tourSearch) Rollout() (mcts.Log, int) {
+	var b [1]mcts.FrontierStep[tourStep]
 	for {
-		steps, ok := g.Expand()
-		if !ok {
+		if n := g.Expand(b[:]); n == 0 {
 			break
 		}
-		g.Select(steps[rand.Intn(len(steps))].Step)
+		g.Select(b[0].Step)
 	}
 	// Calculate tour distance.
 	distance := tourDistanceLog(0)

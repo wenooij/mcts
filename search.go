@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	defaultExpandBufferSize     = 64
 	defaultMaxSelectSamples     = 100
 	defaultExplorationParameter = math.Sqrt2
 )
@@ -43,6 +44,12 @@ type Search[S Step] struct {
 	// Default is 0.
 	ExpandBurnInSamples int
 
+	// ExpandBufferSize is the size of the steps buffer passed to Expand in the SearchInferface.
+	// Default is 64.
+	ExpandBufferSize int
+
+	expandBuffer []FrontierStep[S]
+
 	// MaxSpeculativeExpansions is the maximum number of speculative calls to Expand after optional burn in.
 	// This applies a limit to the heuristic which calls Expand automatically in proportion to the hit-rate
 	// of new steps. As the hit rate decreases, we call Expand less, up to this limit.
@@ -58,6 +65,12 @@ type Search[S Step] struct {
 }
 
 func (s *Search[S]) patchDefaults() {
+	if s.ExpandBufferSize == 0 {
+		s.ExpandBufferSize = defaultExpandBufferSize
+	}
+	if cap(s.expandBuffer) != s.ExpandBufferSize {
+		s.expandBuffer = make([]FrontierStep[S], s.ExpandBufferSize)
+	}
 	if s.ExplorationParameter == 0 {
 		s.ExplorationParameter = defaultExplorationParameter
 	}

@@ -77,17 +77,17 @@ func (n *nimState) Select(s nimStep) {
 	n.piles[s.pile] -= nimPile(s.n)
 }
 
-func (n *nimState) Expand() (steps []mcts.FrontierStep[nimStep], terminal bool) {
-	for i, p := range n.piles {
+func (s *nimState) Expand(steps []mcts.FrontierStep[nimStep]) (n int) {
+	for i, p := range s.piles {
 		switch p {
 		case 0:
 		case 1:
-			return []mcts.FrontierStep[nimStep]{{Step: nimStep{i, 1}}}, true
+			return copy(steps, []mcts.FrontierStep[nimStep]{{Step: nimStep{i, 1}}})
 		default:
-			return []mcts.FrontierStep[nimStep]{{Step: nimStep{i, int(p)}}, {Step: nimStep{i, int(p) - 1}}}, true
+			return copy(steps, []mcts.FrontierStep[nimStep]{{Step: nimStep{i, int(p)}}, {Step: nimStep{i, int(p) - 1}}})
 		}
 	}
-	return nil, false
+	return 0
 }
 
 type nimResult struct {
@@ -113,16 +113,17 @@ func (n *nimState) Log() mcts.Log {
 	return nimResult{turn: n.Turn()}
 }
 
-func (n *nimState) Rollout() (mcts.Log, int) {
+func (s *nimState) Rollout() (mcts.Log, int) {
 	for {
-		if r, ok := n.Result(); ok {
+		if r, ok := s.Result(); ok {
 			return r, 1
 		}
-		s, _ := n.Expand()
-		if len(s) == 0 {
+		var b [2]mcts.FrontierStep[nimStep]
+		n := s.Expand(b[:])
+		if n == 0 {
 			panic("no Steps but Result returned !ok")
 		}
-		n.Select(s[n.r.Intn(len(s))].Step)
+		s.Select(b[s.r.Intn(n)].Step)
 	}
 }
 

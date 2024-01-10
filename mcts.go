@@ -49,15 +49,18 @@ type SearchInterface[S Step] interface {
 	// Select is called multiple times in Search and after Search completes.
 	Select(S)
 
-	// Expand returns more Steps to explore and a boolean nonterminal which should be set to true
-	// when the current node is a nonterminal.
+	// Expand fills the step buffer with more Steps to explore and the number n.
 	//
 	// Expand is called after the selection phase to expand the frontier of a leaf node.
-	//
-	// Expand may return a subset of the available steps at any given call (including an empty slice.).
 	// By default, speculative expansion will call Expand multiple times (in the selection phase).
-	// It is permitted for terminal nodes to return a nonempty slice of steps.
-	Expand() (steps []FrontierStep[S], nonterminal bool)
+	//
+	// Expand is guaranteed to be called with a steps buffer at least as large as ExpandBufferSize
+	// specified in Search configuration. This is 64 by default. If it is not possile to determine
+	// a suitable maximum for this value, Expand should be configured to return a random subsample
+	// of the appropriate size.
+	//
+	// If Expand returns no steps, the node is marked as a terminal.
+	Expand(steps []FrontierStep[S]) (n int)
 
 	// Rollout performs random rollouts from the current node and returns an event Log
 	// and number of rollouts performed.

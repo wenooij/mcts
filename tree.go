@@ -36,7 +36,7 @@ func (n *node[S]) Prioirty() float64 { return n.priority }
 
 func (e *node[S]) Score() (float64, bool) {
 	if e.Log == nil {
-		return 0, false
+		return math.Inf(-1), false
 	}
 	return e.Log.Score(), true
 }
