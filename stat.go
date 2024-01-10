@@ -16,6 +16,7 @@ type StatEntry[S Step] struct {
 	Score       float64
 	RawScore    float64
 	NumRollouts float64
+	Priority    float64
 	Terminal    bool
 
 	NumChildren      int
@@ -31,6 +32,7 @@ func makeStatEntry[S Step](n *heapordered.Tree[*node[S]]) StatEntry[S] {
 		RawScore:         e.Log.Score(),
 		Score:            e.NormScore(),
 		NumRollouts:      e.numRollouts,
+		Priority:         e.priority,
 		Terminal:         e.terminal,
 		NumChildren:      n.Len(),
 		NumExpandHits:    float64(e.hits),
