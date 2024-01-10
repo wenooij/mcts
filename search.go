@@ -120,8 +120,8 @@ func (s *Search[S]) SearchEpoch() {
 	n := s.root
 	s.Root()
 	for {
-		child, ok := selectChild(s, n)
-		if !ok {
+		child := selectChild(s, n)
+		if child == nil {
 			break
 		}
 		e, _ := child.Elem()
