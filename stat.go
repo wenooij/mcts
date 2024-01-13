@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/wenooij/heapordered"
-	"golang.org/x/exp/maps"
 )
 
 type StatEntry[S Step] struct {
@@ -40,12 +39,6 @@ func makeStatEntry[S Step](n *heapordered.Tree[*node[S]]) StatEntry[S] {
 	}
 }
 
-func (e StatEntry[S]) String() string {
-	var sb strings.Builder
-	e.appendString(&sb)
-	return sb.String()
-}
-
 func (e StatEntry[S]) appendString(sb *strings.Builder) {
 	fmt.Fprintf(sb, "[%-4.3f] %-6s (", e.Score, e.Step)
 	// Format NumRollouts.
@@ -67,125 +60,141 @@ func (e StatEntry[S]) appendString(sb *strings.Builder) {
 // and is usually the best one.
 //
 // Use Stat to test arbitrary sequences.
-func (r Search[S]) PV() Variation[S] { return nodeFuncV(r.root, r.Rand, mostNode) }
+func (r Search[S]) PV() Variation[S] { return r.FilterV(MostFilter, AnyFilter[S](r.Rand)) }
 
 // AnyV returns a random variation with runs for this Search.
 //
 // AnyV is useful for statistical sampling of the Search tree.
-func (r Search[S]) AnyV() Variation[S] { return nodeFuncV(r.root, r.Rand, anyNode) }
+func (r Search[S]) AnyV() Variation[S] { return r.FilterV(AnyFilter[S](r.Rand)) }
 
-// FuncV creates a variation by calling f at every step.
-func (r Search[S]) FuncV(f func([]StatEntry[S]) (int, bool)) Variation[S] {
-	return nodeFuncV(r.root, r.Rand, func(nodes []*heapordered.Tree[*node[S]]) *heapordered.Tree[*node[S]] {
-		stat := make([]StatEntry[S], 0, len(nodes))
-		for _, n := range nodes {
-			stat = append(stat, makeStatEntry(n))
+// Filter returns matching stat entries from the input.
+type Filter[S Step] func([]StatEntry[S]) []StatEntry[S]
+
+func FilterFn[S Step](f func(StatEntry[S]) bool) Filter[S] {
+	return func(input []StatEntry[S]) []StatEntry[S] {
+		var res []StatEntry[S]
+		for _, e := range input {
+			if f(e) {
+				res = append(res, e)
+			}
 		}
-		i, ok := f(stat)
-		if !ok {
-			return nil
-		}
-		return nodes[i]
-	})
+		return res
+	}
 }
 
-func nodeFuncV[S Step](root *heapordered.Tree[*node[S]], r *rand.Rand, f func([]*heapordered.Tree[*node[S]]) *heapordered.Tree[*node[S]]) Variation[S] {
+// FilterV creates a variation by calling filters as neccessary at every step.
+//
+// Filters are chained together until only one entry remains per step.
+// To guarantee a line is selected, add AnyFilter as the last element in the chain.
+func (r Search[S]) FilterV(filters ...Filter[S]) Variation[S] {
 	var res Variation[S]
-	for n := root; n != nil; {
-		res = append(res, makeStatEntry(n))
-		e, _ := n.Elem()
-		children := maps.Values(e.childSet)
-		r.Shuffle(len(children), func(i, j int) { children[i], children[j] = children[j], children[i] })
-		n = f(children)
+	node := r.root
+	for node != nil {
+		e := filterStatNode(node, filters...)
+		if e == nil {
+			break
+		}
+		res = append(res, *e)
+		node = getChild(node, e.Step)
 	}
 	return res
 }
 
-// Best returns the best Step for this Search root or nil.
+func filterStatNode[S Step](node *heapordered.Tree[*node[S]], filters ...Filter[S]) *StatEntry[S] {
+	stat := make([]StatEntry[S], 0, node.Len())
+	e, _ := node.Elem()
+	for _, n := range e.childSet {
+		stat = append(stat, makeStatEntry(n))
+	}
+	for _, f := range filters {
+		stat = f(stat)
+		if len(stat) == 0 {
+			// Filters eliminated all entries.
+			break
+		}
+		if len(stat) == 1 {
+			t := stat[0]
+			return &t
+		}
+	}
+	// Filters were not able to reduce to a single entry.
+	return nil
+}
+
+// Best returns one of the best Steps for this Search root or nil.
 func (r Search[S]) Best() *StatEntry[S] {
 	if r.root == nil {
 		return nil
 	}
-	e, _ := r.root.Elem()
-	children := maps.Values(e.childSet)
-	r.Rand.Shuffle(len(children), func(i, j int) { children[i], children[j] = children[j], children[i] })
-	child := mostNode(children)
-	stat := makeStatEntry(child)
-	return &stat
+	return filterStatNode(r.root, MostFilter, AnyFilter[S](r.Rand))
 }
 
-// mostNode selects a node which maximizes runs.
+// MostFilter returns a filter which selects the nodes with maximum rollouts.
 //
 // nodes should be shuffled prior to call.
-func mostNode[S Step](nodes []*heapordered.Tree[*node[S]]) *heapordered.Tree[*node[S]] {
+func MostFilter[S Step](input []StatEntry[S]) []StatEntry[S] {
 	var (
-		maxNodes    []*heapordered.Tree[*node[S]]
+		maxEntries  []StatEntry[S]
 		maxRollouts float64
 	)
-	for _, n := range nodes {
-		e, _ := n.Elem()
-		if e.numRollouts == maxRollouts {
-			maxNodes = append(maxNodes, n)
-		} else if e.numRollouts > maxRollouts {
-			maxNodes = maxNodes[:0]
-			maxNodes = append(maxNodes, n)
-			maxRollouts = e.numRollouts
+	for _, e := range input {
+		if e.NumRollouts == maxRollouts {
+			maxEntries = append(maxEntries, e)
+		} else if e.NumRollouts > maxRollouts {
+			maxEntries = maxEntries[:0]
+			maxEntries = append(maxEntries, e)
+			maxRollouts = e.NumRollouts
 		}
 	}
-	if maxRollouts == 0 {
-		// NormScore is -∞ when rollouts is 0.
-		// Break the tie based on raw score.
-		return bestRawScore(maxNodes)
-	}
-	return bestScore(maxNodes)
+	return maxEntries
 }
 
-// bestScore picks the node with the best normed score.
+// BestScoreFilter picks the node with the best normed score.
 //
 // nodes should be shuffled prior to call.
-func bestScore[S Step](nodes []*heapordered.Tree[*node[S]]) *heapordered.Tree[*node[S]] {
+func BestScoreFilter[S Step](input []StatEntry[S]) []StatEntry[S] {
 	var (
-		maxNode  *heapordered.Tree[*node[S]]
-		maxScore = math.Inf(-1)
+		maxEntries []StatEntry[S]
+		maxScore   = math.Inf(-1)
 	)
-	for _, node := range nodes {
-		e, _ := node.Elem()
-		if score := e.NormScore(); maxNode == nil || score > maxScore {
-			maxNode = node
-			maxScore = score
+	for _, e := range input {
+		if e.Score == maxScore {
+			maxEntries = append(maxEntries, e)
+		} else if e.Score > maxScore {
+			maxEntries = maxEntries[:0]
+			maxEntries = append(maxEntries, e)
+			maxScore = e.Score
 		}
 	}
-	return maxNode
+	return maxEntries
 }
 
 // bestRawScore picks the node with the best raw score.
-//
-// nodes should be shuffled prior to call.
-func bestRawScore[S Step](nodes []*heapordered.Tree[*node[S]]) *heapordered.Tree[*node[S]] {
+func BestRawScore[S Step](input []StatEntry[S]) []StatEntry[S] {
 	var (
-		maxNode  *heapordered.Tree[*node[S]]
-		maxScore = math.Inf(-1)
+		maxEntries []StatEntry[S]
+		maxScore   = math.Inf(-1)
 	)
-	for _, node := range nodes {
-		e, _ := node.Elem()
-		if score, _ := e.Score(); maxNode == nil || score > maxScore {
-			maxNode = node
-			maxScore = score
+	for _, e := range input {
+		if e.RawScore == maxScore {
+			maxEntries = append(maxEntries, e)
+		} else if e.RawScore > maxScore {
+			maxEntries = maxEntries[:0]
+			maxEntries = append(maxEntries, e)
+			maxScore = e.RawScore
 		}
 	}
-	return maxNode
+	return maxEntries
 }
 
-// anyNode returns the first node with a nonzero number of runs or nil.
-//
-// Nodes should be shuffled prior to calling anyNode.
-func anyNode[S Step](nodes []*heapordered.Tree[*node[S]]) *heapordered.Tree[*node[S]] {
-	for _, n := range nodes {
-		if e, _ := n.Elem(); e.numRollouts > 0 {
-			return n
+// AnyFilter returns the first node with a nonzero number of runs or nil.
+func AnyFilter[S Step](r *rand.Rand) Filter[S] {
+	return func(input []StatEntry[S]) []StatEntry[S] {
+		if len(input) == 0 {
+			return nil
 		}
+		return []StatEntry[S]{input[r.Intn(len(input))]}
 	}
-	return nil
 }
 
 // Variation is a sequence of Steps with Search statistics.
