@@ -39,7 +39,7 @@ func main() {
 	opts.Search()
 
 	pv := opts.FilterV(
-		mcts.FilterFn(func(e mcts.StatEntry[dummy.Step]) bool { return e.NumRollouts >= 1_000 }),
+		mcts.PredicateFilter(func(e mcts.StatEntry[dummy.Step]) bool { return e.NumRollouts >= 1_000 }),
 		mcts.AnyFilter[dummy.Step](r))
 	fmt.Println(pv)
 	fmt.Println("---")

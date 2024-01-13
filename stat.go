@@ -2,7 +2,6 @@ package mcts
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
 	"strings"
 
@@ -60,7 +59,7 @@ func (e StatEntry[S]) appendString(sb *strings.Builder) {
 // and is usually the best one.
 //
 // Use Stat to test arbitrary sequences.
-func (r Search[S]) PV() Variation[S] { return r.FilterV(MostFilter, AnyFilter[S](r.Rand)) }
+func (r Search[S]) PV() Variation[S] { return r.FilterV(MaxRolloutsFilter[S](), AnyFilter[S](r.Rand)) }
 
 // AnyV returns a random variation with runs for this Search.
 //
@@ -70,7 +69,8 @@ func (r Search[S]) AnyV() Variation[S] { return r.FilterV(AnyFilter[S](r.Rand)) 
 // Filter returns matching stat entries from the input.
 type Filter[S Step] func([]StatEntry[S]) []StatEntry[S]
 
-func FilterFn[S Step](f func(StatEntry[S]) bool) Filter[S] {
+// PredicateFilter returns a filter which selects entries matching f.
+func PredicateFilter[S Step](f func(StatEntry[S]) bool) Filter[S] {
 	return func(input []StatEntry[S]) []StatEntry[S] {
 		var res []StatEntry[S]
 		for _, e := range input {
@@ -127,68 +127,76 @@ func (r Search[S]) Best() *StatEntry[S] {
 	if r.root == nil {
 		return nil
 	}
-	return filterStatNode(r.root, MostFilter, AnyFilter[S](r.Rand))
+	return filterStatNode(r.root, MaxRolloutsFilter[S](), AnyFilter[S](r.Rand))
 }
 
-// MostFilter returns a filter which selects the nodes with maximum rollouts.
-//
-// nodes should be shuffled prior to call.
-func MostFilter[S Step](input []StatEntry[S]) []StatEntry[S] {
-	var (
-		maxEntries  []StatEntry[S]
-		maxRollouts float64
-	)
-	for _, e := range input {
-		if e.NumRollouts == maxRollouts {
-			maxEntries = append(maxEntries, e)
-		} else if e.NumRollouts > maxRollouts {
-			maxEntries = maxEntries[:0]
-			maxEntries = append(maxEntries, e)
-			maxRollouts = e.NumRollouts
+// MaxFilter returns a filter which selects the entries maximumizing f.
+func MaxFilter[S Step](f func(e StatEntry[S]) float64) Filter[S] {
+	return maxCmpFilter(f, func(a, b float64) int {
+		if a == b {
+			return 0
 		}
-	}
-	return maxEntries
-}
-
-// BestScoreFilter picks the node with the best normed score.
-//
-// nodes should be shuffled prior to call.
-func BestScoreFilter[S Step](input []StatEntry[S]) []StatEntry[S] {
-	var (
-		maxEntries []StatEntry[S]
-		maxScore   = math.Inf(-1)
-	)
-	for _, e := range input {
-		if e.Score == maxScore {
-			maxEntries = append(maxEntries, e)
-		} else if e.Score > maxScore {
-			maxEntries = maxEntries[:0]
-			maxEntries = append(maxEntries, e)
-			maxScore = e.Score
+		if a < b {
+			return -1
 		}
-	}
-	return maxEntries
+		return 1
+	})
 }
 
-// bestRawScore picks the node with the best raw score.
-func BestRawScore[S Step](input []StatEntry[S]) []StatEntry[S] {
-	var (
-		maxEntries []StatEntry[S]
-		maxScore   = math.Inf(-1)
-	)
-	for _, e := range input {
-		if e.RawScore == maxScore {
-			maxEntries = append(maxEntries, e)
-		} else if e.RawScore > maxScore {
-			maxEntries = maxEntries[:0]
-			maxEntries = append(maxEntries, e)
-			maxScore = e.RawScore
+// MinFilter returns a filter which selects the entries maximumizing f.
+func MinFilter[S Step](f func(e StatEntry[S]) float64) Filter[S] {
+	return maxCmpFilter(f, func(a, b float64) int {
+		if a == b {
+			return 0
 		}
-	}
-	return maxEntries
+		if a < b {
+			return 1
+		}
+		return -1
+	})
 }
 
-// AnyFilter returns the first node with a nonzero number of runs or nil.
+func maxCmpFilter[S Step](f func(e StatEntry[S]) float64, cmp func(float64, float64) int) Filter[S] {
+	return func(input []StatEntry[S]) []StatEntry[S] {
+		var (
+			maxEntries []StatEntry[S]
+			maxValue   float64
+		)
+		for _, e := range input {
+			value := f(e)
+			if cmp := cmp(value, maxValue); cmp == 0 {
+				maxEntries = append(maxEntries, e)
+			} else if cmp > 0 {
+				maxEntries = maxEntries[:0]
+				maxEntries = append(maxEntries, e)
+				maxValue = e.NumRollouts
+			}
+		}
+		return maxEntries
+	}
+}
+
+// MaxRolloutsFilter returns a filter which selects the entries with maximum rollouts.
+func MaxRolloutsFilter[S Step]() Filter[S] {
+	return MaxFilter[S](func(e StatEntry[S]) float64 { return e.NumRollouts })
+}
+
+// MaxScoreFilter returns a filter which selects the entries with the best normalized score.
+func MaxScoreFilter[S Step]() Filter[S] {
+	return MaxFilter[S](func(e StatEntry[S]) float64 { return e.Score })
+}
+
+// MaxRawScoreFilter picks the node with the best raw score.
+func MaxRawScoreFilter[S Step]() Filter[S] {
+	return MaxFilter[S](func(e StatEntry[S]) float64 { return e.RawScore })
+}
+
+// MinPriorityFilter picks the node with the highest raw score.
+func HighestPriorityFilter[S Step]() Filter[S] {
+	return MinFilter[S](func(e StatEntry[S]) float64 { return e.Priority })
+}
+
+// AnyFilter returns a filter which selects a random entry.
 func AnyFilter[S Step](r *rand.Rand) Filter[S] {
 	return func(input []StatEntry[S]) []StatEntry[S] {
 		if len(input) == 0 {
