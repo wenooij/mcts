@@ -89,6 +89,7 @@ func FilterFn[S Step](f func(StatEntry[S]) bool) Filter[S] {
 func (r Search[S]) FilterV(filters ...Filter[S]) Variation[S] {
 	var res Variation[S]
 	node := r.root
+	res = append(res, makeStatEntry(node))
 	for node != nil {
 		e := filterStatNode(node, filters...)
 		if e == nil {
