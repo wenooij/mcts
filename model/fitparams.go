@@ -40,9 +40,12 @@ func FitParams[S mcts.Step](s *mcts.Search[S]) {
 	}
 	// Fit ExplorationParameter to the absolute maximum of the first and third quantiles.
 	slices.Sort(scoreSamples)
-	exploreParam := math.Abs(scoreSamples[len(scoreSamples)/4])
-	if score := math.Abs(scoreSamples[3*len(scoreSamples)/4]); score > exploreParam {
-		exploreParam = score
+	scoreSamples = slices.DeleteFunc(scoreSamples, func(x float64) bool { return math.IsInf(x, 0) })
+	first := math.Abs(scoreSamples[len(scoreSamples)/4])
+	third := math.Abs(scoreSamples[3*len(scoreSamples)/4])
+	exploreParam := first
+	if third > exploreParam {
+		exploreParam = third
 	}
 	s.ExplorationParameter = exploreParam
 }
