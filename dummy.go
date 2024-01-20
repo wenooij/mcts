@@ -16,16 +16,20 @@ type dummyScalarLog float64
 func (x dummyScalarLog) Merge(lg Log) Log { x += lg.(dummyScalarLog); return x }
 func (x dummyScalarLog) Score() float64   { return float64(x) }
 
-type dummySearch struct{ Rand *rand.Rand }
+type dummySearch struct {
+	B    int
+	Rand *rand.Rand
+}
 
-func (s dummySearch) Expand(steps []FrontierStep[dummyStep]) (n int) {
-	for i := 0; i < len(steps); i++ {
-		steps[i] = FrontierStep[dummyStep]{
+func (s dummySearch) Expand() []FrontierStep[dummyStep] {
+	b := make([]FrontierStep[dummyStep], s.B)
+	for i := range b {
+		b[i] = FrontierStep[dummyStep]{
 			Step:     dummyStep(i),
 			Priority: s.Rand.Float64(),
 		}
 	}
-	return len(steps)
+	return b
 }
 
 func (s dummySearch) Root()               {}

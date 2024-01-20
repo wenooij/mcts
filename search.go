@@ -39,25 +39,6 @@ type Search[S Step] struct {
 	// If unset, it is automatically seeded based on the value from Seed.
 	Rand *rand.Rand
 
-	// ExpandBurnInSamples is the number of guaranteed Expand calls
-	// applied initially before we start sampling from the node.
-	// Default is 0.
-	ExpandBurnInSamples int
-
-	// ExpandBufferSize is the size of the steps buffer passed to Expand in the SearchInferface.
-	// Default is 64.
-	ExpandBufferSize int
-
-	expandBuffer []FrontierStep[S]
-
-	// MaxSpeculativeExpansions is the maximum number of speculative calls to Expand after optional burn in.
-	// This applies a limit to the heuristic which calls Expand automatically in proportion to the hit-rate
-	// of new steps. As the hit rate decreases, we call Expand less, up to this limit.
-	// If set to 0, speculative samples are disabled, but be sure SelectBurnInSamples is nonzero to guarantee
-	// Expand is called.
-	// Default of 0 means no cap applied to speculative expansions.
-	MaxSpeculativeExpansions int
-
 	// ExplorationParameter is a tuneable parameter which weights the explore side of the
 	// MAB policy.
 	// Zero will use the default value of √2.
@@ -65,12 +46,6 @@ type Search[S Step] struct {
 }
 
 func (s *Search[S]) patchDefaults() {
-	if s.ExpandBufferSize == 0 {
-		s.ExpandBufferSize = defaultExpandBufferSize
-	}
-	if cap(s.expandBuffer) != s.ExpandBufferSize {
-		s.expandBuffer = make([]FrontierStep[S], s.ExpandBufferSize)
-	}
 	if s.ExplorationParameter == 0 {
 		s.ExplorationParameter = defaultExplorationParameter
 	}
@@ -120,7 +95,7 @@ func (s *Search[S]) SearchEpoch() {
 	n := s.root
 	s.Root()
 	for {
-		child := selectChild(s, n)
+		child := n.Min()
 		if child == nil {
 			break
 		}
@@ -135,5 +110,5 @@ func (s *Search[S]) SearchEpoch() {
 	}
 	frontier := n
 	log, numRollouts := s.Rollout()
-	backprop(frontier, log, numRollouts)
+	backprop(frontier, log, float64(numRollouts))
 }

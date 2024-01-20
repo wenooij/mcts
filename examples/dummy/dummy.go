@@ -9,11 +9,13 @@ import (
 	"time"
 
 	"github.com/wenooij/mcts"
-	"github.com/wenooij/mcts/model"
 	"github.com/wenooij/mcts/model/dummy"
 )
 
 func main() {
+	B := flag.Int("b", 10, "Dummy branching factor")
+	flag.Parse()
+
 	seed := flag.Int64("seed", time.Now().UnixNano(), "Random seed")
 	flag.Parse()
 
@@ -26,16 +28,12 @@ func main() {
 	}()
 
 	opts := mcts.Search[dummy.Step]{
-		Rand:                     r,
-		Seed:                     *seed,
-		ExpandBurnInSamples:      10,
-		ExpandBufferSize:         100,
-		MaxSpeculativeExpansions: 10000,
-		SearchInterface:          dummy.Search{Rand: r},
-		Done:                     done,
+		Rand:                 r,
+		Seed:                 *seed,
+		SearchInterface:      dummy.Search{B: int(*B), Rand: r},
+		ExplorationParameter: 0.5,
+		Done:                 done,
 	}
-	model.FitParams(&opts)
-	fmt.Printf("Using c=%.4f\n---\n", opts.ExplorationParameter)
 	opts.Search()
 
 	pv := opts.FilterV(

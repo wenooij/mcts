@@ -2,6 +2,7 @@ package mcts
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"strings"
 
@@ -16,41 +17,34 @@ type StatEntry[S Step] struct {
 	NumRollouts float64
 	Priority    float64
 	Terminal    bool
-
-	NumChildren      int
-	NumExpandHits    float64
-	NumExpandSamples float64
+	NumChildren int
 }
 
 func makeStatEntry[S Step](n *heapordered.Tree[*node[S]]) StatEntry[S] {
 	e, _ := n.Elem()
 	return StatEntry[S]{
-		Step:             e.Step,
-		Log:              e.Log,
-		RawScore:         e.Log.Score(),
-		Score:            e.NormScore(),
-		NumRollouts:      e.numRollouts,
-		Priority:         e.priority,
-		Terminal:         e.terminal,
-		NumChildren:      n.Len(),
-		NumExpandHits:    float64(e.hits),
-		NumExpandSamples: float64(e.Samples()),
+		Step:        e.Step,
+		Log:         e.Log,
+		RawScore:    e.Log.Score(),
+		Score:       e.NormScore(),
+		NumRollouts: e.numRollouts,
+		Priority:    e.priority,
+		Terminal:    e.terminal,
+		NumChildren: n.Len(),
 	}
 }
 
 func (e StatEntry[S]) appendString(sb *strings.Builder) {
 	fmt.Fprintf(sb, "[%-4.3f] %-6s (", e.Score, e.Step)
-	// Format NumRollouts.
 	switch n := e.NumRollouts; {
 	case n < 1000:
-		fmt.Fprintf(sb, "%.0f N; ", n)
+		fmt.Fprintf(sb, "%.0f N", n)
 	case n < 1e6:
-		fmt.Fprintf(sb, "%.2f kN; ", n/1e3)
+		fmt.Fprintf(sb, "%.2f kN", n/1e3)
 	default:
-		fmt.Fprintf(sb, "%.2f MN; ", n/1e6)
+		fmt.Fprintf(sb, "%.2f MN", n/1e6)
 	}
-	// Format expand stats.
-	fmt.Fprintf(sb, "%d children; %d samples)", e.NumChildren, int(e.NumExpandSamples))
+	sb.WriteByte(')')
 }
 
 // PV returns the principal variation for this Search.

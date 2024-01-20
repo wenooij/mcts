@@ -16,7 +16,7 @@ func TestBackprop(t *testing.T) {
 		leaf, _ = getOrCreateChild(s, leaf, FrontierStep[dummyStep]{})
 	}
 	log, numRollouts := s.Rollout()
-	backprop(leaf, log, numRollouts)
+	backprop(leaf, log, float64(numRollouts))
 
 	const score = 0.6287385421322026
 	got := s.PV()

@@ -34,21 +34,16 @@ func (s keySwapStep) String() string {
 
 type keyboardLog struct {
 	travelDistance int
-	keysTyped      int
 }
 
 func (g *keyboardLog) Score() float64 {
-	if g.keysTyped == 0 {
-		return math.Inf(-1)
-	}
 	travelLoss := -float64(g.travelDistance)
-	return travelLoss / float64(g.keysTyped)
+	return travelLoss / sampleLength
 }
 
 func (g *keyboardLog) Merge(lg mcts.Log) mcts.Log {
 	x := lg.(*keyboardLog)
 	g.travelDistance += x.travelDistance
-	g.keysTyped += x.keysTyped
 	return g
 }
 
@@ -111,13 +106,16 @@ func (g *keyboardSearch) Log() mcts.Log {
 	return &keyboardLog{}
 }
 
-func (g *keyboardSearch) Expand(steps []mcts.FrontierStep[keySwapStep]) (n int) {
-	if len(steps) == 0 || g.node.depth >= 10 {
-		return 0
+func (g *keyboardSearch) Expand() []mcts.FrontierStep[keySwapStep] {
+	if g.node.depth >= 10 {
+		return nil
 	}
-	p1, p2 := NewRandomValidPt(g.r), NewRandomValidPt(g.r)
-	steps[0] = mcts.FrontierStep[keySwapStep]{Step: keySwapStep{p1, p2, true}}
-	return 1
+	var steps []mcts.FrontierStep[keySwapStep]
+	for i := 0; i < 10; i++ {
+		p1, p2 := NewRandomValidPt(g.r), NewRandomValidPt(g.r)
+		steps = append(steps, mcts.FrontierStep[keySwapStep]{Step: keySwapStep{p1, p2, true}})
+	}
+	return steps
 }
 
 func (g *keyboardSearch) Rollout() (mcts.Log, int) {
@@ -128,8 +126,8 @@ func (g *keyboardSearch) Rollout() (mcts.Log, int) {
 	}
 	sample := targetSample[i:end]
 
-	score, hits := g.node.layout.Test(sample)
-	return &keyboardLog{score, hits}, 1
+	score, _ := g.node.layout.Test(sample)
+	return &keyboardLog{score}, 1
 }
 
 func main() {
@@ -138,16 +136,14 @@ func main() {
 
 	done := make(chan struct{})
 	go func() {
-		<-time.After(30 * time.Second)
+		<-time.After(10 * time.Second)
 		done <- struct{}{}
 	}()
 
 	opts := mcts.Search[keySwapStep]{
-		ExpandBurnInSamples:      5,
-		MaxSpeculativeExpansions: 5,
-		ExplorationParameter:     math.Pi,
-		SearchInterface:          s,
-		Done:                     done,
+		ExplorationParameter: math.Pi,
+		SearchInterface:      s,
+		Done:                 done,
 	}
 	model.FitParams(&opts)
 	fmt.Printf("Using c=%.4f\n---\n", opts.ExplorationParameter)

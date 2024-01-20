@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"slices"
 	"time"
 
 	"github.com/wenooij/mcts"
@@ -70,17 +71,18 @@ func rootTour(n int) []int {
 	return tour
 }
 
-func (n *tourNode) applyChildTourNode(tourMap map[int]*tourPos, step tourStep) {
+func (n *tourNode) apply(step tourStep) {
 	n.tour[step.i], n.tour[step.j] = n.tour[step.j], n.tour[step.i]
 	n.step = step
 	n.depth++
 }
 
 type tourSearch struct {
-	m    map[int]*tourPos
-	r    *rand.Rand
-	root []int
-	node *tourNode
+	m     map[int]*tourPos
+	r     *rand.Rand
+	root  []int
+	steps []mcts.FrontierStep[tourStep]
+	node  *tourNode
 }
 
 func newTourSearch(tourMap map[int]*tourPos, r *rand.Rand) *tourSearch {
@@ -90,12 +92,13 @@ func newTourSearch(tourMap map[int]*tourPos, r *rand.Rand) *tourSearch {
 		root: rootTour(len(tourMap)),
 		node: new(tourNode),
 	}
+	s.steps = slices.Grow(s.steps, len(tourMap))
 	s.Root()
 	return s
 }
 
 func (g *tourSearch) Select(step tourStep) {
-	g.node.applyChildTourNode(g.m, step)
+	g.node.apply(step)
 }
 
 func (g *tourSearch) Root() {
@@ -111,25 +114,28 @@ func (g *tourSearch) Log() mcts.Log {
 	return tourDistanceLog(0)
 }
 
-func (g *tourSearch) Expand(steps []mcts.FrontierStep[tourStep]) (n int) {
-	if len(steps) == 0 || g.node.depth >= len(g.node.tour)/2+1 {
-		return 0
+func (g *tourSearch) Expand() []mcts.FrontierStep[tourStep] {
+	if g.node.depth >= len(g.node.tour)/2+1 {
+		return nil
 	}
 	i := g.node.tour[g.node.depth]
+	g.steps = g.steps[:0]
 	for j := 0; j < len(g.node.tour); j++ {
-		steps[j] = mcts.FrontierStep[tourStep]{Step: tourStep{i, j}}
-		n++
+		g.steps = append(g.steps, mcts.FrontierStep[tourStep]{
+			Step:     tourStep{i, j},
+			Priority: 0,
+		})
 	}
-	return
+	return g.steps
 }
 
 func (g *tourSearch) Rollout() (mcts.Log, int) {
-	var b [1]mcts.FrontierStep[tourStep]
 	for {
-		if n := g.Expand(b[:]); n == 0 {
+		steps := g.Expand()
+		if len(steps) == 0 {
 			break
 		}
-		g.Select(b[0].Step)
+		g.Select(steps[g.r.Intn(len(steps))].Step)
 	}
 	// Calculate tour distance.
 	distance := tourDistanceLog(0)
@@ -179,17 +185,15 @@ func main() {
 
 	done := make(chan struct{})
 	go func() {
-		<-time.After(60 * time.Second)
+		<-time.After(10 * time.Second)
 		done <- struct{}{}
 	}()
 
 	opts := mcts.Search[tourStep]{
-		Rand:                     r,
-		Seed:                     *seed,
-		ExpandBurnInSamples:      1,
-		MaxSpeculativeExpansions: 1,
-		SearchInterface:          s,
-		Done:                     done,
+		Rand:            r,
+		Seed:            *seed,
+		SearchInterface: s,
+		Done:            done,
 	}
 	model.FitParams(&opts)
 	fmt.Printf("Using c=%.4f\n---\n", opts.ExplorationParameter)

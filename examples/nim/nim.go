@@ -77,17 +77,19 @@ func (n *nimState) Select(s nimStep) {
 	n.piles[s.pile] -= nimPile(s.n)
 }
 
-func (s *nimState) Expand(steps []mcts.FrontierStep[nimStep]) (n int) {
+func (s *nimState) Expand() []mcts.FrontierStep[nimStep] {
+	var steps []mcts.FrontierStep[nimStep]
 	for i, p := range s.piles {
 		switch p {
 		case 0:
 		case 1:
-			return copy(steps, []mcts.FrontierStep[nimStep]{{Step: nimStep{i, 1}}})
+			steps = append(steps, mcts.FrontierStep[nimStep]{Step: nimStep{i, 1}})
 		default:
-			return copy(steps, []mcts.FrontierStep[nimStep]{{Step: nimStep{i, int(p)}}, {Step: nimStep{i, int(p) - 1}}})
+			steps = append(steps, mcts.FrontierStep[nimStep]{Step: nimStep{i, int(p)}},
+				mcts.FrontierStep[nimStep]{Step: nimStep{i, int(p) - 1}})
 		}
 	}
-	return 0
+	return steps
 }
 
 type nimResult struct {
@@ -118,12 +120,11 @@ func (s *nimState) Rollout() (mcts.Log, int) {
 		if r, ok := s.Result(); ok {
 			return r, 1
 		}
-		var b [2]mcts.FrontierStep[nimStep]
-		n := s.Expand(b[:])
-		if n == 0 {
+		steps := s.Expand()
+		if len(steps) == 0 {
 			panic("no Steps but Result returned !ok")
 		}
-		s.Select(b[s.r.Intn(n)].Step)
+		s.Select(steps[s.r.Intn(len(steps))].Step)
 	}
 }
 

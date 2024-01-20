@@ -6,15 +6,23 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-func backprop[S Step](n *heapordered.Tree[*node[S]], log Log, numRollouts int) {
+func backprop[S Step](n *heapordered.Tree[*node[S]], log Log, numRollouts float64) {
 	if numRollouts == 0 {
 		return
 	}
 	for ; n != nil; n = n.Parent() {
 		e, _ := n.Elem()
 		e.Log = e.Log.Merge(log)
-		e.numRollouts += float64(numRollouts)
-		e.priority = -ucb1(e.Log.Score(), e.numRollouts, float64(numRollouts)+numParentRollouts(n), e.exploreParam)
+		e.numRollouts += numRollouts
+		e.priority = -ucb1(e.Log.Score(), e.numRollouts, numRollouts+numParentRollouts(n), e.exploreParam)
+		n.Fix()
+	}
+}
+
+func backpropNull[S Step](n *heapordered.Tree[*node[S]]) {
+	for ; n != nil; n = n.Parent() {
+		e, _ := n.Elem()
+		e.priority = -ucb1(e.Log.Score(), e.numRollouts, numParentRollouts(n), e.exploreParam)
 		n.Fix()
 	}
 }

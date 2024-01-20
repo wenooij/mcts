@@ -16,15 +16,18 @@ const (
 )
 
 type SearchPlugin struct {
-	node *tictactoeNode
+	node  *tictactoeNode
+	steps []mcts.FrontierStep[tictactoeStep]
 }
 
 func newSearchPlugin() *SearchPlugin {
 	var n tictactoeNode
 	n.Root()
-	return &SearchPlugin{
+	p := &SearchPlugin{
 		node: &n,
 	}
+	p.steps = slices.Grow(p.steps, 9)
+	return p
 }
 
 type tictactoeStep struct {
@@ -124,13 +127,15 @@ func (s *SearchPlugin) Root() {
 	s.node.Root()
 }
 
-func (s *SearchPlugin) Expand(steps []mcts.FrontierStep[tictactoeStep]) (n int) {
-	if len(steps) == 0 || s.node.terminal {
-		return 0
+func (s *SearchPlugin) Expand() []mcts.FrontierStep[tictactoeStep] {
+	if s.node.terminal {
+		return nil
 	}
-	i := s.node.open[rand.Intn(len(s.node.open))]
-	steps[0] = mcts.FrontierStep[tictactoeStep]{Step: tictactoeStep{cell: i, turn: s.node.turn()}}
-	return 1
+	s.steps = s.steps[:0]
+	for _, i := range s.node.open {
+		s.steps = append(s.steps, mcts.FrontierStep[tictactoeStep]{Step: tictactoeStep{cell: i, turn: s.node.turn()}})
+	}
+	return s.steps
 }
 
 func (s *SearchPlugin) Select(step tictactoeStep) {
@@ -154,8 +159,8 @@ func (s *SearchPlugin) Rollout() (mcts.Log, int) {
 }
 
 func (s *SearchPlugin) forward(log *tictactoeLog) bool {
-	var b [1]mcts.FrontierStep[tictactoeStep]
-	if n := s.Expand(b[:]); n == 0 {
+	steps := s.Expand()
+	if len(steps) == 0 {
 		switch s.node.winner {
 		case X:
 			log.scoreX++
@@ -164,7 +169,7 @@ func (s *SearchPlugin) forward(log *tictactoeLog) bool {
 		}
 		return false
 	}
-	s.Select(b[0].Step)
+	s.Select(steps[rand.Intn(len(steps))].Step)
 	return true
 }
 
