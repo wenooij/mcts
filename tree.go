@@ -13,10 +13,6 @@ type node[S Step] struct {
 	exploreParam float64
 	priority     float64
 
-	// Speculative expansion.
-	hits, samples int
-	burnedIn      bool
-
 	// Topology.
 	childSet map[S]*heapordered.Tree[*node[S]]
 	Step     S
