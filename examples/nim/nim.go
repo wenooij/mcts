@@ -146,7 +146,7 @@ func main() {
 		Done:            done,
 	}
 	model.FitParams(&opts)
-	fmt.Printf("Using c=%.4f\n---\n", opts.ExplorationParameter)
+	fmt.Printf("Using c=%.4f\n---\n", opts.ExploreFactor)
 	opts.Search()
 
 	fmt.Println(opts.PV())

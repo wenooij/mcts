@@ -141,12 +141,12 @@ func main() {
 	}()
 
 	opts := mcts.Search[keySwapStep]{
-		ExplorationParameter: math.Pi,
-		SearchInterface:      s,
-		Done:                 done,
+		ExploreFactor:   math.Pi,
+		SearchInterface: s,
+		Done:            done,
 	}
 	model.FitParams(&opts)
-	fmt.Printf("Using c=%.4f\n---\n", opts.ExplorationParameter)
+	fmt.Printf("Using c=%.4f\n---\n", opts.ExploreFactor)
 	opts.Search()
 
 	pv := opts.PV()

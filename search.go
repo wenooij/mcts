@@ -8,11 +8,7 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-const (
-	defaultExpandBufferSize     = 64
-	defaultMaxSelectSamples     = 100
-	defaultExplorationParameter = math.Sqrt2
-)
+const defaultExploreFactor = math.Sqrt2
 
 // Search contains options used to run the MCTS Search.
 //
@@ -39,15 +35,17 @@ type Search[S Step] struct {
 	// If unset, it is automatically seeded based on the value from Seed.
 	Rand *rand.Rand
 
-	// ExplorationParameter is a tuneable parameter which weights the explore side of the
+	// ExploreFactor is a tuneable parameter which weights the explore side of the
 	// MAB policy.
-	// Zero will use the default value of √2.
-	ExplorationParameter float64
+	//
+	// This should be made roughly proportional to values obtained from Log.Score.
+	// Zero uses the default value of √2.
+	ExploreFactor float64
 }
 
 func (s *Search[S]) patchDefaults() {
-	if s.ExplorationParameter == 0 {
-		s.ExplorationParameter = defaultExplorationParameter
+	if s.ExploreFactor == 0 {
+		s.ExploreFactor = defaultExploreFactor
 	}
 	if s.Rand == nil {
 		if s.Seed == 0 {

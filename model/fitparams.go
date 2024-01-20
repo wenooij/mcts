@@ -15,7 +15,7 @@ const (
 )
 
 // FitParams tunes a search by computing stats from a smaller search
-// and updating ExplorationParameter.
+// and updating the ExploreFactor.
 func FitParams[S mcts.Step](s *mcts.Search[S]) {
 	// Initialize the search for now, but leave the root as we found it.
 	if s.Init() {
@@ -38,14 +38,14 @@ func FitParams[S mcts.Step](s *mcts.Search[S]) {
 			numScores++
 		}
 	}
-	// Fit ExplorationParameter to the absolute maximum of the first and third quantiles.
+	// Fit ExploreFactor to the absolute maximum of the first and third quantiles.
 	slices.Sort(scoreSamples)
 	scoreSamples = slices.DeleteFunc(scoreSamples, func(x float64) bool { return math.IsInf(x, 0) })
 	first := math.Abs(scoreSamples[len(scoreSamples)/4])
 	third := math.Abs(scoreSamples[3*len(scoreSamples)/4])
-	exploreParam := first
-	if third > exploreParam {
-		exploreParam = third
+	exploreFactor := first
+	if third > exploreFactor {
+		exploreFactor = third
 	}
-	s.ExplorationParameter = exploreParam
+	s.ExploreFactor = exploreFactor
 }

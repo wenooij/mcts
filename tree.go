@@ -7,24 +7,24 @@ import (
 )
 
 type node[S Step] struct {
-	terminal     bool
-	Log          Log
-	numRollouts  float64
-	exploreParam float64
-	priority     float64
+	terminal      bool
+	Log           Log
+	numRollouts   float64
+	exploreFactor float64
+	priority      float64
 
 	// Topology.
 	childSet map[S]*heapordered.Tree[*node[S]]
 	Step     S
 }
 
-func newNode[S Step](s *Search[S], step FrontierStep[S]) *node[S] {
+func newNode[S Step](log Log, step FrontierStep[S]) *node[S] {
 	return &node[S]{
-		Log:          s.Log(),
-		exploreParam: s.ExplorationParameter,
-		priority:     step.Priority,
-		childSet:     make(map[S]*heapordered.Tree[*node[S]]),
-		Step:         step.Step,
+		Log:           log,
+		exploreFactor: step.ExploreFactor,
+		priority:      step.Priority,
+		childSet:      make(map[S]*heapordered.Tree[*node[S]]),
+		Step:          step.Step,
 	}
 }
 
@@ -47,7 +47,7 @@ func (e *node[S]) NormScore() float64 {
 
 func newTree[S Step](s *Search[S]) *heapordered.Tree[*node[S]] {
 	var sentinel S
-	root := newNode[S](s, FrontierStep[S]{Step: sentinel, Priority: math.Inf(-1)})
+	root := newNode[S](s.Log(), FrontierStep[S]{Step: sentinel, Priority: math.Inf(-1), ExploreFactor: s.ExploreFactor})
 	return heapordered.NewTree(root)
 }
 
@@ -56,7 +56,10 @@ func getOrCreateChild[S Step](s *Search[S], parent *heapordered.Tree[*node[S]], 
 	if child, ok := root.childSet[step.Step]; ok {
 		return child, false
 	}
-	node := newNode[S](s, step)
+	if step.ExploreFactor == 0 {
+		step.ExploreFactor = root.exploreFactor
+	}
+	node := newNode[S](s.Log(), step)
 	child = parent.NewChild(node)
 	root.childSet[step.Step] = child
 	return child, true

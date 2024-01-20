@@ -28,11 +28,11 @@ func main() {
 	}()
 
 	opts := mcts.Search[dummy.Step]{
-		Rand:                 r,
-		Seed:                 *seed,
-		SearchInterface:      dummy.Search{B: int(*B), Rand: r},
-		ExplorationParameter: 0.5,
-		Done:                 done,
+		Rand:            r,
+		Seed:            *seed,
+		SearchInterface: dummy.Search{B: int(*B), Rand: r},
+		ExploreFactor:   0.5,
+		Done:            done,
 	}
 	opts.Search()
 

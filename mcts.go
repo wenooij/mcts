@@ -11,16 +11,24 @@ type Step interface {
 	fmt.Stringer
 }
 
-// FrontierStep wraps a step with an explicit initial priority in the MAB priority data structure.
+// FrontierStep wraps an expanded step with extra parameters to apply to the subtree.
 //
-// Smaller values indicate higher priorities. In small state spaces this can be -∞ (i.e. all steps should
-// be tried at least once.) In larger state spaces, this can be counterproductive.
-// Ideally, the priority value should be set to -E[s(X)], where E[s(X)] is the expected score for node X.
-//
+// Priority is used to seed the initial ordering of steps in the MAB min-priority-queue.
+// Ideally, the priority value for X should be set to -E[Score(X)], but in practice
+// a heuristic is used. Like ExploreFactor, it is critical that the priority be roughly
+// proportional to the values returned from Log.Score, otherwise a small value such as -∞
+// can be used to guarantee that expanded nodes are explored at least once.
+// In larger state spaces this may be counterproductive.
 // Priority only affects the initial value. The next priority is recomputed in backprop.
+//
+// ExploreFactor defines the exploration weighting for the node and its subtree.
+// If this is 0, the parent's ExploreFactor is copied. By default, a ExploreFactor is
+// applied uniformly to all nodes. It is critical that ExploreFactor be roughly
+// proportional to the values returned from Log.Score
 type FrontierStep[S Step] struct {
-	Step     S
-	Priority float64
+	Step          S
+	Priority      float64
+	ExploreFactor float64
 }
 
 // Log is used to keep track of the objective function value
