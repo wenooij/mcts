@@ -251,3 +251,73 @@ func (r Search[S]) Stat(vs ...S) Variation[S] {
 	}
 	return res
 }
+
+// Subtree returns a Search for the subtree defined by the Variation v.
+//
+// If not all of v is present, the largest subvariation is selected.
+func (s Search[S]) Subtree(v Variation[S]) *Search[S] {
+	n := s.root
+	if n == nil {
+		return &s
+	}
+	for _, e := range v {
+		child := getChild(n, e.Step)
+		if child == nil {
+			// Stop here.
+			// The node is not present in the subtree.
+			break
+		}
+		n = child
+	}
+	s.root = n
+	return &s
+}
+
+// Reducer is a function which transforms the entry to a element of type T.
+type Reducer[S Step, T any] func(e StatEntry[S]) T
+
+// Reduce the subtree by calling r and return the final result.
+func Reduce[S Step, T any](s Search[S], r Reducer[S, T]) (res T) { return reduceNode(s.root, r) }
+
+func ReduceV[S Step, T any](s Search[S], r Reducer[S, T], v Variation[S]) (n int, res T) {
+	node := s.root
+	for i, e := range v {
+		if node == nil {
+			return i, res
+		}
+		res = r(makeStatEntry(node))
+		node = getChild(node, e.Step)
+	}
+	return len(v), res
+}
+
+func reduceNode[S Step, T any](root *heapordered.Tree[*node[S]], r Reducer[S, T]) (res T) {
+	e, _ := root.Elem()
+	stat := makeStatEntry(root)
+	res = r(stat)
+	for _, e := range e.childSet {
+		res = reduceNode(e, r)
+	}
+	return res
+}
+
+// MinMax is a simple structure with Min and Max fields.
+type MinMax struct {
+	Min float64
+	Max float64
+}
+
+// MinMax returns the min and max values in the Search subtree.
+func MinMaxReducer[S Step](f func(StatEntry[S]) float64) Reducer[S, MinMax] {
+	res := MinMax{math.Inf(+1), math.Inf(-1)}
+	return func(e StatEntry[S]) MinMax {
+		v := f(e)
+		if v < res.Min {
+			res.Min = v
+		}
+		if v > res.Max {
+			res.Max = v
+		}
+		return res
+	}
+}
