@@ -72,39 +72,35 @@ func (s *Search[S]) Reset() {
 	s.Rand = nil
 }
 
-// Search runs the search until Done is signalled.
+// Search runs the search until the Done channel is signalled.
 //
-// If reproducible results are required, use Init and SearchEpoch directly.
+// To run a deterministic number of epochs, call Init and SearchEpoch directly.
 func (s *Search[S]) Search() {
 	s.Init()
 	for {
+		// Run search epoches until done.
 		s.SearchEpoch()
 		select {
 		case <-s.Done:
-			// Done signal. Complete the Search.
 			return
 		default:
 		}
 	}
 }
 
-// SearchEpoch runs a single epoch of search.
+// SearchEpoch runs a single epoch of MCTS.
 func (s *Search[S]) SearchEpoch() {
 	n := s.root
-	s.Root()
-	for {
-		child := n.Min()
-		if child == nil {
-			break
-		}
+	s.Root() // Reset to root.
+	// Select the best leaf node by MAB policy.
+	for child := n.Min(); child != nil; n, child = child, child.Min() {
+		s.Select(child.Elem().Step)
+	}
+	// Expand the leaf node.
+	if child := expand(s, n); child != nil {
 		s.Select(child.Elem().Step)
 		n = child
 	}
-	if expand := expand(s, n); expand != nil {
-		n = expand
-		s.Select(n.Elem().Step)
-	}
-	frontier := n
-	log, numRollouts := s.Rollout()
-	backprop(frontier, log, float64(numRollouts))
+	log, numRollouts := s.Rollout()        // Simulate rollouts.
+	backprop(n, log, float64(numRollouts)) // Backprop the Score.
 }
