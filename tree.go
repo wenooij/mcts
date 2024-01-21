@@ -52,20 +52,19 @@ func newTree[S Step](s *Search[S]) *heapordered.Tree[*node[S]] {
 }
 
 func getOrCreateChild[S Step](s *Search[S], parent *heapordered.Tree[*node[S]], step FrontierStep[S]) (child *heapordered.Tree[*node[S]], created bool) {
-	root, _ := parent.Elem()
-	if child, ok := root.childSet[step.Step]; ok {
+	e := parent.Elem()
+	if child, ok := e.childSet[step.Step]; ok {
 		return child, false
 	}
 	if step.ExploreFactor == 0 {
-		step.ExploreFactor = root.exploreFactor
+		step.ExploreFactor = e.exploreFactor
 	}
 	node := newNode[S](s.Log(), step)
 	child = parent.NewChild(node)
-	root.childSet[step.Step] = child
+	e.childSet[step.Step] = child
 	return child, true
 }
 
 func getChild[S Step](root *heapordered.Tree[*node[S]], step S) (child *heapordered.Tree[*node[S]]) {
-	e, _ := root.Elem()
-	return e.childSet[step]
+	return root.Elem().childSet[step]
 }

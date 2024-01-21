@@ -11,7 +11,7 @@ func backprop[S Step](n *heapordered.Tree[*node[S]], log Log, numRollouts float6
 		return
 	}
 	for ; n != nil; n = n.Parent() {
-		e, _ := n.Elem()
+		e := n.Elem()
 		e.Log = e.Log.Merge(log)
 		e.numRollouts += numRollouts
 		e.priority = -ucb1(e.Log.Score(), e.numRollouts, numRollouts+numParentRollouts(n), e.exploreFactor)
@@ -21,7 +21,7 @@ func backprop[S Step](n *heapordered.Tree[*node[S]], log Log, numRollouts float6
 
 func backpropNull[S Step](n *heapordered.Tree[*node[S]]) {
 	for ; n != nil; n = n.Parent() {
-		e, _ := n.Elem()
+		e := n.Elem()
 		e.priority = -ucb1(e.Log.Score(), e.numRollouts, numParentRollouts(n), e.exploreFactor)
 		n.Fix()
 	}
@@ -32,8 +32,7 @@ func numParentRollouts[S Step](n *heapordered.Tree[*node[S]]) float64 {
 	if parent == nil {
 		return 0
 	}
-	e, _ := parent.Elem()
-	return float64(e.numRollouts)
+	return float64(parent.Elem().numRollouts)
 }
 
 func ucb1(score, numRollouts, numParentRollouts float64, exploreFactor float64) float64 {

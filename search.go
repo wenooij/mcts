@@ -97,14 +97,12 @@ func (s *Search[S]) SearchEpoch() {
 		if child == nil {
 			break
 		}
-		e, _ := child.Elem()
-		s.Select(e.Step)
+		s.Select(child.Elem().Step)
 		n = child
 	}
 	if expand := expand(s, n); expand != nil {
 		n = expand
-		e, _ := n.Elem()
-		s.Select(e.Step)
+		s.Select(n.Elem().Step)
 	}
 	frontier := n
 	log, numRollouts := s.Rollout()

@@ -21,7 +21,7 @@ type StatEntry[S Step] struct {
 }
 
 func makeStatEntry[S Step](n *heapordered.Tree[*node[S]]) StatEntry[S] {
-	e, _ := n.Elem()
+	e := n.Elem()
 	return StatEntry[S]{
 		Step:        e.Step,
 		Log:         e.Log,
@@ -84,8 +84,7 @@ func (r Search[S]) FilterV(filters ...Filter[S]) Variation[S] {
 
 func filterStatNode[S Step](node *heapordered.Tree[*node[S]], filters ...Filter[S]) *StatEntry[S] {
 	stat := make([]StatEntry[S], 0, node.Len())
-	e, _ := node.Elem()
-	for _, n := range e.childSet {
+	for _, n := range node.Elem().childSet {
 		stat = append(stat, makeStatEntry(n))
 	}
 	for _, f := range filters {
@@ -227,10 +226,9 @@ func ReduceV[S Step, T any](s Search[S], r Reducer[S, T], v Variation[S]) (n int
 }
 
 func reduceNode[S Step, T any](root *heapordered.Tree[*node[S]], r Reducer[S, T]) (res T) {
-	e, _ := root.Elem()
 	stat := makeStatEntry(root)
 	res = r(stat)
-	for _, e := range e.childSet {
+	for _, e := range root.Elem().childSet {
 		res = reduceNode(e, r)
 	}
 	return res

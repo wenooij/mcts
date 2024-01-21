@@ -81,7 +81,7 @@ func (s *Search[S]) InsertV(v Variation[S]) {
 	n := s.root
 	for _, stat := range v {
 		n, _ = getOrCreateChild(s, n, FrontierStep[S]{Step: stat.Step})
-		e, _ := n.Elem()
+		e := n.Elem()
 		e.Log = e.Log.Merge(stat.Log)
 		if stat.Terminal {
 			e.terminal = true
