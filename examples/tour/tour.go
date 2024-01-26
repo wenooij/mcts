@@ -26,11 +26,6 @@ func (s tourStep) String() string {
 	return fmt.Sprintf("{%d,%d}", s.i, s.j)
 }
 
-type tourDistanceLog float64
-
-func (d tourDistanceLog) Score() float64             { return -float64(d) }
-func (d tourDistanceLog) Merge(lg mcts.Log) mcts.Log { return d + lg.(tourDistanceLog) }
-
 type tourPos struct {
 	X int
 	Y int
@@ -43,9 +38,9 @@ func newTourPos(r *rand.Rand) *tourPos {
 	}
 }
 
-func (p *tourPos) DistanceTo(p2 *tourPos) tourDistanceLog {
+func (p *tourPos) DistanceTo(p2 *tourPos) float64 {
 	dx, dy := p2.X-p.X, p2.Y-p.Y
-	return tourDistanceLog(math.Sqrt(float64(dx*dx + dy*dy)))
+	return math.Sqrt(float64(dx*dx + dy*dy))
 }
 
 func makeTourMap(n int, r *rand.Rand) map[int]*tourPos {
@@ -110,8 +105,18 @@ func (g *tourSearch) Root() {
 	g.node.step = tourStep{}
 }
 
-func (g *tourSearch) Log() mcts.Log {
-	return tourDistanceLog(0)
+func (g *tourSearch) Score() mcts.Score {
+	// Calculate tour distance.
+	distance := 0.0
+	first := g.m[g.node.tour[0]]
+	last := first
+	for _, e := range g.node.tour[1:] {
+		curr := g.m[e]
+		distance += last.DistanceTo(curr)
+		last = curr
+	}
+	distance += last.DistanceTo(first)
+	return model.Score(-distance) // Minimize distance.
 }
 
 func (g *tourSearch) Expand() []mcts.FrontierStep[tourStep] {
@@ -129,7 +134,7 @@ func (g *tourSearch) Expand() []mcts.FrontierStep[tourStep] {
 	return g.steps
 }
 
-func (g *tourSearch) Rollout() (mcts.Log, int) {
+func (g *tourSearch) Rollout() (mcts.Score, int) {
 	for {
 		steps := g.Expand()
 		if len(steps) == 0 {
@@ -137,17 +142,7 @@ func (g *tourSearch) Rollout() (mcts.Log, int) {
 		}
 		g.Select(steps[g.r.Intn(len(steps))].Step)
 	}
-	// Calculate tour distance.
-	distance := tourDistanceLog(0)
-	first := g.m[g.node.tour[0]]
-	last := first
-	for _, e := range g.node.tour[1:] {
-		curr := g.m[e]
-		distance += last.DistanceTo(curr)
-		last = curr
-	}
-	distance += last.DistanceTo(first)
-	return distance, 1
+	return g.Score(), 1
 }
 
 func main() {

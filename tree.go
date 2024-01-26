@@ -6,9 +6,15 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
+type NodeType int
+
+const (
+	NodeTerminal NodeType = 1 << iota
+)
+
 type node[S Step] struct {
-	terminal      bool
-	Log           Log
+	NodeType      NodeType
+	rawScore      Score
 	numRollouts   float64
 	exploreFactor float64
 	priority      float64
@@ -18,36 +24,39 @@ type node[S Step] struct {
 	Step     S
 }
 
-func newNode[S Step](log Log, step FrontierStep[S]) *node[S] {
+// newNode creates a new tree node element.
+func newNode[S Step](step FrontierStep[S]) *node[S] {
 	return &node[S]{
-		Log:           log,
 		exploreFactor: step.ExploreFactor,
-		priority:      step.Priority,
-		childSet:      make(map[S]*heapordered.Tree[*node[S]]),
-		Step:          step.Step,
+		// Max priority for new nodes.
+		// This will be recomputed after the first attempt.
+		priority: math.Inf(-1),
+		rawScore: step.InitialScore,
+		childSet: make(map[S]*heapordered.Tree[*node[S]]),
+		Step:     step.Step,
 	}
 }
 
 func (n *node[S]) Prioirty() float64 { return n.priority }
 
-func (e *node[S]) Score() (float64, bool) {
-	if e.Log == nil {
-		return math.Inf(-1), false
+func (e *node[S]) RawScore() float64 {
+	if e.rawScore == nil {
+		return math.Inf(-1)
 	}
-	return e.Log.Score(), true
+	return e.rawScore.Score()
 }
 
 func (e *node[S]) NormScore() float64 {
-	if score, ok := e.Score(); ok && e.numRollouts > 0 {
-		return score / e.numRollouts
-	} else {
+	if e.numRollouts == 0 {
 		return math.Inf(-1)
 	}
+	return e.rawScore.Score() / e.numRollouts
 }
 
 func newTree[S Step](s *Search[S]) *heapordered.Tree[*node[S]] {
 	var sentinel S
-	root := newNode[S](s.Log(), FrontierStep[S]{Step: sentinel, Priority: math.Inf(-1), ExploreFactor: s.ExploreFactor})
+	step := FrontierStep[S]{Step: sentinel, Priority: math.Inf(-1), ExploreFactor: s.ExploreFactor}
+	root := newNode[S](step)
 	return heapordered.NewTree(root)
 }
 
@@ -59,7 +68,7 @@ func getOrCreateChild[S Step](s *Search[S], parent *heapordered.Tree[*node[S]], 
 	if step.ExploreFactor == 0 {
 		step.ExploreFactor = e.exploreFactor
 	}
-	node := newNode[S](s.Log(), step)
+	node := newNode[S](step)
 	child = parent.NewChild(node)
 	e.childSet[step.Step] = child
 	return child, true

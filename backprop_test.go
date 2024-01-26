@@ -15,40 +15,36 @@ func TestBackprop(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		leaf, _ = getOrCreateChild(s, leaf, FrontierStep[dummyStep]{})
 	}
-	log, numRollouts := s.Rollout()
-	backprop(leaf, log, float64(numRollouts))
+	rawScore, numRollouts := rollout(s, leaf)
+	backprop(leaf, rawScore, float64(numRollouts))
 
 	const score = 0.6287385421322026
 	got := s.PV()
 	want := Variation[dummyStep]{{
 		Step:        dummyStep(0),
-		Log:         dummyScalarLog(score),
 		Score:       score,
-		RawScore:    score,
+		RawScore:    dummyScore(score),
 		NumRollouts: 1,
 		Priority:    -score,
 		NumChildren: 1,
 	}, {
 		Step:        dummyStep(0),
-		Log:         dummyScalarLog(score),
 		Score:       score,
-		RawScore:    score,
+		RawScore:    dummyScore(score),
 		NumRollouts: 1,
 		Priority:    -score,
 		NumChildren: 1,
 	}, {
 		Step:        dummyStep(0),
-		Log:         dummyScalarLog(score),
 		Score:       score,
-		RawScore:    score,
+		RawScore:    dummyScore(score),
 		NumRollouts: 1,
 		Priority:    -score,
 		NumChildren: 1,
 	}, {
 		Step:        dummyStep(0),
-		Log:         dummyScalarLog(score),
 		Score:       score,
-		RawScore:    score,
+		RawScore:    dummyScore(score),
 		NumRollouts: 1,
 		Priority:    -score,
 	}}

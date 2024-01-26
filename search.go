@@ -8,7 +8,8 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-const defaultExploreFactor = math.Sqrt2
+// DefaultExploreFactor based on the theory assuming scores normalized to the interval [-1, +1].
+const DefaultExploreFactor = math.Sqrt2
 
 // Search contains options used to run the MCTS Search.
 //
@@ -38,14 +39,14 @@ type Search[S Step] struct {
 	// ExploreFactor is a tuneable parameter which weights the explore side of the
 	// MAB policy.
 	//
-	// This should be made roughly proportional to values obtained from Log.Score.
+	// This should be made roughly proportional to scores obtained from random rollouts.
 	// Zero uses the default value of √2.
 	ExploreFactor float64
 }
 
 func (s *Search[S]) patchDefaults() {
 	if s.ExploreFactor == 0 {
-		s.ExploreFactor = defaultExploreFactor
+		s.ExploreFactor = DefaultExploreFactor
 	}
 	if s.Rand == nil {
 		if s.Seed == 0 {
@@ -93,14 +94,11 @@ func (s *Search[S]) SearchEpoch() {
 	n := s.root
 	s.Root() // Reset to root.
 	// Select the best leaf node by MAB policy.
-	for child := n.Min(); child != nil; n, child = child, child.Min() {
+	for child := selectChild(s, n); child != nil; n, child = child, selectChild(s, child) {
 		s.Select(child.Elem().Step)
 	}
-	// Expand the leaf node.
-	if child := expand(s, n); child != nil {
-		s.Select(child.Elem().Step)
-		n = child
+	expand(s, n) // Expand a new leaf node.
+	if rawScore, numRollouts := rollout(s, n); numRollouts != 0 {
+		backprop(n, rawScore, float64(numRollouts))
 	}
-	log, numRollouts := s.Rollout()        // Simulate rollouts.
-	backprop(n, log, float64(numRollouts)) // Backprop the Score.
 }

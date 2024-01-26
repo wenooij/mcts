@@ -6,24 +6,27 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-func backprop[S Step](n *heapordered.Tree[*node[S]], log Log, numRollouts float64) {
-	if numRollouts == 0 {
-		return
-	}
-	for ; n != nil; n = n.Parent() {
+func backprop[S Step](leaf *heapordered.Tree[*node[S]], rawScore Score, numRollouts float64) {
+	for n := leaf; n != nil; n = n.Parent() {
 		e := n.Elem()
-		e.Log = e.Log.Merge(log)
+		e.rawScore = e.rawScore.Add(rawScore)
 		e.numRollouts += numRollouts
-		e.priority = -ucb1(e.Log.Score(), e.numRollouts, numRollouts+numParentRollouts(n), e.exploreFactor)
-		n.Fix()
+		for _, child := range e.childSet {
+			childElem := child.Elem()
+			childElem.priority = -ucb1(childElem.RawScore(), childElem.numRollouts, e.numRollouts, childElem.exploreFactor)
+		}
+		n.Init()
 	}
 }
 
-func backpropNull[S Step](n *heapordered.Tree[*node[S]]) {
-	for ; n != nil; n = n.Parent() {
+func backpropNull[S Step](leaf *heapordered.Tree[*node[S]]) {
+	for n := leaf; n != nil; n = n.Parent() {
 		e := n.Elem()
-		e.priority = -ucb1(e.Log.Score(), e.numRollouts, numParentRollouts(n), e.exploreFactor)
-		n.Fix()
+		for _, child := range e.childSet {
+			childElem := child.Elem()
+			childElem.priority = -ucb1(childElem.RawScore(), childElem.numRollouts, e.numRollouts, childElem.exploreFactor)
+		}
+		n.Init()
 	}
 }
 
@@ -36,10 +39,10 @@ func numParentRollouts[S Step](n *heapordered.Tree[*node[S]]) float64 {
 }
 
 func ucb1(score, numRollouts, numParentRollouts float64, exploreFactor float64) float64 {
-	if numRollouts == 0 || numParentRollouts == 0 {
+	if numRollouts <= 0 || numParentRollouts <= 0 {
 		return math.Inf(+1)
 	}
-	explore := exploreFactor * math.Sqrt(math.Log(float64(numParentRollouts))/float64(numRollouts))
-	exploit := score / float64(numRollouts)
+	explore := exploreFactor * math.Sqrt(math.Log(numParentRollouts)/numRollouts)
+	exploit := score / numRollouts
 	return explore + exploit
 }

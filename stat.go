@@ -10,27 +10,29 @@ import (
 )
 
 type StatEntry[S Step] struct {
-	Step        S
-	Log         Log
-	Score       float64
-	RawScore    float64
-	NumRollouts float64
-	Priority    float64
-	Terminal    bool
-	NumChildren int
+	NodeType          NodeType
+	Step              S
+	Score             float64
+	RawScore          Score
+	NumRollouts       float64
+	NumParentRollouts float64
+	Priority          float64
+	ExploreFactor     float64
+	NumChildren       int
 }
 
 func makeStatEntry[S Step](n *heapordered.Tree[*node[S]]) StatEntry[S] {
 	e := n.Elem()
 	return StatEntry[S]{
-		Step:        e.Step,
-		Log:         e.Log,
-		RawScore:    e.Log.Score(),
-		Score:       e.NormScore(),
-		NumRollouts: e.numRollouts,
-		Priority:    e.priority,
-		Terminal:    e.terminal,
-		NumChildren: n.Len(),
+		NodeType:          e.NodeType,
+		Step:              e.Step,
+		Score:             e.NormScore(),
+		RawScore:          e.rawScore,
+		NumRollouts:       e.numRollouts,
+		NumParentRollouts: numParentRollouts(n),
+		Priority:          e.priority,
+		ExploreFactor:     e.exploreFactor,
+		NumChildren:       n.Len(),
 	}
 }
 
@@ -168,7 +170,7 @@ func MaxScoreFilter[S Step]() Filter[S] {
 
 // MaxRawScoreFilter picks the node with the best raw score.
 func MaxRawScoreFilter[S Step]() Filter[S] {
-	return MaxFilter[S](func(e StatEntry[S]) float64 { return e.RawScore })
+	return MaxFilter[S](func(e StatEntry[S]) float64 { return e.RawScore.Score() })
 }
 
 // MinPriorityFilter picks the node with the highest raw score.
@@ -188,18 +190,18 @@ func AnyFilter[S Step](r *rand.Rand) Filter[S] {
 
 // Subtree returns a Search for the subtree defined by the Variation v.
 //
-// If not all of v is present, the largest subvariation is selected.
-func (s Search[S]) Subtree(v Variation[S]) *Search[S] {
+// If not all of v is present, Subtree returns nil.
+func (s Search[S]) Subtree(steps ...S) *Search[S] {
 	n := s.root
 	if n == nil {
-		return &s
+		return nil
 	}
-	for _, e := range v {
-		child := getChild(n, e.Step)
+	for _, step := range steps {
+		child := getChild(n, step)
 		if child == nil {
 			// Stop here.
 			// The node is not present in the subtree.
-			break
+			return nil
 		}
 		n = child
 	}

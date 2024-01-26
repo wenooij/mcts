@@ -5,16 +5,12 @@ import (
 	"strconv"
 
 	"github.com/wenooij/mcts"
+	"github.com/wenooij/mcts/model"
 )
 
 type Step int
 
 func (s Step) String() string { return strconv.FormatInt(int64(s), 10) }
-
-type ScalarLog float64
-
-func (x ScalarLog) Merge(lg mcts.Log) mcts.Log { x += lg.(ScalarLog); return x }
-func (x ScalarLog) Score() float64             { return float64(x) }
 
 type Search struct {
 	B    int
@@ -32,7 +28,7 @@ func (s Search) Expand() []mcts.FrontierStep[Step] {
 	return b
 }
 
-func (s Search) Root()                    {}
-func (s Search) Select(Step)              {}
-func (s Search) Log() mcts.Log            { return ScalarLog(0) }
-func (s Search) Rollout() (mcts.Log, int) { return ScalarLog(s.Rand.Float64()), 1 }
+func (s Search) Root()                      {}
+func (s Search) Select(Step)                {}
+func (s Search) Score() mcts.Score          { return model.Score(rand.NormFloat64()) }
+func (s Search) Rollout() (mcts.Score, int) { return s.Score(), 1 }

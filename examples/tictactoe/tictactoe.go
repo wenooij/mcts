@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 	"slices"
 	"time"
 
@@ -103,26 +102,6 @@ func (n *tictactoeNode) computeTerminal() (winner byte, terminal bool) {
 	}
 }
 
-type tictactoeLog struct {
-	turn   byte
-	scoreX float64
-	scoreO float64
-}
-
-func (e *tictactoeLog) Merge(lg mcts.Log) mcts.Log {
-	t := lg.(*tictactoeLog)
-	e.scoreX += t.scoreX
-	e.scoreO += t.scoreO
-	return e
-}
-
-func (e *tictactoeLog) Score() float64 {
-	if e.turn == O {
-		return float64(e.scoreX - e.scoreO)
-	}
-	return float64(e.scoreO - e.scoreX)
-}
-
 func (s *SearchPlugin) Root() {
 	s.node.Root()
 }
@@ -133,7 +112,8 @@ func (s *SearchPlugin) Expand() []mcts.FrontierStep[tictactoeStep] {
 	}
 	s.steps = s.steps[:0]
 	for _, i := range s.node.open {
-		s.steps = append(s.steps, mcts.FrontierStep[tictactoeStep]{Step: tictactoeStep{cell: i, turn: s.node.turn()}})
+		s.steps = append(s.steps, mcts.FrontierStep[tictactoeStep]{
+			Step: tictactoeStep{cell: i, turn: s.node.turn()}})
 	}
 	return s.steps
 }
@@ -147,37 +127,28 @@ func (s *SearchPlugin) Select(step tictactoeStep) {
 	n.winner, n.terminal = n.computeTerminal()
 }
 
-func (s *SearchPlugin) Log() mcts.Log {
-	return &tictactoeLog{turn: s.node.turn()}
-}
-
-func (s *SearchPlugin) Rollout() (mcts.Log, int) {
-	log := &tictactoeLog{turn: s.node.turn()}
-	for s.forward(log) {
+func (s *SearchPlugin) Score() mcts.Score {
+	scores := model.Scores{PlayerScores: make([]float64, 2)}
+	if s.node.turn() == O {
+		scores.Player = 1
 	}
-	return log, 1
-}
-
-func (s *SearchPlugin) forward(log *tictactoeLog) bool {
-	steps := s.Expand()
-	if len(steps) == 0 {
-		switch s.node.winner {
-		case X:
-			log.scoreX++
-		case O:
-			log.scoreO++
-		}
-		return false
+	if !s.node.terminal {
+		return scores
 	}
-	s.Select(steps[rand.Intn(len(steps))].Step)
-	return true
+	switch s.node.winner {
+	case X:
+		scores.PlayerScores[0]++
+	case O:
+		scores.PlayerScores[1]++
+	}
+	return scores
 }
 
 func main() {
 	si := newSearchPlugin()
 
 	done := make(chan struct{})
-	timer := time.After(10 * time.Second)
+	timer := time.After(1 * time.Second)
 	go func() {
 		<-timer
 		done <- struct{}{}

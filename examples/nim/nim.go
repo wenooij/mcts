@@ -42,11 +42,11 @@ func (n *nimState) Root() {
 	}
 }
 
-func (n *nimState) Turn() int {
+func (n *nimState) Player() int {
 	return n.depth & 1
 }
 
-func (n *nimState) Result() (nimResult, bool) {
+func (n *nimState) Choices() int {
 	var choices int
 	for _, p := range n.piles {
 		if p == 0 {
@@ -57,20 +57,23 @@ func (n *nimState) Result() (nimResult, bool) {
 				continue
 			}
 		}
-		return nimResult{}, false
+		break
 	}
-	turn := n.Turn()
-	switch choices {
+	return choices
+}
+
+func (n *nimState) Score() mcts.Score {
+	player := n.Player()
+	scores := model.Scores{Player: player, PlayerScores: make([]float64, 2)}
+	switch n.Choices() {
 	case 0:
-		res := nimResult{turn: turn}
-		res.wins[turn]++
-		return res, true
+		scores.PlayerScores[player]++
+		return scores
 	case 1:
-		res := nimResult{turn: turn}
-		res.wins[1-turn]++
-		return res, true
+		scores.PlayerScores[1-player]++
+		return scores
 	}
-	return nimResult{}, false
+	return scores
 }
 
 func (n *nimState) Select(s nimStep) {
@@ -90,42 +93,6 @@ func (s *nimState) Expand() []mcts.FrontierStep[nimStep] {
 		}
 	}
 	return steps
-}
-
-type nimResult struct {
-	turn int
-	wins [2]int
-}
-
-func (r nimResult) Merge(lg mcts.Log) mcts.Log {
-	res := lg.(nimResult)
-	r.wins[0] += res.wins[0]
-	r.wins[1] += res.wins[1]
-	return r
-}
-
-func (r nimResult) Score() float64 {
-	if r.turn == 0 {
-		return float64(r.wins[0] - r.wins[1])
-	}
-	return float64(r.wins[1] - r.wins[0])
-}
-
-func (n *nimState) Log() mcts.Log {
-	return nimResult{turn: n.Turn()}
-}
-
-func (s *nimState) Rollout() (mcts.Log, int) {
-	for {
-		if r, ok := s.Result(); ok {
-			return r, 1
-		}
-		steps := s.Expand()
-		if len(steps) == 0 {
-			panic("no Steps but Result returned !ok")
-		}
-		s.Select(steps[s.r.Intn(len(steps))].Step)
-	}
 }
 
 type nimPile int
