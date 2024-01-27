@@ -16,13 +16,18 @@ type StatEntry[S Step] struct {
 	RawScore          Score
 	NumRollouts       float64
 	NumParentRollouts float64
-	Priority          float64
+	PredictorWeight   float64
 	ExploreFactor     float64
+	Priority          float64
+	ExploitTerm       float64
+	ExploreTerm       float64
+	PredictorTerm     float64
 	NumChildren       int
 }
 
 func makeStatEntry[S Step](n *heapordered.Tree[*node[S]]) StatEntry[S] {
 	e := n.Elem()
+	exploreTerm := explore(e.numRollouts, numParentRollouts(n))
 	return StatEntry[S]{
 		NodeType:          e.NodeType,
 		Step:              e.Step,
@@ -31,7 +36,11 @@ func makeStatEntry[S Step](n *heapordered.Tree[*node[S]]) StatEntry[S] {
 		NumRollouts:       e.numRollouts,
 		NumParentRollouts: numParentRollouts(n),
 		Priority:          e.priority,
+		PredictorWeight:   getWeight(n),
 		ExploreFactor:     e.exploreFactor,
+		ExploitTerm:       exploit(e.RawScore(), e.numRollouts),
+		ExploreTerm:       exploreTerm,
+		PredictorTerm:     predictor(e.weight, getParentWeight(n), exploreTerm),
 		NumChildren:       n.Len(),
 	}
 }

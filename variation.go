@@ -79,7 +79,7 @@ func (s *Search[S]) InsertV(v Variation[S]) {
 		var created bool
 		n, created = getOrCreateChild(s, n, FrontierStep[S]{
 			Step:          stat.Step,
-			Priority:      stat.Priority,
+			Weight:        stat.PredictorWeight,
 			ExploreFactor: stat.ExploreFactor,
 		})
 		e := n.Elem()

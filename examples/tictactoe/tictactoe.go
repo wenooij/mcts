@@ -46,7 +46,6 @@ type tictactoeNode struct {
 	terminal bool
 	winner   byte
 	state    [9]byte
-	open     []byte
 }
 
 func (n *tictactoeNode) Root() {
@@ -58,11 +57,6 @@ func (n *tictactoeNode) Root() {
 		0, 0, 0,
 		0, 0, 0,
 	})
-	n.open = append(n.open[:0],
-		0, 1, 2,
-		3, 4, 5,
-		6, 7, 8,
-	)
 }
 
 func (n *tictactoeNode) turn() byte {
@@ -73,7 +67,7 @@ func (n *tictactoeNode) turn() byte {
 }
 
 func (n *tictactoeNode) computeTerminal() (winner byte, terminal bool) {
-	if n.depth < 4 {
+	if n.depth < 5 {
 		return 0, false
 	}
 	s := n.state
@@ -86,19 +80,14 @@ func (n *tictactoeNode) computeTerminal() (winner byte, terminal bool) {
 	testDiag1 := func() bool { return test(0, 4, 8) }
 	testDiag2 := func() bool { return test(2, 4, 6) }
 	switch {
-	case testRow(0) || testRow(3) || testRow(6) ||
-		testCol(0) || testCol(1) || testCol(2) ||
-		testDiag1() || testDiag2():
-		n.terminal = true
-		if n.turn() == X {
-			return O, true
-		}
-		return X, true
-	case len(n.open) == 0:
-		n.terminal = true
-		return 0, true
+	case testRow(0), testCol(0):
+		return s[0], true
+	case testRow(3), testCol(1), testDiag1(), testDiag2():
+		return s[4], true
+	case testRow(6), testCol(2):
+		return s[8], true
 	default:
-		return 0, false
+		return 0, n.depth >= 9
 	}
 }
 
@@ -111,9 +100,22 @@ func (s *SearchPlugin) Expand() []mcts.FrontierStep[tictactoeStep] {
 		return nil
 	}
 	s.steps = s.steps[:0]
-	for _, i := range s.node.open {
+	for i, state := range s.node.state {
+		if state != 0 {
+			continue
+		}
+		weight := 1.0
+		step := tictactoeStep{cell: byte(i), turn: s.node.turn()}
+		turn := s.node.turn()
+		s.Select(step)
+		if s.node.winner == turn {
+			// weight = 1000000
+		}
+		s.Unselect(step)
 		s.steps = append(s.steps, mcts.FrontierStep[tictactoeStep]{
-			Step: tictactoeStep{cell: i, turn: s.node.turn()}})
+			Step:   step,
+			Weight: weight,
+		})
 	}
 	return s.steps
 }
@@ -122,8 +124,15 @@ func (s *SearchPlugin) Select(step tictactoeStep) {
 	n := s.node
 	n.depth++
 	idx := step.cell
-	n.open = slices.DeleteFunc(n.open, func(i byte) bool { return i == idx })
 	n.state[idx] = step.turn
+	n.winner, n.terminal = n.computeTerminal()
+}
+
+func (s *SearchPlugin) Unselect(step tictactoeStep) {
+	n := s.node
+	n.depth--
+	idx := step.cell
+	n.state[idx] = 0
 	n.winner, n.terminal = n.computeTerminal()
 }
 
@@ -158,7 +167,6 @@ func main() {
 		SearchInterface: si,
 		Done:            done,
 	}
-	model.FitParams(&opts)
 	fmt.Printf("Using c=%.4f\n---\n", opts.ExploreFactor)
 	opts.Search()
 

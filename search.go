@@ -1,7 +1,6 @@
 package mcts
 
 import (
-	"math"
 	"math/rand"
 	"time"
 
@@ -9,7 +8,9 @@ import (
 )
 
 // DefaultExploreFactor based on the theory assuming scores normalized to the interval [-1, +1].
-const DefaultExploreFactor = math.Sqrt2
+//
+// In practice, ExploreFactor is a tunable hyperparameter.
+const DefaultExploreFactor = 1.224744871391589 // √3/√2
 
 // Search contains options used to run the MCTS Search.
 //
@@ -40,7 +41,7 @@ type Search[S Step] struct {
 	// MAB policy.
 	//
 	// This should be made roughly proportional to scores obtained from random rollouts.
-	// Zero uses the default value of √2.
+	// Zero uses the default value of DefaultExploreFactor.
 	ExploreFactor float64
 }
 

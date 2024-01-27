@@ -13,13 +13,14 @@ type Step interface {
 
 // FrontierStep wraps a step returned from Expand with extra parameters to apply to its subtree.
 //
-// Priority is used to seed the initial ordering of steps in the MAB min-priority-queue.
-// Ideally, the priority value for X should be set to -E[Score(X)], but in practice
-// a heuristic is used. Like ExploreFactor, it is critical that the priority be roughly
-// proportional to the values returned from Score, otherwise a small value such as -∞
-// can be used to guarantee that expanded nodes are explored at least once.
-// In larger state spaces this may be counterproductive.
-// Priority only affects the initial value. The next priority is recomputed in backprop.
+// InitialScore sets the score value for newly created subtrees.
+// This is optional for implementations satisfying ScoreInterface.
+//
+// Weight is an optional predictor used to bias the MAB policy as described in
+// <Rosin, Christopher D. "Multi-armed bandits with episode context."
+// Annals of Mathematics and Artificial Intelligence 61.3 (2011)>
+// Ideally, the predictor weight for X should be set to E[Mean(X_Score)].
+// The weight heuristic is usually tuned in an offline process.
 //
 // ExploreFactor defines the exploration weighting for the node and its subtree.
 // If this is 0, the parent's ExploreFactor is copied. By default, a ExploreFactor is
@@ -28,7 +29,7 @@ type Step interface {
 type FrontierStep[S Step] struct {
 	Step          S
 	InitialScore  Score
-	Priority      float64
+	Weight        float64
 	ExploreFactor float64
 }
 

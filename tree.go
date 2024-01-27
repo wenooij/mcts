@@ -17,11 +17,13 @@ type node[S Step] struct {
 	rawScore      Score
 	numRollouts   float64
 	exploreFactor float64
+	weight        float64
 	priority      float64
 
 	// Topology.
-	childSet map[S]*heapordered.Tree[*node[S]]
-	Step     S
+	childSet    map[S]*heapordered.Tree[*node[S]]
+	totalWeight float64 // Sum of child weights.
+	Step        S
 }
 
 // newNode creates a new tree node element.
@@ -32,6 +34,7 @@ func newNode[S Step](step FrontierStep[S]) *node[S] {
 		// This will be recomputed after the first attempt.
 		priority: math.Inf(-1),
 		rawScore: step.InitialScore,
+		weight:   step.Weight,
 		childSet: make(map[S]*heapordered.Tree[*node[S]]),
 		Step:     step.Step,
 	}
@@ -55,7 +58,7 @@ func (e *node[S]) NormScore() float64 {
 
 func newTree[S Step](s *Search[S]) *heapordered.Tree[*node[S]] {
 	var sentinel S
-	step := FrontierStep[S]{Step: sentinel, Priority: math.Inf(-1), ExploreFactor: s.ExploreFactor}
+	step := FrontierStep[S]{Step: sentinel, ExploreFactor: s.ExploreFactor}
 	root := newNode[S](step)
 	return heapordered.NewTree(root)
 }
@@ -76,4 +79,21 @@ func getOrCreateChild[S Step](s *Search[S], parent *heapordered.Tree[*node[S]], 
 
 func getChild[S Step](root *heapordered.Tree[*node[S]], step S) (child *heapordered.Tree[*node[S]]) {
 	return root.Elem().childSet[step]
+}
+
+func getParentWeight[S Step](n *heapordered.Tree[*node[S]]) float64 {
+	parent := n.Parent()
+	if parent == nil {
+		return 0
+	}
+	return parent.Elem().totalWeight
+}
+
+func getWeight[S Step](n *heapordered.Tree[*node[S]]) float64 {
+	totalWeight := getParentWeight(n)
+	if totalWeight == 0 {
+		return 0
+	}
+	e := n.Elem()
+	return e.weight / e.totalWeight
 }

@@ -20,10 +20,7 @@ type Search struct {
 func (s Search) Expand() []mcts.FrontierStep[Step] {
 	b := make([]mcts.FrontierStep[Step], s.B)
 	for i := range b {
-		b[i] = mcts.FrontierStep[Step]{
-			Step:     Step(i),
-			Priority: s.Rand.Float64(),
-		}
+		b[i] = mcts.FrontierStep[Step]{Step: Step(i)}
 	}
 	return b
 }

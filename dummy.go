@@ -10,7 +10,6 @@ import (
 type dummyScore float64
 
 func (s dummyScore) Score() float64    { return float64(s) }
-func (s dummyScore) Clone() Score      { return s }
 func (s dummyScore) Add(b Score) Score { return s + b.(dummyScore) }
 
 type dummyStep int
@@ -25,15 +24,12 @@ type dummySearch struct {
 func (s dummySearch) Expand() []FrontierStep[dummyStep] {
 	b := make([]FrontierStep[dummyStep], s.B)
 	for i := range b {
-		b[i] = FrontierStep[dummyStep]{
-			Step:     dummyStep(i),
-			Priority: s.Rand.Float64(),
-		}
+		b[i] = FrontierStep[dummyStep]{Step: dummyStep(i)}
 	}
 	return b
 }
 
 func (s dummySearch) Root()                 {}
 func (s dummySearch) Select(dummyStep)      {}
-func (s dummySearch) Score() Score          { return dummyScore(s.Rand.Float64()) }
+func (s dummySearch) Score() Score          { return dummyScore(s.Rand.NormFloat64()) }
 func (s dummySearch) Rollout() (Score, int) { return s.Score(), 1 }

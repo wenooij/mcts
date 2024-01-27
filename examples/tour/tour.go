@@ -126,10 +126,7 @@ func (g *tourSearch) Expand() []mcts.FrontierStep[tourStep] {
 	i := g.node.tour[g.node.depth]
 	g.steps = g.steps[:0]
 	for j := 0; j < len(g.node.tour); j++ {
-		g.steps = append(g.steps, mcts.FrontierStep[tourStep]{
-			Step:     tourStep{i, j},
-			Priority: 0,
-		})
+		g.steps = append(g.steps, mcts.FrontierStep[tourStep]{Step: tourStep{i, j}})
 	}
 	return g.steps
 }
