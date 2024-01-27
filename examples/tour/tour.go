@@ -75,6 +75,7 @@ func (n *tourNode) apply(step tourStep) {
 type tourSearch struct {
 	m     map[int]*tourPos
 	r     *rand.Rand
+	summ  *model.SummaryStats
 	root  []int
 	steps []mcts.FrontierStep[tourStep]
 	node  *tourNode
@@ -116,7 +117,10 @@ func (g *tourSearch) Score() mcts.Score {
 		last = curr
 	}
 	distance += last.DistanceTo(first)
-	return model.Score(-distance) // Minimize distance.
+	if g.summ == nil {
+		return model.Score(-distance) // Minimize distance.
+	}
+	return model.Score(g.summ.ZScore(-distance))
 }
 
 func (g *tourSearch) Expand() []mcts.FrontierStep[tourStep] {
@@ -187,8 +191,9 @@ func main() {
 		SearchInterface: s,
 		Done:            done,
 	}
-	model.FitParams(&opts)
-	fmt.Printf("Using c=%.4f\n---\n", opts.ExploreFactor)
+	summary := model.Summarize(&opts)
+	fmt.Println(summary.String())
+	s.summ = &summary
 	opts.Search()
 
 	pv := opts.PV()
@@ -211,5 +216,5 @@ func main() {
 	}
 	fmt.Println()
 	fmt.Println("---")
-	fmt.Println(-pv.Leaf().Score)
+	fmt.Println(-pv.Leaf().Score*summary.Stddev - summary.Mean)
 }
