@@ -91,6 +91,8 @@ func (s *Search[S]) Search() {
 }
 
 // SearchEpoch runs a single epoch of MCTS.
+//
+// Init must have be called first.
 func (s *Search[S]) SearchEpoch() {
 	n := s.root
 	s.Root() // Reset to root.
