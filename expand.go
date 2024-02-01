@@ -9,15 +9,16 @@ import (
 // expand calls Expand in the search interface to get more moves.
 //
 // the fringe argument is set to true during the rollout phase.
-func expand[S Step](s *Search[S], n *heapordered.Tree[*node[S]]) *heapordered.Tree[*node[S]] {
-	moves := s.Expand(0)
-	if len(moves) == 0 {
+func expand[E Action](s *Search[E], n *heapordered.Tree[*node[E]]) *heapordered.Tree[*node[E]] {
+	actions := s.Expand(0)
+
+	if len(actions) == 0 {
 		// Set the terminal node bit.
 		n.Elem().NodeType |= NodeTerminal
 		return nil
 	}
 	// Avoid bias from move generation order.
-	s.Rand.Shuffle(len(moves), func(i, j int) { moves[i], moves[j] = moves[j], moves[i] })
+	s.Rand.Shuffle(len(actions), func(i, j int) { actions[i], actions[j] = actions[j], actions[i] })
 
 	// Clear terminal bit.
 	n.Elem().NodeType &= ^NodeTerminal
@@ -26,12 +27,12 @@ func expand[S Step](s *Search[S], n *heapordered.Tree[*node[S]]) *heapordered.Tr
 		uniformWeight  float64
 		uniformWeights = true
 	)
-	for i, step := range moves {
-		child, _ := getOrCreateChild(s, n, step)
+	for i, a := range actions {
+		child, _ := getOrCreateChild(s, n, a)
 		w := child.Elem().weight
 		if i == 0 {
 			uniformWeight = w
-		} else if step.Weight != uniformWeight {
+		} else if a.Weight != uniformWeight {
 			uniformWeights = false
 		}
 		// Sum predictor weights to later normalize.

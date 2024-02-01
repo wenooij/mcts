@@ -9,9 +9,9 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-type StatEntry[S Step] struct {
+type StatEntry[E Action] struct {
 	NodeType          NodeType
-	Step              S
+	Action            E
 	Score             float64
 	RawScore          Score
 	NumRollouts       float64
@@ -25,11 +25,11 @@ type StatEntry[S Step] struct {
 	NumChildren       int
 }
 
-func makeStatEntry[S Step](n *heapordered.Tree[*node[S]]) StatEntry[S] {
+func makeStatEntry[E Action](n *heapordered.Tree[*node[E]]) StatEntry[E] {
 	e := n.Elem()
-	return StatEntry[S]{
+	return StatEntry[E]{
 		NodeType:          e.NodeType,
-		Step:              e.Step,
+		Action:            e.Action,
 		Score:             e.NormScore(),
 		RawScore:          e.rawScore,
 		NumRollouts:       e.numRollouts,
@@ -44,8 +44,8 @@ func makeStatEntry[S Step](n *heapordered.Tree[*node[S]]) StatEntry[S] {
 	}
 }
 
-func (e StatEntry[S]) appendString(sb *strings.Builder) {
-	fmt.Fprintf(sb, "[%-4.3f] %-6s (", e.Score, e.Step)
+func (e StatEntry[E]) appendString(sb *strings.Builder) {
+	fmt.Fprintf(sb, "[%-4.3f] %-6s (", e.Score, e.Action)
 	switch n := e.NumRollouts; {
 	case n < 1000:
 		fmt.Fprintf(sb, "%.0f N", n)
@@ -58,12 +58,12 @@ func (e StatEntry[S]) appendString(sb *strings.Builder) {
 }
 
 // Filter returns matching stat entries from the input.
-type Filter[S Step] func([]StatEntry[S]) []StatEntry[S]
+type Filter[E Action] func([]StatEntry[E]) []StatEntry[E]
 
 // PredicateFilter returns a filter which selects entries matching f.
-func PredicateFilter[S Step](f func(StatEntry[S]) bool) Filter[S] {
-	return func(input []StatEntry[S]) []StatEntry[S] {
-		var res []StatEntry[S]
+func PredicateFilter[E Action](f func(StatEntry[E]) bool) Filter[E] {
+	return func(input []StatEntry[E]) []StatEntry[E] {
+		var res []StatEntry[E]
 		for _, e := range input {
 			if f(e) {
 				res = append(res, e)
@@ -77,8 +77,8 @@ func PredicateFilter[S Step](f func(StatEntry[S]) bool) Filter[S] {
 //
 // Filters are chained together until only one entry remains per step.
 // To guarantee a line is selected, add AnyFilter as the last element in the chain.
-func (r Search[S]) FilterV(filters ...Filter[S]) Variation[S] {
-	var res Variation[S]
+func (r Search[E]) FilterV(filters ...Filter[E]) Variation[E] {
+	var res Variation[E]
 	node := r.root
 	res = append(res, makeStatEntry(node))
 	for node != nil {
@@ -87,13 +87,13 @@ func (r Search[S]) FilterV(filters ...Filter[S]) Variation[S] {
 			break
 		}
 		res = append(res, *e)
-		node = getChild(node, e.Step)
+		node = getChild(node, e.Action)
 	}
 	return res
 }
 
-func filterStatNode[S Step](node *heapordered.Tree[*node[S]], filters ...Filter[S]) *StatEntry[S] {
-	stat := make([]StatEntry[S], 0, node.Len())
+func filterStatNode[E Action](node *heapordered.Tree[*node[E]], filters ...Filter[E]) *StatEntry[E] {
+	stat := make([]StatEntry[E], 0, node.Len())
 	for _, n := range node.Elem().childSet {
 		stat = append(stat, makeStatEntry(n))
 	}
@@ -112,16 +112,16 @@ func filterStatNode[S Step](node *heapordered.Tree[*node[S]], filters ...Filter[
 	return nil
 }
 
-// Best returns one of the best Steps for this Search root or nil.
-func (r Search[S]) Best() *StatEntry[S] {
+// Best returns one of the best actions for this Search root or nil.
+func (r Search[E]) Best() *StatEntry[E] {
 	if r.root == nil {
 		return nil
 	}
-	return filterStatNode(r.root, MaxRolloutsFilter[S](), AnyFilter[S](r.Rand))
+	return filterStatNode(r.root, MaxRolloutsFilter[E](), AnyFilter[E](r.Rand))
 }
 
 // MaxFilter returns a filter which selects the entries maximumizing f.
-func MaxFilter[S Step](f func(e StatEntry[S]) float64) Filter[S] {
+func MaxFilter[E Action](f func(e StatEntry[E]) float64) Filter[E] {
 	return maxCmpFilter(f, func(a, b float64) int {
 		if a == b {
 			return 0
@@ -134,7 +134,7 @@ func MaxFilter[S Step](f func(e StatEntry[S]) float64) Filter[S] {
 }
 
 // MinFilter returns a filter which selects the entries maximumizing f.
-func MinFilter[S Step](f func(e StatEntry[S]) float64) Filter[S] {
+func MinFilter[E Action](f func(e StatEntry[E]) float64) Filter[E] {
 	return maxCmpFilter(f, func(a, b float64) int {
 		if a == b {
 			return 0
@@ -146,10 +146,10 @@ func MinFilter[S Step](f func(e StatEntry[S]) float64) Filter[S] {
 	})
 }
 
-func maxCmpFilter[S Step](f func(e StatEntry[S]) float64, cmp func(float64, float64) int) Filter[S] {
-	return func(input []StatEntry[S]) []StatEntry[S] {
+func maxCmpFilter[E Action](f func(e StatEntry[E]) float64, cmp func(float64, float64) int) Filter[E] {
+	return func(input []StatEntry[E]) []StatEntry[E] {
 		var (
-			maxEntries []StatEntry[S]
+			maxEntries []StatEntry[E]
 			maxValue   float64
 		)
 		for _, e := range input {
@@ -167,44 +167,44 @@ func maxCmpFilter[S Step](f func(e StatEntry[S]) float64, cmp func(float64, floa
 }
 
 // MaxRolloutsFilter returns a filter which selects the entries with maximum rollouts.
-func MaxRolloutsFilter[S Step]() Filter[S] {
-	return MaxFilter[S](func(e StatEntry[S]) float64 { return e.NumRollouts })
+func MaxRolloutsFilter[E Action]() Filter[E] {
+	return MaxFilter[E](func(e StatEntry[E]) float64 { return e.NumRollouts })
 }
 
 // MaxScoreFilter returns a filter which selects the entries with the best normalized score.
-func MaxScoreFilter[S Step]() Filter[S] {
-	return MaxFilter[S](func(e StatEntry[S]) float64 { return e.Score })
+func MaxScoreFilter[E Action]() Filter[E] {
+	return MaxFilter[E](func(e StatEntry[E]) float64 { return e.Score })
 }
 
 // MaxRawScoreFilter picks the node with the best raw score.
-func MaxRawScoreFilter[S Step]() Filter[S] {
-	return MaxFilter[S](func(e StatEntry[S]) float64 { return e.RawScore.Score() })
+func MaxRawScoreFilter[E Action]() Filter[E] {
+	return MaxFilter[E](func(e StatEntry[E]) float64 { return e.RawScore.Score() })
 }
 
 // MinPriorityFilter picks the node with the highest raw score.
-func HighestPriorityFilter[S Step]() Filter[S] {
-	return MinFilter[S](func(e StatEntry[S]) float64 { return e.Priority })
+func HighestPriorityFilter[E Action]() Filter[E] {
+	return MinFilter[E](func(e StatEntry[E]) float64 { return e.Priority })
 }
 
 // AnyFilter returns a filter which selects a random entry.
-func AnyFilter[S Step](r *rand.Rand) Filter[S] {
-	return func(input []StatEntry[S]) []StatEntry[S] {
+func AnyFilter[E Action](r *rand.Rand) Filter[E] {
+	return func(input []StatEntry[E]) []StatEntry[E] {
 		if len(input) == 0 {
 			return nil
 		}
-		return []StatEntry[S]{input[r.Intn(len(input))]}
+		return []StatEntry[E]{input[r.Intn(len(input))]}
 	}
 }
 
 // Subtree returns a Search for the subtree defined by the Variation v.
 //
 // If not all of v is present, Subtree returns nil.
-func (s Search[S]) Subtree(steps ...S) *Search[S] {
+func (s Search[E]) Subtree(actions ...E) *Search[E] {
 	n := s.root
 	if n == nil {
 		return nil
 	}
-	for _, step := range steps {
+	for _, step := range actions {
 		child := getChild(n, step)
 		if child == nil {
 			// Stop here.
@@ -218,24 +218,24 @@ func (s Search[S]) Subtree(steps ...S) *Search[S] {
 }
 
 // Reducer is a function which transforms the entry to a element of type T.
-type Reducer[S Step, T any] func(e StatEntry[S]) T
+type Reducer[E Action, T any] func(e StatEntry[E]) T
 
 // Reduce the subtree by calling r and return the final result.
-func Reduce[S Step, T any](s Search[S], r Reducer[S, T]) (res T) { return reduceNode(s.root, r) }
+func Reduce[E Action, T any](s Search[E], r Reducer[E, T]) (res T) { return reduceNode(s.root, r) }
 
-func ReduceV[S Step, T any](s Search[S], r Reducer[S, T], v Variation[S]) (n int, res T) {
+func ReduceV[E Action, T any](s Search[E], r Reducer[E, T], v Variation[E]) (n int, res T) {
 	node := s.root
 	for i, e := range v {
 		if node == nil {
 			return i, res
 		}
 		res = r(makeStatEntry(node))
-		node = getChild(node, e.Step)
+		node = getChild(node, e.Action)
 	}
 	return len(v), res
 }
 
-func reduceNode[S Step, T any](root *heapordered.Tree[*node[S]], r Reducer[S, T]) (res T) {
+func reduceNode[E Action, T any](root *heapordered.Tree[*node[E]], r Reducer[E, T]) (res T) {
 	stat := makeStatEntry(root)
 	res = r(stat)
 	for _, e := range root.Elem().childSet {
@@ -251,9 +251,9 @@ type MinMax struct {
 }
 
 // MinMax returns the min and max values in the Search subtree.
-func MinMaxReducer[S Step](f func(StatEntry[S]) float64) Reducer[S, MinMax] {
+func MinMaxReducer[E Action](f func(StatEntry[E]) float64) Reducer[E, MinMax] {
 	res := MinMax{math.Inf(+1), math.Inf(-1)}
-	return func(e StatEntry[S]) MinMax {
+	return func(e StatEntry[E]) MinMax {
 		v := f(e)
 		if v < res.Min {
 			res.Min = v

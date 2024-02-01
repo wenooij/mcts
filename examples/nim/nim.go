@@ -9,12 +9,12 @@ import (
 	"github.com/wenooij/mcts/model"
 )
 
-type nimStep struct {
+type nimAction struct {
 	pile int
 	n    int
 }
 
-func (s nimStep) String() string {
+func (s nimAction) String() string {
 	if s.n == 0 {
 		return "#"
 	}
@@ -76,23 +76,23 @@ func (n *nimState) Score() mcts.Score {
 	return scores
 }
 
-func (n *nimState) Select(s nimStep) {
+func (n *nimState) Select(s nimAction) {
 	n.piles[s.pile] -= nimPile(s.n)
 }
 
-func (s *nimState) Expand(int) []mcts.FrontierStep[nimStep] {
-	var steps []mcts.FrontierStep[nimStep]
+func (s *nimState) Expand(int) []mcts.FrontierAction[nimAction] {
+	var actions []mcts.FrontierAction[nimAction]
 	for i, p := range s.piles {
 		switch p {
 		case 0:
 		case 1:
-			steps = append(steps, mcts.FrontierStep[nimStep]{Step: nimStep{i, 1}})
+			actions = append(actions, mcts.FrontierAction[nimAction]{Action: nimAction{i, 1}})
 		default:
-			steps = append(steps, mcts.FrontierStep[nimStep]{Step: nimStep{i, int(p)}},
-				mcts.FrontierStep[nimStep]{Step: nimStep{i, int(p) - 1}})
+			actions = append(actions, mcts.FrontierAction[nimAction]{Action: nimAction{i, int(p)}},
+				mcts.FrontierAction[nimAction]{Action: nimAction{i, int(p) - 1}})
 		}
 	}
-	return steps
+	return actions
 }
 
 type nimPile int
@@ -108,7 +108,7 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search[nimStep]{SearchInterface: n}
+	opts := mcts.Search[nimAction]{SearchInterface: n}
 	for {
 		opts.Search()
 		select {

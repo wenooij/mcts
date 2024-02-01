@@ -8,7 +8,7 @@ import (
 
 func TestBackpropFeatures(t *testing.T) {
 	r := rand.New(rand.NewSource(1337))
-	s := &Search[dummyStep]{
+	s := &Search[dummyAction]{
 		SearchInterface: dummySearch{B: 1, Rand: r},
 		Rand:            r,
 		NumEpisodes:     3,
@@ -24,7 +24,7 @@ func TestBackpropFeatures(t *testing.T) {
 	if gotP, wantP := gotPV[0].Priority, math.Inf(-1); gotP != wantP {
 		t.Errorf("TestBackpropFeatures() got root Priority = %f, want %f", gotP, wantP)
 	}
-	// Expected number of rollouts at each step.
+	// Expected number of rollouts at each PV node.
 	if gotN, wantN := gotPV[0].NumRollouts, 3.0; gotN != wantN {
 		t.Errorf("TestBackpropFeatures() got PV[0] NumRollouts = %f, want %f", gotN, wantN)
 	}

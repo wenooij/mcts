@@ -1,17 +1,15 @@
 // Package mcts provides an implementation of general multi-agent Monte-Carlo tree search (MCTS).
 package mcts
 
-import "fmt"
-
-// Step represents an atomic an unambiguous transition in a game tree.
+// Action represents an edge in the a game tree.
 //
-// String should return the Step's standard unambiguous representation.
-type Step interface {
+// String should return a standard representation of the Action.
+type Action interface {
 	comparable
-	fmt.Stringer
+	String() string
 }
 
-// FrontierStep wraps a step returned from Expand with extra parameters to apply to its subtree.
+// FrontierAction wraps an Action returned from Expand with extra parameters to apply to its subtree.
 //
 // Weight is an optional predictor used to bias the MAB policy as described in
 // <Rosin, Christopher D. "Multi-armed bandits with episode context."
@@ -24,8 +22,8 @@ type Step interface {
 // If this is 0, the parent's ExploreFactor is copied. By default, a ExploreFactor is
 // applied uniformly to all nodes. It is critical that ExploreFactor be roughly
 // proportional to the values returned from Score.
-type FrontierStep[S Step] struct {
-	Step          S
+type FrontierAction[E Action] struct {
+	Action        E
 	Weight        float64
 	ExploreFactor float64
 }
@@ -34,15 +32,15 @@ type FrontierStep[S Step] struct {
 //
 // SearchInterface provides a simple flat interface:
 //
-//   - Select moves the state of the game forward one Step.
-//   - Expand reveals available Steps at the current state.
+//   - Select moves the state of the game forward by applying the Action.
+//   - Expand reveals available actions at the current state.
 //   - Root reset the game tree to the state at the beginning of search.
 //
 // The game tree is managed by this package, so it is not required to implement
 // one yourself, so long as Select and Root are relatively inexpensive.
 // Expand will not be called again for nodes in the game tree.
 //
-// MCTS proceeds from the root, down the game tree, selecting the best Step
+// MCTS proceeds from the root, down the game tree, selecting the best action
 // at each level, until it reaches a frontier leaf node where a random rollout
 // is started. The implementor has two choices for the rollout:
 //
@@ -52,7 +50,7 @@ type FrontierStep[S Step] struct {
 // Which one to use will depend on one's needs:
 //
 // RolloutInterface allows for a custom implementation of rollouts.
-// This may be useful for those who wish to apply custom heuristics for sampling steps.
+// This may be useful for those who wish to apply custom heuristics for sampling actions.
 // Additionally, this may be a good choice when Expand is expensive.
 // Lastly, RolloutInterface supports multiple simulations per epoch
 // which may provide further flexibility. For instance, running extra
@@ -60,40 +58,40 @@ type FrontierStep[S Step] struct {
 //
 // Otherwise, the default rollout strategy can be used. This uses the base methods from
 // SearchInterface, calling Select and Expand repeatedly until a terminal state has been
-// reached (Expand returns an empty slice of steps).
+// reached (Expand returns an empty slice of actions).
 // The resulting score from ScoreInterface.Score is returned and the rollout completes.
 // If the implementation does not satisfy ScoreInterface, a random normally distributed
 // dummy score is returned.
 // The default rollout strategy may be good enough for one's needs and one done not have
 // to bother implementing a custom strategy.
 // Alternative implementations of Expand which apply heuristics or generates only a single
-// steps must be carefully coded. For instance, failure to return available steps randomly
+// actions must be carefully coded. For instance, failure to return available actions randomly
 // will introduce biases to search. It has also been reported that optimal play in simulation
 // may actually hinder the explorative performance of MCTS.
 // Note that Expand can be made less expensive by reusing the same slice.
 // The slice will not be retained by the implementation in this package.
-type SearchInterface[S Step] interface {
+type SearchInterface[A Action] interface {
 	// Root resets the current search to root.
 	//
 	// Root is called multiple times in Search before the selection phase
 	// and after Search completes.
 	Root()
 
-	// Select the Step in the current node.
+	// Select applies the given Action.
 	//
 	// Select is called multiple times during the selection phase.
 	// Select will also be called during rollout if Search does not implement RolloutInterface.
-	Select(S)
+	Select(A)
 
-	// Expand returns n steps in the current state.
-	// When n <= 0, all steps are returned.
+	// Expand returns at most n available actions.
+	// When n <= 0, all available actions are returned.
 	//
 	// Expand is called after the selection phase with n <= 0 to expand the frontier of a leaf node.
-	// If Expand returns no steps, the node is marked as a terminal.
+	// If Expand returns no actions, the current state is marked as a terminal.
 	//
 	// Expand will be called during rollout with n = 1 if Search does not implement RolloutInterface.
 	// Expand must always eventually return a terminal if using the default rollout strategy.
-	Expand(n int) []FrontierStep[S]
+	Expand(n int) []FrontierAction[A]
 
 	// Score is an interface which returns the objective evaluation in terminal
 	// positions or the zero score at internal nodes.

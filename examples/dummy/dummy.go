@@ -1,4 +1,4 @@
-// Package dummy implements a dummy search with random steps, infinite depth, and a score
+// Package dummy implements a dummy search with random actions, infinite depth, and a score
 // that quickly converges to the expected value of 1/2.
 package main
 
@@ -27,7 +27,7 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search[dummy.Step]{
+	opts := mcts.Search[dummy.Action]{
 		Rand:            r,
 		Seed:            *seed,
 		SearchInterface: dummy.Search{B: int(*B), Rand: r},
@@ -38,8 +38,8 @@ func main() {
 		select {
 		case <-done:
 			pv := opts.FilterV(
-				mcts.PredicateFilter(func(e mcts.StatEntry[dummy.Step]) bool { return e.NumRollouts >= 1_000 }),
-				mcts.AnyFilter[dummy.Step](r))
+				mcts.PredicateFilter(func(e mcts.StatEntry[dummy.Action]) bool { return e.NumRollouts >= 1_000 }),
+				mcts.AnyFilter[dummy.Action](r))
 			fmt.Println(pv)
 			fmt.Println("---")
 			fmt.Println(pv.Leaf().Score)

@@ -14,12 +14,12 @@ import (
 	"github.com/wenooij/mcts/model"
 )
 
-type tourStep struct {
+type tourAction struct {
 	i int
 	j int
 }
 
-func (s tourStep) String() string {
+func (s tourAction) String() string {
 	if s.i == s.j {
 		return "#"
 	}
@@ -54,7 +54,7 @@ func makeTourMap(n int, r *rand.Rand) map[int]*tourPos {
 
 type tourNode struct {
 	tour  []int
-	step  tourStep
+	step  tourAction
 	depth int
 }
 
@@ -66,19 +66,19 @@ func rootTour(n int) []int {
 	return tour
 }
 
-func (n *tourNode) apply(step tourStep) {
+func (n *tourNode) apply(step tourAction) {
 	n.tour[step.i], n.tour[step.j] = n.tour[step.j], n.tour[step.i]
 	n.step = step
 	n.depth++
 }
 
 type tourSearch struct {
-	m     map[int]*tourPos
-	r     *rand.Rand
-	summ  *model.SummaryStats
-	root  []int
-	steps []mcts.FrontierStep[tourStep]
-	node  *tourNode
+	m       map[int]*tourPos
+	r       *rand.Rand
+	summ    *model.SummaryStats
+	root    []int
+	actions []mcts.FrontierAction[tourAction]
+	node    *tourNode
 }
 
 func newTourSearch(tourMap map[int]*tourPos, r *rand.Rand) *tourSearch {
@@ -88,12 +88,12 @@ func newTourSearch(tourMap map[int]*tourPos, r *rand.Rand) *tourSearch {
 		root: rootTour(len(tourMap)),
 		node: new(tourNode),
 	}
-	s.steps = slices.Grow(s.steps, len(tourMap))
+	s.actions = slices.Grow(s.actions, len(tourMap))
 	s.Root()
 	return s
 }
 
-func (g *tourSearch) Select(step tourStep) {
+func (g *tourSearch) Select(step tourAction) {
 	g.node.apply(step)
 }
 
@@ -103,7 +103,7 @@ func (g *tourSearch) Root() {
 	}
 	copy(g.node.tour, g.root)
 	g.node.depth = 0
-	g.node.step = tourStep{}
+	g.node.step = tourAction{}
 }
 
 func (g *tourSearch) Score() mcts.Score {
@@ -126,25 +126,25 @@ func (g *tourSearch) Score() mcts.Score {
 	return model.Score(g.summ.ZScore(-distance))
 }
 
-func (g *tourSearch) Expand(int) []mcts.FrontierStep[tourStep] {
+func (g *tourSearch) Expand(int) []mcts.FrontierAction[tourAction] {
 	if g.node.depth >= len(g.node.tour) {
 		return nil
 	}
 	i := g.node.tour[g.node.depth]
-	g.steps = g.steps[:0]
+	g.actions = g.actions[:0]
 	for j := 0; j < len(g.node.tour); j++ {
-		g.steps = append(g.steps, mcts.FrontierStep[tourStep]{Step: tourStep{i, j}})
+		g.actions = append(g.actions, mcts.FrontierAction[tourAction]{Action: tourAction{i, j}})
 	}
-	return g.steps
+	return g.actions
 }
 
 func (g *tourSearch) Rollout() (mcts.Score, int) {
 	for {
-		steps := g.Expand(1)
-		if len(steps) == 0 {
+		actions := g.Expand(1)
+		if len(actions) == 0 {
 			break
 		}
-		g.Select(steps[g.r.Intn(len(steps))].Step)
+		g.Select(actions[g.r.Intn(len(actions))].Action)
 	}
 	return g.Score(), 1
 }
@@ -188,7 +188,7 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search[tourStep]{
+	opts := mcts.Search[tourAction]{
 		Rand:            r,
 		Seed:            *seed,
 		SearchInterface: s,
@@ -215,7 +215,7 @@ func main() {
 	tour := make([]int, len(s.root))
 	copy(tour, s.root)
 	for _, e := range pv {
-		tour[e.Step.i], tour[e.Step.j] = tour[e.Step.j], tour[e.Step.i]
+		tour[e.Action.i], tour[e.Action.j] = tour[e.Action.j], tour[e.Action.i]
 	}
 	for i, e := range tour {
 		fmt.Printf("%d", e+1)

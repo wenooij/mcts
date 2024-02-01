@@ -56,7 +56,7 @@ func (s *SummaryStats) String() string {
 
 // FitParams tunes a search by computing stats from a smaller search
 // and updating the ExploreFactor.
-func Summarize[S mcts.Step](s *mcts.Search[S]) SummaryStats {
+func Summarize[S mcts.Action](s *mcts.Search[E]) SummaryStats {
 	// Initialize the search for now, but leave the root as we found it.
 	oldNumEpisodes := s.NumEpisodes
 	defer func() { s.NumEpisodes = oldNumEpisodes }()

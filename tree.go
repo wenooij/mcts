@@ -12,7 +12,7 @@ const (
 	NodeTerminal NodeType = 1 << iota
 )
 
-type node[S Step] struct {
+type node[E Action] struct {
 	NodeType      NodeType
 	rawScore      Score
 	numRollouts   float64
@@ -21,70 +21,68 @@ type node[S Step] struct {
 	priority      float64
 
 	// Topology.
-	childSet map[S]*heapordered.Tree[*node[S]]
-	Step     S
+	childSet map[E]*heapordered.Tree[*node[E]]
+	Action   E
 }
 
 // newNode creates a new tree node element.
-func newNode[S Step](step FrontierStep[S]) *node[S] {
+func newNode[E Action](step FrontierAction[E]) *node[E] {
 	weight := step.Weight
 	if weight < 0 {
-		panic("mcts.Node: Predictor weight < 0 for step: " + step.Step.String())
+		panic("mcts.Node: Predictor weight < 0 for step: " + step.Action.String())
 	}
 	if weight == 0 {
 		weight = 1
 	}
-	return &node[S]{
+	return &node[E]{
 		exploreFactor: step.ExploreFactor,
 		// Max priority for new nodes.
 		// This will be recomputed after the first attempt.
 		priority: math.Inf(-1),
 		weight:   weight,
-		childSet: make(map[S]*heapordered.Tree[*node[S]]),
-		Step:     step.Step,
+		childSet: make(map[E]*heapordered.Tree[*node[E]]),
+		Action:   step.Action,
 	}
 }
 
-func (n *node[S]) Prioirty() float64 { return n.priority }
+func (n *node[E]) Prioirty() float64 { return n.priority }
 
-func (e *node[S]) RawScore() float64 {
+func (e *node[E]) RawScore() float64 {
 	if e.rawScore == nil {
 		return math.Inf(+1)
 	}
 	return e.rawScore.Score()
 }
 
-func (e *node[S]) NormScore() float64 {
+func (e *node[E]) NormScore() float64 {
 	if e.numRollouts == 0 {
 		return math.Inf(+1)
 	}
 	return e.rawScore.Score() / e.numRollouts
 }
 
-func newTree[S Step](s *Search[S]) *heapordered.Tree[*node[S]] {
-	var sentinel S
-	step := FrontierStep[S]{
-		Step:          sentinel,
+func newTree[E Action](s *Search[E]) *heapordered.Tree[*node[E]] {
+	step := FrontierAction[E]{
 		ExploreFactor: s.ExploreFactor,
 	}
-	root := newNode[S](step)
+	root := newNode[E](step)
 	return heapordered.NewTree(root)
 }
 
-func getOrCreateChild[S Step](s *Search[S], parent *heapordered.Tree[*node[S]], step FrontierStep[S]) (child *heapordered.Tree[*node[S]], created bool) {
+func getOrCreateChild[E Action](s *Search[E], parent *heapordered.Tree[*node[E]], action FrontierAction[E]) (child *heapordered.Tree[*node[E]], created bool) {
 	e := parent.Elem()
-	if child, ok := e.childSet[step.Step]; ok {
+	if child, ok := e.childSet[action.Action]; ok {
 		return child, false
 	}
-	if step.ExploreFactor == 0 {
-		step.ExploreFactor = e.exploreFactor
+	if action.ExploreFactor == 0 {
+		action.ExploreFactor = e.exploreFactor
 	}
-	node := newNode[S](step)
+	node := newNode[E](action)
 	child = parent.NewChild(node)
-	e.childSet[step.Step] = child
+	e.childSet[action.Action] = child
 	return child, true
 }
 
-func getChild[S Step](root *heapordered.Tree[*node[S]], step S) (child *heapordered.Tree[*node[S]]) {
-	return root.Elem().childSet[step]
+func getChild[A Action](root *heapordered.Tree[*node[A]], action A) (child *heapordered.Tree[*node[A]]) {
+	return root.Elem().childSet[action]
 }

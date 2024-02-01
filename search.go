@@ -19,11 +19,11 @@ const DefaultExploreFactor = 1.224744871391589 // √3/√2
 //
 // Many of the hyperparameters have drastic impacts on Search performance and need
 // to be experimentally tuned first. See FitParams in the model subpackage for more info.
-type Search[S Step] struct {
-	root *heapordered.Tree[*node[S]]
+type Search[E Action] struct {
+	root *heapordered.Tree[*node[E]]
 
-	// SearchInterface implements the search space and steps for the search problem.
-	SearchInterface[S]
+	// SearchInterface implements the search environment.
+	SearchInterface[E]
 
 	// NumEpisodes ends the Search after the given fixed number
 	// of episodes. Default is 100.
@@ -45,7 +45,7 @@ type Search[S Step] struct {
 	ExploreFactor float64
 }
 
-func (s *Search[S]) patchDefaults() {
+func (s *Search[E]) patchDefaults() {
 	if s.ExploreFactor == 0 {
 		s.ExploreFactor = DefaultExploreFactor
 	}
@@ -62,7 +62,7 @@ func (s *Search[S]) patchDefaults() {
 
 // Init create a new root for the search if it doesn't exist yet.
 // Init additionally patches default parameter values.
-func (s *Search[S]) Init() bool {
+func (s *Search[E]) Init() bool {
 	if s.root != nil {
 		return false
 	}
@@ -72,7 +72,7 @@ func (s *Search[S]) Init() bool {
 }
 
 // Reset deletes the search continuation and RNG so the next call to Search starts from scratch.
-func (s *Search[S]) Reset() {
+func (s *Search[E]) Reset() {
 	s.root = nil
 	s.Rand = nil
 }
@@ -80,24 +80,24 @@ func (s *Search[S]) Reset() {
 // Search runs the search until the Done channel is signalled.
 //
 // To run a deterministic number of runs, set FixedEpisodes.
-func (s *Search[S]) Search() {
+func (s *Search[E]) Search() {
 	s.Init()
 	for i := 0; i < s.NumEpisodes; i++ {
 		s.searchEpisode()
 	}
 }
 
-func (s *Search[S]) searchEpisode() {
+func (s *Search[E]) searchEpisode() {
 	n := s.root
 	s.Root() // Reset to root.
 	// Select the best leaf node by MAB policy.
 	for child := selectChild(s, n); child != nil; n, child = child, selectChild(s, child) {
-		s.Select(child.Elem().Step)
+		s.Select(child.Elem().Action)
 	}
 	// Expand a new leaf node.
 	if frontier := expand(s, n); frontier != nil {
 		n = frontier
-		s.Select(n.Elem().Step)
+		s.Select(n.Elem().Action)
 	} else {
 		// Expand terminal node using Score.
 		backprop(n, s.Score(), 1)

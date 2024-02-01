@@ -6,7 +6,7 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-func backprop[S Step](frontier *heapordered.Tree[*node[S]], rawScore Score, numRollouts float64) {
+func backprop[E Action](frontier *heapordered.Tree[*node[E]], rawScore Score, numRollouts float64) {
 	for n := frontier; n != nil; n = n.Parent() {
 		e := n.Elem()
 		e.rawScore = addScore(e.rawScore, rawScore)
@@ -22,13 +22,13 @@ func addScore(a, b Score) Score {
 	return a.Add(b)
 }
 
-func backpropNull[S Step](leaf *heapordered.Tree[*node[S]]) {
+func backpropNull[E Action](leaf *heapordered.Tree[*node[E]]) {
 	for n := leaf; n != nil; n = n.Parent() {
 		updatePrioritiesPUCB(n, n.Elem())
 	}
 }
 
-func updatePrioritiesPUCB[S Step](n *heapordered.Tree[*node[S]], e *node[S]) {
+func updatePrioritiesPUCB[E Action](n *heapordered.Tree[*node[E]], e *node[E]) {
 	for _, child := range e.childSet {
 		childElem := child.Elem()
 		childElem.priority = -pucb(childElem.RawScore(), childElem.numRollouts, e.numRollouts, childElem.weight, e.exploreFactor)
@@ -36,7 +36,7 @@ func updatePrioritiesPUCB[S Step](n *heapordered.Tree[*node[S]], e *node[S]) {
 	n.Init()
 }
 
-func numParentRollouts[S Step](n *heapordered.Tree[*node[S]]) float64 {
+func numParentRollouts[E Action](n *heapordered.Tree[*node[E]]) float64 {
 	parent := n.Parent()
 	if parent == nil {
 		return 0
@@ -63,7 +63,7 @@ func explore(numRollouts, numParentRollouts float64) float64 {
 func predictor(weight float64) float64 { return 2 / weight }
 
 // pucb is short for predictor weighted upper confidence bound on trees (PUCB).
-// It was introduced as a UCT extended with priors on steps.
+// It was introduced as a UCT extended with priors on actions.
 //
 // The computation for PUCB represents the fitness of a node for being selected
 // on the next iteration of search. The priority for selection in the min-heap is

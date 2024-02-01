@@ -15,26 +15,26 @@ const (
 )
 
 type SearchPlugin struct {
-	node  *tictactoeNode
-	steps []mcts.FrontierStep[tictactoeStep]
+	node    *tictactoeNode
+	actions []mcts.FrontierAction[tictactoeAction]
 }
 
 func newSearchPlugin() *SearchPlugin {
 	p := &SearchPlugin{
 		node: new(tictactoeNode),
 	}
-	p.steps = slices.Grow(p.steps, 9)
+	p.actions = slices.Grow(p.actions, 9)
 	p.Root()
 	return p
 }
 
-type tictactoeStep struct {
+type tictactoeAction struct {
 	cell byte
 	turn byte
 }
 
-func (s tictactoeStep) String() string {
-	if s == (tictactoeStep{}) {
+func (s tictactoeAction) String() string {
+	if s == (tictactoeAction{}) {
 		return "#"
 	}
 	return fmt.Sprintf("%c%c", '0'+s.cell, s.turn)
@@ -101,32 +101,32 @@ func (s *SearchPlugin) Root() {
 	s.node.Root()
 }
 
-func (s *SearchPlugin) Expand(int) []mcts.FrontierStep[tictactoeStep] {
+func (s *SearchPlugin) Expand(int) []mcts.FrontierAction[tictactoeAction] {
 	if s.node.terminal {
 		return nil
 	}
-	s.steps = s.steps[:0]
+	s.actions = s.actions[:0]
 	for i, state := range s.node.state {
 		if state != 0 {
 			continue
 		}
 		weight := 0.0
-		step := tictactoeStep{cell: byte(i), turn: s.node.turn()}
+		a := tictactoeAction{cell: byte(i), turn: s.node.turn()}
 		turn := s.node.turn()
-		s.Select(step)
+		s.Select(a)
 		if s.node.winner == turn {
 			weight = 1000000
 		}
-		s.Unselect(step)
-		s.steps = append(s.steps, mcts.FrontierStep[tictactoeStep]{
-			Step:   step,
+		s.Unselect(a)
+		s.actions = append(s.actions, mcts.FrontierAction[tictactoeAction]{
+			Action: a,
 			Weight: weight,
 		})
 	}
-	return s.steps
+	return s.actions
 }
 
-func (s *SearchPlugin) Select(step tictactoeStep) {
+func (s *SearchPlugin) Select(step tictactoeAction) {
 	n := s.node
 	n.depth++
 	idx := step.cell
@@ -134,7 +134,7 @@ func (s *SearchPlugin) Select(step tictactoeStep) {
 	n.winner, n.terminal = n.computeTerminal()
 }
 
-func (s *SearchPlugin) Unselect(step tictactoeStep) {
+func (s *SearchPlugin) Unselect(step tictactoeAction) {
 	n := s.node
 	n.depth--
 	idx := step.cell
@@ -169,7 +169,7 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search[tictactoeStep]{
+	opts := mcts.Search[tictactoeAction]{
 		SearchInterface: si,
 		NumEpisodes:     10000,
 	}
