@@ -10,19 +10,16 @@ func rollout[S Step](s *Search[S], n *heapordered.Tree[*node[S]]) (rawScore Scor
 		// Call the custom Rollout implementation.
 		return rollout.Rollout()
 	}
-	score, ok := s.SearchInterface.(ScoreInterface)
-	if !ok {
-		// Search does not implement Score.
-		// Skip rollout and backprop.
-		return nil, 0
-	}
 	// Rollout using the default policy (using Expand).
 	for {
-		steps := s.Expand()
-		if len(steps) == 0 {
+		switch steps := s.Expand(1); len(steps) {
+		case 0:
 			// Return the score for the terminal position.
-			return score.Score(), 1
+			return s.Score(), 1
+		case 1:
+			s.Select(steps[0].Step)
+		default:
+			s.Select(steps[s.Rand.Intn(len(steps))].Step)
 		}
-		s.Select(steps[s.Rand.Intn(len(steps))].Step)
 	}
 }

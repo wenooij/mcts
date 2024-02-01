@@ -25,9 +25,9 @@ type Search[S Step] struct {
 	// SearchInterface implements the search space and steps for the search problem.
 	SearchInterface[S]
 
-	// Done signals the Search to stop when set.
-	// When nil, the Search runs indefinitely.
-	Done <-chan struct{}
+	// NumEpisodes ends the Search after the given fixed number
+	// of episodes. Default is 100.
+	NumEpisodes int
 
 	// Seed provides repeatable randomness to the search.
 	// By default Seed is set to the current UNIX timestamp nanos.
@@ -48,6 +48,9 @@ type Search[S Step] struct {
 func (s *Search[S]) patchDefaults() {
 	if s.ExploreFactor == 0 {
 		s.ExploreFactor = DefaultExploreFactor
+	}
+	if s.NumEpisodes == 0 {
+		s.NumEpisodes = 100
 	}
 	if s.Rand == nil {
 		if s.Seed == 0 {
@@ -76,31 +79,31 @@ func (s *Search[S]) Reset() {
 
 // Search runs the search until the Done channel is signalled.
 //
-// To run a deterministic number of epochs, call Init and SearchEpoch directly.
+// To run a deterministic number of runs, set FixedEpisodes.
 func (s *Search[S]) Search() {
 	s.Init()
-	for {
-		// Run search epoches until done.
-		s.SearchEpoch()
-		select {
-		case <-s.Done:
-			return
-		default:
-		}
+	for i := 0; i < s.NumEpisodes; i++ {
+		s.searchEpisode()
 	}
 }
 
-// SearchEpoch runs a single epoch of MCTS.
-//
-// Init must have be called first.
-func (s *Search[S]) SearchEpoch() {
+func (s *Search[S]) searchEpisode() {
 	n := s.root
 	s.Root() // Reset to root.
 	// Select the best leaf node by MAB policy.
 	for child := selectChild(s, n); child != nil; n, child = child, selectChild(s, child) {
 		s.Select(child.Elem().Step)
 	}
-	expand(s, n) // Expand a new leaf node.
+	// Expand a new leaf node.
+	if frontier := expand(s, n); frontier != nil {
+		n = frontier
+		s.Select(n.Elem().Step)
+	} else {
+		// Expand terminal node using Score.
+		backprop(n, s.Score(), 1)
+		return
+	}
+	// Simulate and backprop score.
 	if rawScore, numRollouts := rollout(s, n); numRollouts != 0 {
 		backprop(n, rawScore, float64(numRollouts))
 	}

@@ -20,12 +20,11 @@ type SearchPlugin struct {
 }
 
 func newSearchPlugin() *SearchPlugin {
-	var n tictactoeNode
-	n.Root()
 	p := &SearchPlugin{
-		node: &n,
+		node: new(tictactoeNode),
 	}
 	p.steps = slices.Grow(p.steps, 9)
+	p.Root()
 	return p
 }
 
@@ -66,6 +65,13 @@ func (n *tictactoeNode) turn() byte {
 	return O
 }
 
+func (n *tictactoeNode) player() int {
+	if n.depth&1 == 0 {
+		return 0
+	}
+	return 1
+}
+
 func (n *tictactoeNode) computeTerminal() (winner byte, terminal bool) {
 	if n.depth < 5 {
 		return 0, false
@@ -95,7 +101,7 @@ func (s *SearchPlugin) Root() {
 	s.node.Root()
 }
 
-func (s *SearchPlugin) Expand() []mcts.FrontierStep[tictactoeStep] {
+func (s *SearchPlugin) Expand(int) []mcts.FrontierStep[tictactoeStep] {
 	if s.node.terminal {
 		return nil
 	}
@@ -104,12 +110,12 @@ func (s *SearchPlugin) Expand() []mcts.FrontierStep[tictactoeStep] {
 		if state != 0 {
 			continue
 		}
-		weight := 1.0
+		weight := 0.0
 		step := tictactoeStep{cell: byte(i), turn: s.node.turn()}
 		turn := s.node.turn()
 		s.Select(step)
 		if s.node.winner == turn {
-			// weight = 1000000
+			weight = 1000000
 		}
 		s.Unselect(step)
 		s.steps = append(s.steps, mcts.FrontierStep[tictactoeStep]{
@@ -165,10 +171,15 @@ func main() {
 
 	opts := mcts.Search[tictactoeStep]{
 		SearchInterface: si,
-		Done:            done,
+		NumEpisodes:     10000,
 	}
-	fmt.Printf("Using c=%.4f\n---\n", opts.ExploreFactor)
-	opts.Search()
-
-	fmt.Println(opts.PV())
+	for {
+		opts.Search()
+		select {
+		case <-done:
+			fmt.Println(opts.PV())
+			return
+		default:
+		}
+	}
 }

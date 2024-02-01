@@ -86,7 +86,7 @@ func (g *keyboardSearch) Root() {
 	g.node = g.root
 }
 
-func (g *keyboardSearch) Expand() []mcts.FrontierStep[keySwapStep] {
+func (g *keyboardSearch) Expand(int) []mcts.FrontierStep[keySwapStep] {
 	if g.node.depth > 13 {
 		return nil
 	}
@@ -126,10 +126,15 @@ func main() {
 	opts := mcts.Search[keySwapStep]{
 		ExploreFactor:   40,
 		SearchInterface: s,
-		Done:            done,
 	}
-	fmt.Printf("Using c=%.4f\n---\n", opts.ExploreFactor)
-	opts.Search()
+	for run := true; run; {
+		opts.Search()
+		select {
+		case <-done:
+			run = false
+		default:
+		}
+	}
 
 	pv := opts.PV()
 	fmt.Println(pv)

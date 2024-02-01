@@ -13,14 +13,12 @@ type Step interface {
 
 // FrontierStep wraps a step returned from Expand with extra parameters to apply to its subtree.
 //
-// InitialScore sets the score value for newly created subtrees.
-// This is optional for implementations satisfying ScoreInterface.
-//
 // Weight is an optional predictor used to bias the MAB policy as described in
 // <Rosin, Christopher D. "Multi-armed bandits with episode context."
 // Annals of Mathematics and Artificial Intelligence 61.3 (2011)>
 // Ideally, the predictor weight for X should be set to E[Mean(X_Score)].
 // The weight heuristic is usually tuned in an offline process.
+// Weight 0 will be smoothed to 1.
 //
 // ExploreFactor defines the exploration weighting for the node and its subtree.
 // If this is 0, the parent's ExploreFactor is copied. By default, a ExploreFactor is
@@ -28,7 +26,6 @@ type Step interface {
 // proportional to the values returned from Score.
 type FrontierStep[S Step] struct {
 	Step          S
-	InitialScore  Score
 	Weight        float64
 	ExploreFactor float64
 }
@@ -88,14 +85,23 @@ type SearchInterface[S Step] interface {
 	// Select will also be called during rollout if Search does not implement RolloutInterface.
 	Select(S)
 
-	// Expand returns all steps in the current state.
+	// Expand returns n steps in the current state.
+	// When n <= 0, all steps are returned.
 	//
-	// Expand is called after the selection phase to expand the frontier of a leaf node.
+	// Expand is called after the selection phase with n <= 0 to expand the frontier of a leaf node.
 	// If Expand returns no steps, the node is marked as a terminal.
 	//
-	// Expand will also be called during rollout if Search does not implement RolloutInterface.
+	// Expand will be called during rollout with n = 1 if Search does not implement RolloutInterface.
 	// Expand must always eventually return a terminal if using the default rollout strategy.
-	Expand() []FrontierStep[S]
+	Expand(n int) []FrontierStep[S]
+
+	// Score is an interface which returns the objective evaluation in terminal
+	// positions or the zero score at internal nodes.
+	//
+	// Score will be called on each expanded node and on each terminal state reached.
+	//
+	// Score is not relied on in terminal states when search implements RolloutInterface.
+	Score() Score
 }
 
 // Score is an interface for scorekeeping in search.
@@ -121,20 +127,6 @@ type Score interface {
 	//
 	// Add may have a pointer receiver and modify itself so long as it returns the result.
 	Add(Score) Score
-}
-
-type ScoreInterface interface {
-	// Score is an optional interface which returns an objective evaluation in
-	// terminal positions.
-	//
-	// Score will be exactly once in for every state selected.
-	// This ensures the score can be propogated through the tree without any nils.
-	// Score should take care to return a score with the correct parity in games
-	// with multiple players.
-	//
-	// Implementors may chose to implement RolloutInterface instead of Score
-	// if custom Rollout implementations are being used.
-	Score() Score
 }
 
 type RolloutInterface interface {

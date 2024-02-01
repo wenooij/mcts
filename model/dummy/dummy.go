@@ -17,8 +17,11 @@ type Search struct {
 	Rand *rand.Rand
 }
 
-func (s Search) Expand() []mcts.FrontierStep[Step] {
-	b := make([]mcts.FrontierStep[Step], s.B)
+func (s Search) Expand(n int) []mcts.FrontierStep[Step] {
+	if n <= 0 {
+		n = s.B
+	}
+	b := make([]mcts.FrontierStep[Step], n)
 	for i := range b {
 		b[i] = mcts.FrontierStep[Step]{Step: Step(i)}
 	}

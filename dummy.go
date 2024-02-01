@@ -21,8 +21,11 @@ type dummySearch struct {
 	Rand *rand.Rand
 }
 
-func (s dummySearch) Expand() []FrontierStep[dummyStep] {
-	b := make([]FrontierStep[dummyStep], s.B)
+func (s dummySearch) Expand(n int) []FrontierStep[dummyStep] {
+	if n <= 0 {
+		n = s.B
+	}
+	b := make([]FrontierStep[dummyStep], n)
 	for i := range b {
 		b[i] = FrontierStep[dummyStep]{Step: dummyStep(i)}
 	}

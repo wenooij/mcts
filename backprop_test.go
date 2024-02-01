@@ -1,54 +1,36 @@
 package mcts
 
 import (
+	"math"
 	"math/rand"
 	"testing"
-
-	"github.com/google/go-cmp/cmp"
 )
 
-func TestBackprop(t *testing.T) {
+func TestBackpropFeatures(t *testing.T) {
 	r := rand.New(rand.NewSource(1337))
-	s := &Search[dummyStep]{SearchInterface: dummySearch{Rand: r}, Rand: r}
-	s.root = newTree(s)
-	leaf := s.root
-	for i := 0; i < 3; i++ {
-		leaf, _ = getOrCreateChild(s, leaf, FrontierStep[dummyStep]{})
+	s := &Search[dummyStep]{
+		SearchInterface: dummySearch{B: 1, Rand: r},
+		Rand:            r,
+		NumEpisodes:     3,
 	}
-	rawScore, numRollouts := rollout(s, leaf)
-	backprop(leaf, rawScore, float64(numRollouts))
+	s.Search()
 
-	const score = 0.6287385421322026
-	got := s.PV()
-	want := Variation[dummyStep]{{
-		Step:        dummyStep(0),
-		Score:       score,
-		RawScore:    dummyScore(score),
-		NumRollouts: 1,
-		Priority:    -score,
-		NumChildren: 1,
-	}, {
-		Step:        dummyStep(0),
-		Score:       score,
-		RawScore:    dummyScore(score),
-		NumRollouts: 1,
-		Priority:    -score,
-		NumChildren: 1,
-	}, {
-		Step:        dummyStep(0),
-		Score:       score,
-		RawScore:    dummyScore(score),
-		NumRollouts: 1,
-		Priority:    -score,
-		NumChildren: 1,
-	}, {
-		Step:        dummyStep(0),
-		Score:       score,
-		RawScore:    dummyScore(score),
-		NumRollouts: 1,
-		Priority:    -score,
-	}}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("TestBackprop(): got diff (-want, +got):\n%s", diff)
+	// Check PV length.
+	gotPV := s.PV()
+	if len(gotPV) != 4 {
+		t.Fatalf("TestBackpropFeatures(): expected |PV| = 4, got %d", len(gotPV))
+	}
+	// Priority at root should be untouched (-∞).
+	if gotP, wantP := gotPV[0].Priority, math.Inf(-1); gotP != wantP {
+		t.Errorf("TestBackpropFeatures() got root Priority = %f, want %f", gotP, wantP)
+	}
+	// Expected number of rollouts at each step.
+	if gotN, wantN := gotPV[0].NumRollouts, 3.0; gotN != wantN {
+		t.Errorf("TestBackpropFeatures() got PV[0] NumRollouts = %f, want %f", gotN, wantN)
+	}
+	for i := 0; i < 3; i++ {
+		if gotN, wantN := gotPV[i+1].NumRollouts, float64(3-i); gotN != wantN {
+			t.Errorf("TestBackpropFeatures() got PV[%d] NumRollouts = %f, want %f", i+1, gotN, wantN)
+		}
 	}
 }

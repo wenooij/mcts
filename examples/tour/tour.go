@@ -107,6 +107,9 @@ func (g *tourSearch) Root() {
 }
 
 func (g *tourSearch) Score() mcts.Score {
+	if g.node.depth < len(g.node.tour) {
+		return model.Score(0)
+	}
 	// Calculate tour distance.
 	distance := 0.0
 	first := g.m[g.node.tour[0]]
@@ -123,8 +126,8 @@ func (g *tourSearch) Score() mcts.Score {
 	return model.Score(g.summ.ZScore(-distance))
 }
 
-func (g *tourSearch) Expand() []mcts.FrontierStep[tourStep] {
-	if g.node.depth >= len(g.node.tour)/2+1 {
+func (g *tourSearch) Expand(int) []mcts.FrontierStep[tourStep] {
+	if g.node.depth >= len(g.node.tour) {
 		return nil
 	}
 	i := g.node.tour[g.node.depth]
@@ -137,7 +140,7 @@ func (g *tourSearch) Expand() []mcts.FrontierStep[tourStep] {
 
 func (g *tourSearch) Rollout() (mcts.Score, int) {
 	for {
-		steps := g.Expand()
+		steps := g.Expand(1)
 		if len(steps) == 0 {
 			break
 		}
@@ -148,6 +151,7 @@ func (g *tourSearch) Rollout() (mcts.Score, int) {
 
 func main() {
 	seed := flag.Int64("seed", time.Now().UnixNano(), "Random seed")
+	n := flag.Int("n", 10, "Number of tour stops")
 	randomMap := flag.Bool("randomize_map", false, "Randomize the tour map")
 	flag.Parse()
 
@@ -164,15 +168,14 @@ func main() {
 		{13, 81},
 		{68, 69},
 	}
-	n := len(pos)
-	tourMap := make(map[int]*tourPos, n)
+	tourMap := make(map[int]*tourPos, *n)
 	for i, p := range pos {
 		tourMap[i] = p
 	}
 	if *randomMap {
-		tourMap = makeTourMap(10, r)
+		tourMap = makeTourMap(*n, r)
 	}
-	for i := 0; i < n; i++ {
+	for i := 0; i < *n; i++ {
 		p := tourMap[i]
 		fmt.Printf("%d,%d\n", p.X, p.Y)
 	}
@@ -189,13 +192,19 @@ func main() {
 		Rand:            r,
 		Seed:            *seed,
 		SearchInterface: s,
-		Done:            done,
+		NumEpisodes:     1000,
 	}
 	summary := model.Summarize(&opts)
 	fmt.Println(summary.String())
 	s.summ = &summary
-	opts.Search()
-
+	for run := true; run; {
+		opts.Search()
+		select {
+		case <-done:
+			run = false
+		default:
+		}
+	}
 	pv := opts.PV()
 	fmt.Println(pv)
 	fmt.Println("---")

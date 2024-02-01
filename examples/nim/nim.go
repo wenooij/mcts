@@ -80,7 +80,7 @@ func (n *nimState) Select(s nimStep) {
 	n.piles[s.pile] -= nimPile(s.n)
 }
 
-func (s *nimState) Expand() []mcts.FrontierStep[nimStep] {
+func (s *nimState) Expand(int) []mcts.FrontierStep[nimStep] {
 	var steps []mcts.FrontierStep[nimStep]
 	for i, p := range s.piles {
 		switch p {
@@ -108,11 +108,14 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search[nimStep]{
-		SearchInterface: n,
-		Done:            done,
+	opts := mcts.Search[nimStep]{SearchInterface: n}
+	for {
+		opts.Search()
+		select {
+		case <-done:
+			fmt.Println(opts.PV())
+			return
+		default:
+		}
 	}
-	opts.Search()
-
-	fmt.Println(opts.PV())
 }

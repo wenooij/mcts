@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	numFitEpochs   = 10000
+	numFitEpisodes = 10000
 	numAnyVSamples = 255
 	scoreSampleCap = 1024
 )
@@ -58,12 +58,13 @@ func (s *SummaryStats) String() string {
 // and updating the ExploreFactor.
 func Summarize[S mcts.Step](s *mcts.Search[S]) SummaryStats {
 	// Initialize the search for now, but leave the root as we found it.
+	oldNumEpisodes := s.NumEpisodes
+	defer func() { s.NumEpisodes = oldNumEpisodes }()
+	s.NumEpisodes = numFitEpisodes
 	if s.Init() {
 		defer s.Reset()
 	}
-	for i := 0; i < numFitEpochs; i++ {
-		s.SearchEpoch()
-	}
+	s.Search()
 	// Compute fit stats.
 	var (
 		minScore     = math.Inf(+1)

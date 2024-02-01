@@ -32,14 +32,19 @@ func main() {
 		Seed:            *seed,
 		SearchInterface: dummy.Search{B: int(*B), Rand: r},
 		ExploreFactor:   0.5,
-		Done:            done,
 	}
-	opts.Search()
-
-	pv := opts.FilterV(
-		mcts.PredicateFilter(func(e mcts.StatEntry[dummy.Step]) bool { return e.NumRollouts >= 1_000 }),
-		mcts.AnyFilter[dummy.Step](r))
-	fmt.Println(pv)
-	fmt.Println("---")
-	fmt.Println(pv.Leaf().Score)
+	for {
+		opts.Search()
+		select {
+		case <-done:
+			pv := opts.FilterV(
+				mcts.PredicateFilter(func(e mcts.StatEntry[dummy.Step]) bool { return e.NumRollouts >= 1_000 }),
+				mcts.AnyFilter[dummy.Step](r))
+			fmt.Println(pv)
+			fmt.Println("---")
+			fmt.Println(pv.Leaf().Score)
+			return
+		default:
+		}
+	}
 }
