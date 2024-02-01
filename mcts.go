@@ -5,7 +5,6 @@ package mcts
 //
 // String should return a standard representation of the Action.
 type Action interface {
-	comparable
 	String() string
 }
 
@@ -22,8 +21,8 @@ type Action interface {
 // If this is 0, the parent's ExploreFactor is copied. By default, a ExploreFactor is
 // applied uniformly to all nodes. It is critical that ExploreFactor be roughly
 // proportional to the values returned from Score.
-type FrontierAction[E Action] struct {
-	Action        E
+type FrontierAction struct {
+	Action        Action
 	Weight        float64
 	ExploreFactor float64
 }
@@ -70,7 +69,7 @@ type FrontierAction[E Action] struct {
 // may actually hinder the explorative performance of MCTS.
 // Note that Expand can be made less expensive by reusing the same slice.
 // The slice will not be retained by the implementation in this package.
-type SearchInterface[E Action] interface {
+type SearchInterface interface {
 	// Root resets the current search to root.
 	//
 	// Root is called multiple times in Search before the selection phase
@@ -81,7 +80,7 @@ type SearchInterface[E Action] interface {
 	//
 	// Select is called multiple times during the selection phase.
 	// Select will also be called during rollout if Search does not implement RolloutInterface.
-	Select(E)
+	Select(Action)
 
 	// Expand returns at most n available actions.
 	// When n <= 0, all available actions are returned.
@@ -91,7 +90,7 @@ type SearchInterface[E Action] interface {
 	//
 	// Expand will be called during rollout with n = 1 if Search does not implement RolloutInterface.
 	// Expand must always eventually return a terminal if using the default rollout strategy.
-	Expand(n int) []FrontierAction[E]
+	Expand(n int) []FrontierAction
 
 	// Score is an interface which returns the objective evaluation in terminal
 	// positions or the zero score at internal nodes.

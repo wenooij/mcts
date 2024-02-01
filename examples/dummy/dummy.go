@@ -27,7 +27,7 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search[dummy.Action]{
+	opts := mcts.Search{
 		Rand:            r,
 		Seed:            *seed,
 		SearchInterface: dummy.Search{B: int(*B), Rand: r},
@@ -38,8 +38,8 @@ func main() {
 		select {
 		case <-done:
 			pv := opts.FilterV(
-				mcts.PredicateFilter(func(e mcts.StatEntry[dummy.Action]) bool { return e.NumRollouts >= 1_000 }),
-				mcts.AnyFilter[dummy.Action](r))
+				mcts.PredicateFilter(func(e mcts.StatEntry) bool { return e.NumRollouts >= 1_000 }),
+				mcts.AnyFilter(r))
 			fmt.Println(pv)
 			fmt.Println("---")
 			fmt.Println(pv.Leaf().Score)

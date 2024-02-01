@@ -53,9 +53,9 @@ func makeTourMap(n int, r *rand.Rand) map[int]*tourPos {
 }
 
 type tourNode struct {
-	tour  []int
-	step  tourAction
-	depth int
+	tour   []int
+	action tourAction
+	depth  int
 }
 
 func rootTour(n int) []int {
@@ -66,9 +66,9 @@ func rootTour(n int) []int {
 	return tour
 }
 
-func (n *tourNode) apply(step tourAction) {
-	n.tour[step.i], n.tour[step.j] = n.tour[step.j], n.tour[step.i]
-	n.step = step
+func (n *tourNode) apply(a tourAction) {
+	n.tour[a.i], n.tour[a.j] = n.tour[a.j], n.tour[a.i]
+	n.action = a
 	n.depth++
 }
 
@@ -77,7 +77,7 @@ type tourSearch struct {
 	r       *rand.Rand
 	summ    *model.SummaryStats
 	root    []int
-	actions []mcts.FrontierAction[tourAction]
+	actions []mcts.FrontierAction
 	node    *tourNode
 }
 
@@ -93,8 +93,8 @@ func newTourSearch(tourMap map[int]*tourPos, r *rand.Rand) *tourSearch {
 	return s
 }
 
-func (g *tourSearch) Select(step tourAction) {
-	g.node.apply(step)
+func (g *tourSearch) Select(a mcts.Action) {
+	g.node.apply(a.(tourAction))
 }
 
 func (g *tourSearch) Root() {
@@ -103,7 +103,7 @@ func (g *tourSearch) Root() {
 	}
 	copy(g.node.tour, g.root)
 	g.node.depth = 0
-	g.node.step = tourAction{}
+	g.node.action = tourAction{}
 }
 
 func (g *tourSearch) Score() mcts.Score {
@@ -126,14 +126,14 @@ func (g *tourSearch) Score() mcts.Score {
 	return model.Score(g.summ.ZScore(-distance))
 }
 
-func (g *tourSearch) Expand(int) []mcts.FrontierAction[tourAction] {
+func (g *tourSearch) Expand(int) []mcts.FrontierAction {
 	if g.node.depth >= len(g.node.tour) {
 		return nil
 	}
 	i := g.node.tour[g.node.depth]
 	g.actions = g.actions[:0]
 	for j := 0; j < len(g.node.tour); j++ {
-		g.actions = append(g.actions, mcts.FrontierAction[tourAction]{Action: tourAction{i, j}})
+		g.actions = append(g.actions, mcts.FrontierAction{Action: tourAction{i, j}})
 	}
 	return g.actions
 }
@@ -188,7 +188,7 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search[tourAction]{
+	opts := mcts.Search{
 		Rand:            r,
 		Seed:            *seed,
 		SearchInterface: s,
@@ -215,7 +215,8 @@ func main() {
 	tour := make([]int, len(s.root))
 	copy(tour, s.root)
 	for _, e := range pv {
-		tour[e.Action.i], tour[e.Action.j] = tour[e.Action.j], tour[e.Action.i]
+		a := e.Action.(tourAction)
+		tour[a.i], tour[a.j] = tour[a.j], tour[a.i]
 	}
 	for i, e := range tour {
 		fmt.Printf("%d", e+1)

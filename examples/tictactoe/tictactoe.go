@@ -16,7 +16,7 @@ const (
 
 type SearchPlugin struct {
 	node    *tictactoeNode
-	actions []mcts.FrontierAction[tictactoeAction]
+	actions []mcts.FrontierAction
 }
 
 func newSearchPlugin() *SearchPlugin {
@@ -101,7 +101,7 @@ func (s *SearchPlugin) Root() {
 	s.node.Root()
 }
 
-func (s *SearchPlugin) Expand(int) []mcts.FrontierAction[tictactoeAction] {
+func (s *SearchPlugin) Expand(int) []mcts.FrontierAction {
 	if s.node.terminal {
 		return nil
 	}
@@ -118,7 +118,7 @@ func (s *SearchPlugin) Expand(int) []mcts.FrontierAction[tictactoeAction] {
 			weight = 1000000
 		}
 		s.Unselect(a)
-		s.actions = append(s.actions, mcts.FrontierAction[tictactoeAction]{
+		s.actions = append(s.actions, mcts.FrontierAction{
 			Action: a,
 			Weight: weight,
 		})
@@ -126,11 +126,12 @@ func (s *SearchPlugin) Expand(int) []mcts.FrontierAction[tictactoeAction] {
 	return s.actions
 }
 
-func (s *SearchPlugin) Select(step tictactoeAction) {
+func (s *SearchPlugin) Select(a mcts.Action) {
 	n := s.node
 	n.depth++
-	idx := step.cell
-	n.state[idx] = step.turn
+	ta := a.(tictactoeAction)
+	idx := ta.cell
+	n.state[idx] = ta.turn
 	n.winner, n.terminal = n.computeTerminal()
 }
 
@@ -169,7 +170,7 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search[tictactoeAction]{
+	opts := mcts.Search{
 		SearchInterface: si,
 		NumEpisodes:     10000,
 	}

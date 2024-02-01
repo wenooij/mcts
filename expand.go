@@ -9,7 +9,7 @@ import (
 // expand calls Expand in the search interface to get more moves.
 //
 // the fringe argument is set to true during the rollout phase.
-func expand[E Action](s *Search[E], n *heapordered.Tree[*node[E]]) *heapordered.Tree[*node[E]] {
+func expand(s *Search, n *heapordered.Tree[*node]) *heapordered.Tree[*node] {
 	actions := s.Expand(0)
 
 	if len(actions) == 0 {

@@ -6,7 +6,7 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-func backprop[E Action](frontier *heapordered.Tree[*node[E]], rawScore Score, numRollouts float64) {
+func backprop(frontier *heapordered.Tree[*node], rawScore Score, numRollouts float64) {
 	for n := frontier; n != nil; n = n.Parent() {
 		e := n.Elem()
 		e.rawScore = addScore(e.rawScore, rawScore)
@@ -22,13 +22,13 @@ func addScore(a, b Score) Score {
 	return a.Add(b)
 }
 
-func backpropNull[E Action](leaf *heapordered.Tree[*node[E]]) {
+func backpropNull(leaf *heapordered.Tree[*node]) {
 	for n := leaf; n != nil; n = n.Parent() {
 		updatePrioritiesPUCB(n, n.Elem())
 	}
 }
 
-func updatePrioritiesPUCB[E Action](n *heapordered.Tree[*node[E]], e *node[E]) {
+func updatePrioritiesPUCB(n *heapordered.Tree[*node], e *node) {
 	for _, child := range e.childSet {
 		childElem := child.Elem()
 		childElem.priority = -pucb(childElem.RawScore(), childElem.numRollouts, e.numRollouts, childElem.weight, e.exploreFactor)
@@ -36,7 +36,7 @@ func updatePrioritiesPUCB[E Action](n *heapordered.Tree[*node[E]], e *node[E]) {
 	n.Init()
 }
 
-func numParentRollouts[E Action](n *heapordered.Tree[*node[E]]) float64 {
+func numParentRollouts(n *heapordered.Tree[*node]) float64 {
 	parent := n.Parent()
 	if parent == nil {
 		return 0

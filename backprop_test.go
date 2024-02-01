@@ -8,7 +8,7 @@ import (
 
 func TestBackpropFeatures(t *testing.T) {
 	r := rand.New(rand.NewSource(1337))
-	s := &Search[dummyAction]{
+	s := &Search{
 		SearchInterface: dummySearch{B: 1, Rand: r},
 		Rand:            r,
 		NumEpisodes:     3,

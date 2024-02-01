@@ -76,20 +76,21 @@ func (n *nimState) Score() mcts.Score {
 	return scores
 }
 
-func (n *nimState) Select(s nimAction) {
-	n.piles[s.pile] -= nimPile(s.n)
+func (n *nimState) Select(a mcts.Action) {
+	na := a.(nimAction)
+	n.piles[na.pile] -= nimPile(na.n)
 }
 
-func (s *nimState) Expand(int) []mcts.FrontierAction[nimAction] {
-	var actions []mcts.FrontierAction[nimAction]
+func (s *nimState) Expand(int) []mcts.FrontierAction {
+	var actions []mcts.FrontierAction
 	for i, p := range s.piles {
 		switch p {
 		case 0:
 		case 1:
-			actions = append(actions, mcts.FrontierAction[nimAction]{Action: nimAction{i, 1}})
+			actions = append(actions, mcts.FrontierAction{Action: nimAction{i, 1}})
 		default:
-			actions = append(actions, mcts.FrontierAction[nimAction]{Action: nimAction{i, int(p)}},
-				mcts.FrontierAction[nimAction]{Action: nimAction{i, int(p) - 1}})
+			actions = append(actions, mcts.FrontierAction{Action: nimAction{i, int(p)}},
+				mcts.FrontierAction{Action: nimAction{i, int(p) - 1}})
 		}
 	}
 	return actions
@@ -108,7 +109,7 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search[nimAction]{SearchInterface: n}
+	opts := mcts.Search{SearchInterface: n}
 	for {
 		opts.Search()
 		select {

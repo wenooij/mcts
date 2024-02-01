@@ -21,18 +21,18 @@ type dummySearch struct {
 	Rand *rand.Rand
 }
 
-func (s dummySearch) Expand(n int) []FrontierAction[dummyAction] {
+func (s dummySearch) Expand(n int) []FrontierAction {
 	if n <= 0 {
 		n = s.B
 	}
-	b := make([]FrontierAction[dummyAction], n)
+	b := make([]FrontierAction, n)
 	for i := range b {
-		b[i] = FrontierAction[dummyAction]{Action: dummyAction(i)}
+		b[i] = FrontierAction{Action: dummyAction(i)}
 	}
 	return b
 }
 
 func (s dummySearch) Root()                 {}
-func (s dummySearch) Select(dummyAction)    {}
+func (s dummySearch) Select(Action)         {}
 func (s dummySearch) Score() Score          { return dummyScore(s.Rand.NormFloat64()) }
 func (s dummySearch) Rollout() (Score, int) { return s.Score(), 1 }

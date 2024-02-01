@@ -19,11 +19,11 @@ const DefaultExploreFactor = 1.224744871391589 // √3/√2
 //
 // Many of the hyperparameters have drastic impacts on Search performance and need
 // to be experimentally tuned first. See FitParams in the model subpackage for more info.
-type Search[E Action] struct {
-	root *heapordered.Tree[*node[E]]
+type Search struct {
+	root *heapordered.Tree[*node]
 
 	// SearchInterface implements the search environment.
-	SearchInterface[E]
+	SearchInterface
 
 	// NumEpisodes ends the Search after the given fixed number
 	// of episodes. Default is 100.
@@ -45,7 +45,7 @@ type Search[E Action] struct {
 	ExploreFactor float64
 }
 
-func (s *Search[E]) patchDefaults() {
+func (s *Search) patchDefaults() {
 	if s.ExploreFactor == 0 {
 		s.ExploreFactor = DefaultExploreFactor
 	}
@@ -62,7 +62,7 @@ func (s *Search[E]) patchDefaults() {
 
 // Init create a new root for the search if it doesn't exist yet.
 // Init additionally patches default parameter values.
-func (s *Search[E]) Init() bool {
+func (s *Search) Init() bool {
 	if s.root != nil {
 		return false
 	}
@@ -72,7 +72,7 @@ func (s *Search[E]) Init() bool {
 }
 
 // Reset deletes the search continuation and RNG so the next call to Search starts from scratch.
-func (s *Search[E]) Reset() {
+func (s *Search) Reset() {
 	s.root = nil
 	s.Rand = nil
 }
@@ -80,14 +80,14 @@ func (s *Search[E]) Reset() {
 // Search runs the search until the Done channel is signalled.
 //
 // To run a deterministic number of runs, set FixedEpisodes.
-func (s *Search[E]) Search() {
+func (s *Search) Search() {
 	s.Init()
 	for i := 0; i < s.NumEpisodes; i++ {
 		s.searchEpisode()
 	}
 }
 
-func (s *Search[E]) searchEpisode() {
+func (s *Search) searchEpisode() {
 	n := s.root
 	s.Root() // Reset to root.
 	// Select the best leaf node by MAB policy.

@@ -8,9 +8,9 @@ import (
 // Variation is a sequence of actions with Search statistics.
 //
 // The first element in the Variation is the root mode and will have the zero value for the Step.
-type Variation[E Action] []StatEntry[E]
+type Variation []StatEntry
 
-func (v Variation[E]) Leaf() *StatEntry[E] {
+func (v Variation) Leaf() *StatEntry {
 	if len(v) == 0 {
 		return nil
 	}
@@ -18,7 +18,7 @@ func (v Variation[E]) Leaf() *StatEntry[E] {
 	return &leaf
 }
 
-func (v Variation[E]) String() string {
+func (v Variation) String() string {
 	var sb strings.Builder
 	if len(v) == 0 {
 		return "\n"
@@ -38,20 +38,20 @@ func (v Variation[E]) String() string {
 // and is usually the best one.
 //
 // Use Stat to test arbitrary sequences.
-func (r Search[E]) PV() Variation[E] { return r.FilterV(MaxRolloutsFilter[E](), AnyFilter[E](r.Rand)) }
+func (r Search) PV() Variation { return r.FilterV(MaxRolloutsFilter(), AnyFilter(r.Rand)) }
 
 // AnyV returns a random variation with runs for this Search.
 //
 // AnyV is useful for statistical sampling of the Search tree.
-func (r Search[E]) AnyV() Variation[E] { return r.FilterV(AnyFilter[E](r.Rand)) }
+func (r Search) AnyV() Variation { return r.FilterV(AnyFilter(r.Rand)) }
 
 // Stat returns a sequence of Search stats for the given variation according to this Search.
-func (r Search[E]) Stat(vs ...E) Variation[E] {
+func (r Search) Stat(vs ...Action) Variation {
 	n := r.root
 	if n == nil {
 		return nil
 	}
-	res := make(Variation[E], 0, 1+len(vs))
+	res := make(Variation, 0, 1+len(vs))
 	res = append(res, makeStatEntry(n))
 	for _, s := range vs {
 		child := getChild(n, s)
@@ -72,12 +72,12 @@ func (r Search[E]) Stat(vs ...E) Variation[E] {
 // Node priorities are recomputed using UCT.
 //
 // The Search is initialized if it had not already done so.
-func (s *Search[E]) InsertV(v Variation[E]) {
+func (s *Search) InsertV(v Variation) {
 	s.Init()
 	n := s.root
 	for _, stat := range v {
 		var created bool
-		n, created = getOrCreateChild(s, n, FrontierAction[E]{
+		n, created = getOrCreateChild(s, n, FrontierAction{
 			Action:        stat.Action,
 			Weight:        stat.PredictorWeight,
 			ExploreFactor: stat.ExploreFactor,

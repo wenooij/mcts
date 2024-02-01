@@ -72,13 +72,14 @@ func newKeyboardSearch(r *rand.Rand) *keyboardSearch {
 	}
 }
 
-func (g *keyboardSearch) Select(step keySwapAction) {
-	if child, ok := g.node.children[step]; ok {
+func (g *keyboardSearch) Select(a mcts.Action) {
+	ksa := a.(keySwapAction)
+	if child, ok := g.node.children[ksa]; ok {
 		g.node = child
 		return
 	}
-	child := g.node.newChildKeyboardNode(step)
-	g.node.children[step] = child
+	child := g.node.newChildKeyboardNode(ksa)
+	g.node.children[ksa] = child
 	g.node = child
 }
 
@@ -86,14 +87,14 @@ func (g *keyboardSearch) Root() {
 	g.node = g.root
 }
 
-func (g *keyboardSearch) Expand(int) []mcts.FrontierAction[keySwapAction] {
+func (g *keyboardSearch) Expand(int) []mcts.FrontierAction {
 	if g.node.depth > 13 {
 		return nil
 	}
-	var actions []mcts.FrontierAction[keySwapAction]
+	var actions []mcts.FrontierAction
 	for i := 0; i < 20; i++ {
 		p1, p2 := NewRandomValidPt(g.r), NewRandomValidPt(g.r)
-		actions = append(actions, mcts.FrontierAction[keySwapAction]{Action: keySwapAction{p1, p2, true}})
+		actions = append(actions, mcts.FrontierAction{Action: keySwapAction{p1, p2, true}})
 	}
 	return actions
 }
@@ -123,7 +124,7 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search[keySwapAction]{
+	opts := mcts.Search{
 		ExploreFactor:   40,
 		SearchInterface: s,
 	}
@@ -141,8 +142,8 @@ func main() {
 
 	layout := NewRandomLayout(r)
 	for _, e := range pv {
-		s := e.Action
-		layout.Swap(s.p1, s.p2)
+		a := e.Action.(keySwapAction)
+		layout.Swap(a.p1, a.p2)
 	}
 
 	fmt.Println(layout)
