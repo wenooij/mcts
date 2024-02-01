@@ -70,7 +70,7 @@ type FrontierAction[E Action] struct {
 // may actually hinder the explorative performance of MCTS.
 // Note that Expand can be made less expensive by reusing the same slice.
 // The slice will not be retained by the implementation in this package.
-type SearchInterface[A Action] interface {
+type SearchInterface[E Action] interface {
 	// Root resets the current search to root.
 	//
 	// Root is called multiple times in Search before the selection phase
@@ -81,7 +81,7 @@ type SearchInterface[A Action] interface {
 	//
 	// Select is called multiple times during the selection phase.
 	// Select will also be called during rollout if Search does not implement RolloutInterface.
-	Select(A)
+	Select(E)
 
 	// Expand returns at most n available actions.
 	// When n <= 0, all available actions are returned.
@@ -91,7 +91,7 @@ type SearchInterface[A Action] interface {
 	//
 	// Expand will be called during rollout with n = 1 if Search does not implement RolloutInterface.
 	// Expand must always eventually return a terminal if using the default rollout strategy.
-	Expand(n int) []FrontierAction[A]
+	Expand(n int) []FrontierAction[E]
 
 	// Score is an interface which returns the objective evaluation in terminal
 	// positions or the zero score at internal nodes.

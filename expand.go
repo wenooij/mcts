@@ -14,14 +14,14 @@ func expand[E Action](s *Search[E], n *heapordered.Tree[*node[E]]) *heapordered.
 
 	if len(actions) == 0 {
 		// Set the terminal node bit.
-		n.Elem().NodeType |= NodeTerminal
+		n.Elem().nodeType |= nodeTerminal
 		return nil
 	}
 	// Avoid bias from move generation order.
 	s.Rand.Shuffle(len(actions), func(i, j int) { actions[i], actions[j] = actions[j], actions[i] })
 
 	// Clear terminal bit.
-	n.Elem().NodeType &= ^NodeTerminal
+	n.Elem().nodeType &= ^nodeTerminal
 	var (
 		totalWeight    float64
 		uniformWeight  float64

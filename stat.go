@@ -28,7 +28,7 @@ type StatEntry[E Action] struct {
 func makeStatEntry[E Action](n *heapordered.Tree[*node[E]]) StatEntry[E] {
 	e := n.Elem()
 	return StatEntry[E]{
-		NodeType:          e.NodeType,
+		NodeType:          e.nodeType,
 		Action:            e.Action,
 		Score:             e.NormScore(),
 		RawScore:          e.rawScore,
@@ -55,6 +55,12 @@ func (e StatEntry[E]) appendString(sb *strings.Builder) {
 		fmt.Fprintf(sb, "%.2f MN", n/1e6)
 	}
 	sb.WriteByte(')')
+}
+
+func (e StatEntry[E]) String() string {
+	var sb strings.Builder
+	e.appendString(&sb)
+	return sb.String()
 }
 
 // Filter returns matching stat entries from the input.

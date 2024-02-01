@@ -9,11 +9,13 @@ import (
 type NodeType int
 
 const (
-	NodeTerminal NodeType = 1 << iota
+	nodeTerminal NodeType = 1 << iota
 )
 
+func (t NodeType) Terminal() bool { return t&nodeTerminal != 0 }
+
 type node[E Action] struct {
-	NodeType      NodeType
+	nodeType      NodeType
 	rawScore      Score
 	numRollouts   float64
 	exploreFactor float64

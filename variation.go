@@ -84,9 +84,9 @@ func (s *Search[E]) InsertV(v Variation[E]) {
 		})
 		e := n.Elem()
 		if created {
-			e.NodeType = stat.NodeType
+			e.nodeType = stat.NodeType
 		} else {
-			e.NodeType &= ^NodeTerminal          // Clear the terminal bit.
+			e.nodeType &= ^nodeTerminal          // Clear the terminal bit.
 			e.exploreFactor = stat.ExploreFactor // Reset the explore factor.
 		}
 		e.rawScore = stat.RawScore
