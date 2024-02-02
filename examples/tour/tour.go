@@ -38,9 +38,9 @@ func newTourPos(r *rand.Rand) *tourPos {
 	}
 }
 
-func (p *tourPos) DistanceTo(p2 *tourPos) float64 {
+func (p *tourPos) DistanceTo(p2 *tourPos) float32 {
 	dx, dy := p2.X-p.X, p2.Y-p.Y
-	return math.Sqrt(float64(dx*dx + dy*dy))
+	return float32(math.Sqrt(float64(dx*dx + dy*dy)))
 }
 
 func makeTourMap(n int, r *rand.Rand) map[int]*tourPos {
@@ -48,7 +48,6 @@ func makeTourMap(n int, r *rand.Rand) map[int]*tourPos {
 	for i := 0; i < n; i++ {
 		m[i] = newTourPos(r)
 	}
-	r.Shuffle(len(m), func(i, j int) { m[i], m[j] = m[j], m[i] })
 	return m
 }
 
@@ -58,11 +57,12 @@ type tourNode struct {
 	depth  int
 }
 
-func rootTour(n int) []int {
+func rootTour(n int, r *rand.Rand) []int {
 	tour := make([]int, n)
 	for i := 0; i < n; i++ {
 		tour[i] = i
 	}
+	r.Shuffle(len(tour), func(i, j int) { tour[i], tour[j] = tour[j], tour[i] })
 	return tour
 }
 
@@ -85,10 +85,18 @@ func newTourSearch(tourMap map[int]*tourPos, r *rand.Rand) *tourSearch {
 	s := &tourSearch{
 		m:    tourMap,
 		r:    r,
-		root: rootTour(len(tourMap)),
+		root: rootTour(len(tourMap), r),
 		node: new(tourNode),
 	}
 	s.actions = slices.Grow(s.actions, len(tourMap))
+	for i := 0; i < len(s.root); i++ {
+		for j := 0; j < len(s.root); j++ {
+			if i == j {
+				continue
+			}
+			s.actions = append(s.actions, mcts.FrontierAction{Action: tourAction{i, j}})
+		}
+	}
 	s.Root()
 	return s
 }
@@ -107,11 +115,8 @@ func (g *tourSearch) Root() {
 }
 
 func (g *tourSearch) Score() mcts.Score {
-	if g.node.depth < len(g.node.tour) {
-		return model.Score(0)
-	}
 	// Calculate tour distance.
-	distance := 0.0
+	distance := float32(0)
 	first := g.m[g.node.tour[0]]
 	last := first
 	for _, e := range g.node.tour[1:] {
@@ -127,25 +132,13 @@ func (g *tourSearch) Score() mcts.Score {
 }
 
 func (g *tourSearch) Expand(int) []mcts.FrontierAction {
-	if g.node.depth >= len(g.node.tour) {
+	if g.r.Float64() < 1/float64(len(g.node.tour)) {
 		return nil
-	}
-	i := g.node.tour[g.node.depth]
-	g.actions = g.actions[:0]
-	for j := 0; j < len(g.node.tour); j++ {
-		g.actions = append(g.actions, mcts.FrontierAction{Action: tourAction{i, j}})
 	}
 	return g.actions
 }
 
 func (g *tourSearch) Rollout() (mcts.Score, int) {
-	for {
-		actions := g.Expand(1)
-		if len(actions) == 0 {
-			break
-		}
-		g.Select(actions[g.r.Intn(len(actions))].Action)
-	}
 	return g.Score(), 1
 }
 
@@ -182,49 +175,39 @@ func main() {
 	fmt.Println("---")
 	s := newTourSearch(tourMap, r)
 
-	done := make(chan struct{})
-	go func() {
-		<-time.After(10 * time.Second)
-		done <- struct{}{}
-	}()
-
 	opts := mcts.Search{
 		Rand:            r,
 		Seed:            *seed,
 		SearchInterface: s,
 		NumEpisodes:     1000,
+		ExploreFactor:   0.2,
 	}
 	summary := model.Summarize(&opts)
 	fmt.Println(summary.String())
 	s.summ = &summary
-	for run := true; run; {
-		opts.Search()
-		select {
-		case <-done:
-			run = false
-		default:
-		}
-	}
-	pv := opts.PV()
-	fmt.Println(pv)
-	fmt.Println("---")
+	opts.ExploreFactor = mcts.DefaultExploreFactor
+	for lastPrint := (time.Time{}); ; {
+		if opts.Search(); time.Since(lastPrint) >= time.Second {
+			// Reconstruct and print the best tour.
+			// Results can be pasted into the tool.
+			// https://www.lancaster.ac.uk/fas/psych/software/TSP/TSP.html.
+			pv := opts.PV()
+			tour := make([]int, len(s.root))
+			copy(tour, s.root)
+			for _, e := range pv.TrimRoot() {
+				a := e.Action.(tourAction)
+				tour[a.i], tour[a.j] = tour[a.j], tour[a.i]
+			}
+			fmt.Printf("[%f] ", pv[0].Score)
+			for i, e := range tour {
+				fmt.Printf("%d", e+1)
+				if i+1 < len(tour) {
+					fmt.Print(" ")
+				}
+			}
+			fmt.Printf(" =(%f)\n", -pv.Last().Score*summary.Stddev-summary.Mean)
 
-	// Reconstruct and print the best tour.
-	// Results can be pasted into the tool.
-	// https://www.lancaster.ac.uk/fas/psych/software/TSP/TSP.html.
-	tour := make([]int, len(s.root))
-	copy(tour, s.root)
-	for _, e := range pv {
-		a := e.Action.(tourAction)
-		tour[a.i], tour[a.j] = tour[a.j], tour[a.i]
-	}
-	for i, e := range tour {
-		fmt.Printf("%d", e+1)
-		if i+1 < len(tour) {
-			fmt.Print(" ")
+			lastPrint = time.Now()
 		}
 	}
-	fmt.Println()
-	fmt.Println("---")
-	fmt.Println(-pv.Leaf().Score*summary.Stddev - summary.Mean)
 }

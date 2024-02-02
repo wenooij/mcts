@@ -42,7 +42,7 @@ type Search struct {
 	//
 	// This should be made roughly proportional to scores obtained from random rollouts.
 	// Zero uses the default value of DefaultExploreFactor.
-	ExploreFactor float64
+	ExploreFactor float32
 }
 
 func (s *Search) patchDefaults() {
@@ -68,6 +68,7 @@ func (s *Search) Init() bool {
 	}
 	s.patchDefaults()
 	s.root = newTree(s)
+	initializeScore(s, s.root)
 	return true
 }
 
@@ -92,19 +93,13 @@ func (s *Search) searchEpisode() {
 	s.Root() // Reset to root.
 	// Select the best leaf node by MAB policy.
 	for child := selectChild(s, n); child != nil; n, child = child, selectChild(s, child) {
-		s.Select(child.Elem().Action)
 	}
-	// Expand a new leaf node.
+	// Expand a new frontier node.
 	if frontier := expand(s, n); frontier != nil {
 		n = frontier
-		s.Select(n.Elem().Action)
-	} else {
-		// Expand terminal node using Score.
-		backprop(n, s.Score(), 1)
-		return
 	}
 	// Simulate and backprop score.
 	if rawScore, numRollouts := rollout(s, n); numRollouts != 0 {
-		backprop(n, rawScore, float64(numRollouts))
+		backprop(n, rawScore, float32(numRollouts))
 	}
 }

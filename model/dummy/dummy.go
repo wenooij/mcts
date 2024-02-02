@@ -18,10 +18,7 @@ type Search struct {
 }
 
 func (s Search) Expand(n int) []mcts.FrontierAction {
-	if n <= 0 {
-		n = s.B
-	}
-	b := make([]mcts.FrontierAction, n)
+	b := make([]mcts.FrontierAction, s.B)
 	for i := range b {
 		b[i] = mcts.FrontierAction{Action: Action(i)}
 	}

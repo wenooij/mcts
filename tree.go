@@ -10,17 +10,19 @@ type NodeType int
 
 const (
 	nodeTerminal NodeType = 1 << iota
+	nodeRoot
 )
 
 func (t NodeType) Terminal() bool { return t&nodeTerminal != 0 }
+func (t NodeType) Root() bool     { return t&nodeRoot != 0 }
 
 type node struct {
 	nodeType      NodeType
 	rawScore      Score
-	numRollouts   float64
-	exploreFactor float64
-	weight        float64
-	priority      float64
+	numRollouts   float32
+	exploreFactor float32
+	weight        float32
+	priority      float32
 
 	// Topology.
 	childSet map[Action]*heapordered.Tree[*node]
@@ -40,25 +42,25 @@ func newNode(action FrontierAction) *node {
 		exploreFactor: action.ExploreFactor,
 		// Max priority for new nodes.
 		// This will be recomputed after the first attempt.
-		priority: math.Inf(-1),
+		priority: float32(math.Inf(-1)),
 		weight:   weight,
 		childSet: make(map[Action]*heapordered.Tree[*node]),
 		Action:   action.Action,
 	}
 }
 
-func (n *node) Prioirty() float64 { return n.priority }
+func (n *node) Prioirty() float64 { return float64(n.priority) }
 
-func (e *node) RawScore() float64 {
+func (e *node) RawScore() float32 {
 	if e.rawScore == nil {
-		return math.Inf(+1)
+		return float32(math.Inf(+1))
 	}
 	return e.rawScore.Score()
 }
 
-func (e *node) NormScore() float64 {
+func (e *node) NormScore() float32 {
 	if e.numRollouts == 0 {
-		return math.Inf(+1)
+		return float32(math.Inf(+1))
 	}
 	return e.rawScore.Score() / e.numRollouts
 }
@@ -68,6 +70,7 @@ func newTree(s *Search) *heapordered.Tree[*node] {
 		ExploreFactor: s.ExploreFactor,
 	}
 	root := newNode(step)
+	root.nodeType |= nodeRoot
 	return heapordered.NewTree(root)
 }
 
@@ -87,4 +90,11 @@ func getOrCreateChild(s *Search, parent *heapordered.Tree[*node], action Frontie
 
 func getChild(root *heapordered.Tree[*node], action Action) (child *heapordered.Tree[*node]) {
 	return root.Elem().childSet[action]
+}
+
+func getDepth(n *heapordered.Tree[*node]) int {
+	depth := 0
+	for n := n.Parent(); n != nil; n, depth = n.Parent(), depth+1 {
+	}
+	return depth
 }

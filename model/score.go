@@ -7,17 +7,17 @@ import "github.com/wenooij/mcts"
 // Satisfies mcts.Score.
 type Score float64
 
-func (s Score) Score() float64              { return float64(s) }
+func (s Score) Score() float32              { return float32(s) }
 func (s Score) Add(b mcts.Score) mcts.Score { return s + b.(Score) }
 
 // Scores wraps a slice of float64s for multiplayer scorekeeping in zero-sum games.
 //
-// Scores is equivalent to ScalarWeightedScores with Player's score weight of 1 and -1/(N-1) elsewhere.
+// Scores is equivalent to ScalarWeightedScores with Player's score weight of 1 and -1 elsewhere.
 //
 // Satisfies mcts.Score.
 type Scores struct {
 	Player       int
-	PlayerScores []float64
+	PlayerScores []float32
 }
 
 func (s Scores) Add(b mcts.Score) mcts.Score {
@@ -26,19 +26,19 @@ func (s Scores) Add(b mcts.Score) mcts.Score {
 	}
 	return s
 }
-func (s Scores) Score() float64 {
+
+func (s Scores) Score() float32 {
 	score := s.PlayerScores[s.Player]
 	n := len(s.PlayerScores)
 	if n <= 1 {
 		return score
 	}
-	w := 1 / float64(n-1)
+	w := 1 / float32(n-1)
 	for _, x := range s.PlayerScores[:s.Player] {
 		score -= x * w
 	}
 	for _, x := range s.PlayerScores[s.Player+1:] {
 		score -= x * w
-
 	}
 	return score
 }
@@ -53,8 +53,8 @@ func (s Scores) Score() float64 {
 //
 // Satisfies mcts.Score.
 type WeightedScores struct {
-	Weights      []float64
-	PlayerScores []float64
+	Weights      []float32
+	PlayerScores []float32
 }
 
 func (s WeightedScores) Add(b mcts.Score) mcts.Score {
@@ -63,8 +63,8 @@ func (s WeightedScores) Add(b mcts.Score) mcts.Score {
 	}
 	return s
 }
-func (s WeightedScores) Score() float64 {
-	score := 0.0
+func (s WeightedScores) Score() float32 {
+	score := float32(0)
 	for i, x := range s.PlayerScores {
 		score += s.Weights[i] * x
 	}

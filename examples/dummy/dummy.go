@@ -42,7 +42,7 @@ func main() {
 				mcts.AnyFilter(r))
 			fmt.Println(pv)
 			fmt.Println("---")
-			fmt.Println(pv.Leaf().Score)
+			fmt.Println(pv.Last().Score)
 			return
 		default:
 		}

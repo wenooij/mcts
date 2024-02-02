@@ -23,8 +23,8 @@ type Action interface {
 // proportional to the values returned from Score.
 type FrontierAction struct {
 	Action        Action
-	Weight        float64
-	ExploreFactor float64
+	Weight        float32
+	ExploreFactor float32
 }
 
 // SearchInterface is the minimal interface to MCTS tree state.
@@ -118,7 +118,7 @@ type Score interface {
 	// It is best to return scores in the interval [-1, +1]. Using values outside this
 	// range may impact search quality due to disrupting the explore-exploit tradeoff.
 	// Adjust ExploreFactor proportionally if using values outside the interval.
-	Score() float64
+	Score() float32
 
 	// Add returns the sum of Scores of the same type.
 	//

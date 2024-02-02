@@ -18,14 +18,14 @@ const (
 type SummaryStats struct {
 	N         int
 	SampleN   int
-	Min       float64
-	Quartiles []float64
-	Mean      float64
-	Max       float64
-	Stddev    float64
+	Min       float32
+	Quartiles []float32
+	Mean      float32
+	Max       float32
+	Stddev    float32
 }
 
-func (s *SummaryStats) ZScore(x float64) float64 {
+func (s *SummaryStats) ZScore(x float32) float32 {
 	if s.SampleN == 0 {
 		return x
 	}
@@ -36,18 +36,19 @@ func (s *SummaryStats) String() string {
 	if s.SampleN == 0 {
 		return "no summary"
 	}
-	q1, q2, q3 := math.NaN(), math.NaN(), math.NaN()
+	q1, q2, q3 := float32(math.NaN()), float32(math.NaN()), float32(math.NaN())
 	if len(s.Quartiles) == 3 {
 		q1 = s.Quartiles[0]
 		q2 = s.Quartiles[1]
 		q3 = s.Quartiles[2]
 	}
-	return fmt.Sprintf("min: %f [%f, %f, %f] mean: %f max: %f, over %d samples with reservoir size %d",
+	return fmt.Sprintf("min: %f [%f, %f, %f] mean: %f stddev: %f max: %f, over %d samples with reservoir size %d",
 		s.Min,
 		q1,
 		q2,
 		q3,
 		s.Mean,
+		s.Stddev,
 		s.Max,
 		s.N,
 		s.SampleN,
@@ -67,16 +68,16 @@ func Summarize(s *mcts.Search) SummaryStats {
 	s.Search()
 	// Compute fit stats.
 	var (
-		minScore     = math.Inf(+1)
-		maxScore     = math.Inf(-1)
-		scoreSum     float64
+		minScore     = float32(math.Inf(+1))
+		maxScore     = float32(math.Inf(-1))
+		scoreSum     float32
 		numSamples   int
-		scoreSamples = make([]float64, 0, scoreSampleCap)
+		scoreSamples = make([]float32, 0, scoreSampleCap)
 	)
 	for i := 0; i < numAnyVSamples; i++ {
 		// Sample score from random variations using reservoir sampling.
 		for _, e := range s.AnyV() {
-			if math.IsInf(e.Score, 0) {
+			if math.IsInf(float64(e.Score), 0) {
 				// Inf scores cannot contribute to statistics.
 				continue
 			}
@@ -102,19 +103,19 @@ func Summarize(s *mcts.Search) SummaryStats {
 		return stats
 	}
 	stats.Min = minScore
-	stats.Quartiles = []float64{
+	stats.Quartiles = []float32{
 		scoreSamples[stats.SampleN/5],
 		scoreSamples[stats.SampleN/2],
 		scoreSamples[4*stats.SampleN/5],
 	}
-	stats.Mean = scoreSum / float64(stats.SampleN)
+	stats.Mean = scoreSum / float32(stats.SampleN)
 	stats.Max = maxScore
 
 	// Compute stddev.
-	var sdeSum float64
+	var sdeSum float32
 	for _, x := range scoreSamples {
 		sdeSum += (x - stats.Mean) * (x - stats.Mean)
 	}
-	stats.Stddev = math.Sqrt(sdeSum / float64(stats.SampleN))
+	stats.Stddev = float32(math.Sqrt(float64(sdeSum / float32(stats.SampleN))))
 	return stats
 }

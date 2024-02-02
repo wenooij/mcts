@@ -12,16 +12,17 @@ import (
 type StatEntry struct {
 	NodeType          NodeType
 	Action            Action
-	Score             float64
+	Score             float32
 	RawScore          Score
-	NumRollouts       float64
-	NumParentRollouts float64
-	PredictorWeight   float64
-	ExploreFactor     float64
-	Priority          float64
-	ExploitTerm       float64
-	ExploreTerm       float64
-	PredictorTerm     float64
+	NumRollouts       float32
+	NumParentRollouts float32
+	PredictorWeight   float32
+	ExploreFactor     float32
+	Priority          float32
+	ExploitTerm       float32
+	ExploreTerm       float32
+	PredictorTerm     float32
+	Depth             int
 	NumChildren       int
 }
 
@@ -40,21 +41,13 @@ func makeStatEntry(n *heapordered.Tree[*node]) StatEntry {
 		ExploitTerm:       exploit(e.RawScore(), e.numRollouts),
 		ExploreTerm:       explore(e.numRollouts, numParentRollouts(n)),
 		PredictorTerm:     predictor(e.weight),
+		Depth:             getDepth(n),
 		NumChildren:       n.Len(),
 	}
 }
 
 func (e StatEntry) appendString(sb *strings.Builder) {
-	fmt.Fprintf(sb, "[%-4.3f] %-6s (", e.Score, e.Action)
-	switch n := e.NumRollouts; {
-	case n < 1000:
-		fmt.Fprintf(sb, "%.0f N", n)
-	case n < 1e6:
-		fmt.Fprintf(sb, "%.2f kN", n/1e3)
-	default:
-		fmt.Fprintf(sb, "%.2f MN", n/1e6)
-	}
-	sb.WriteByte(')')
+	fmt.Fprintf(sb, "[%f] %s (%d)", e.Score, e.Action, int64(e.NumRollouts))
 }
 
 func (e StatEntry) String() string {
@@ -127,8 +120,8 @@ func (r Search) Best() *StatEntry {
 }
 
 // MaxFilter returns a filter which selects the entries maximumizing f.
-func MaxFilter(f func(e StatEntry) float64) Filter {
-	return maxCmpFilter(f, func(a, b float64) int {
+func MaxFilter(f func(e StatEntry) float32) Filter {
+	return maxCmpFilter(f, func(a, b float32) int {
 		if a == b {
 			return 0
 		}
@@ -140,8 +133,8 @@ func MaxFilter(f func(e StatEntry) float64) Filter {
 }
 
 // MinFilter returns a filter which selects the entries maximumizing f.
-func MinFilter(f func(e StatEntry) float64) Filter {
-	return maxCmpFilter(f, func(a, b float64) int {
+func MinFilter(f func(e StatEntry) float32) Filter {
+	return maxCmpFilter(f, func(a, b float32) int {
 		if a == b {
 			return 0
 		}
@@ -152,11 +145,11 @@ func MinFilter(f func(e StatEntry) float64) Filter {
 	})
 }
 
-func maxCmpFilter(f func(e StatEntry) float64, cmp func(float64, float64) int) Filter {
+func maxCmpFilter(f func(e StatEntry) float32, cmp func(a, b float32) int) Filter {
 	return func(input []StatEntry) []StatEntry {
 		var (
 			maxEntries []StatEntry
-			maxValue   float64
+			maxValue   float32
 		)
 		for _, e := range input {
 			value := f(e)
@@ -174,22 +167,30 @@ func maxCmpFilter(f func(e StatEntry) float64, cmp func(float64, float64) int) F
 
 // MaxRolloutsFilter returns a filter which selects the entries with maximum rollouts.
 func MaxRolloutsFilter() Filter {
-	return MaxFilter(func(e StatEntry) float64 { return e.NumRollouts })
+	return MaxFilter(func(e StatEntry) float32 { return e.NumRollouts })
 }
 
 // MaxScoreFilter returns a filter which selects the entries with the best normalized score.
 func MaxScoreFilter() Filter {
-	return MaxFilter(func(e StatEntry) float64 { return e.Score })
+	return MaxFilter(func(e StatEntry) float32 { return e.Score })
 }
 
 // MaxRawScoreFilter picks the node with the best raw score.
 func MaxRawScoreFilter() Filter {
-	return MaxFilter(func(e StatEntry) float64 { return e.RawScore.Score() })
+	return MaxFilter(func(e StatEntry) float32 { return e.RawScore.Score() })
 }
 
 // MinPriorityFilter picks the node with the highest raw score.
 func HighestPriorityFilter() Filter {
-	return MinFilter(func(e StatEntry) float64 { return e.Priority })
+	return MinFilter(func(e StatEntry) float32 { return e.Priority })
+}
+
+func RootActionFilter(a Action) Filter {
+	return PredicateFilter(func(e StatEntry) bool { return e.Depth != 1 || e.Action == a })
+}
+
+func MaxDepthFilter(depth int) Filter {
+	return PredicateFilter(func(e StatEntry) bool { return e.Depth <= depth })
 }
 
 // AnyFilter returns a filter which selects a random entry.

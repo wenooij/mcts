@@ -2,80 +2,56 @@ package main
 
 import (
 	"fmt"
-	"slices"
+	"os"
+	"os/signal"
 	"time"
 
 	"github.com/wenooij/mcts"
 	"github.com/wenooij/mcts/model"
+	"github.com/wenooij/mcts/model/gviz"
 )
 
 const (
-	X = byte('x')
-	O = byte('o')
+	X = byte('X')
+	O = byte('O')
 )
 
 type SearchPlugin struct {
-	node    *tictactoeNode
-	actions []mcts.FrontierAction
+	node *tictactoeNode
 }
 
 func newSearchPlugin() *SearchPlugin {
 	p := &SearchPlugin{
 		node: new(tictactoeNode),
 	}
-	p.actions = slices.Grow(p.actions, 9)
 	p.Root()
 	return p
 }
 
-type tictactoeAction struct {
-	cell byte
-	turn byte
-}
+type tictactoeAction byte
 
 func (s tictactoeAction) String() string {
-	if s == (tictactoeAction{}) {
-		return "#"
-	}
-	return fmt.Sprintf("%c%c", '0'+s.cell, s.turn)
+	return fmt.Sprintf("%c", '0'+s)
 }
 
 type tictactoeNode struct {
-	depth    int
-	terminal bool
-	winner   byte
-	state    [9]byte
+	depth int
+	state [9]byte
 }
 
 func (n *tictactoeNode) Root() {
-	n.depth = 0
-	n.terminal = false
-	n.winner = 0
+	n.depth = 4
 	copy(n.state[:], []byte{
-		0, 0, 0,
-		0, 0, 0,
-		0, 0, 0,
+		X, O, 0,
+		0, X, 0,
+		0, O, 0,
 	})
 }
 
-func (n *tictactoeNode) turn() byte {
-	if n.depth&1 == 0 {
-		return X
-	}
-	return O
-}
+func (n *tictactoeNode) player() int { return n.depth % 2 }
+func (n *tictactoeNode) turn() byte  { return "XO"[n.depth%2] }
 
-func (n *tictactoeNode) player() int {
-	if n.depth&1 == 0 {
-		return 0
-	}
-	return 1
-}
-
-func (n *tictactoeNode) computeTerminal() (winner byte, terminal bool) {
-	if n.depth < 5 {
-		return 0, false
-	}
+func (n *tictactoeNode) computeWinner() (winner byte) {
 	s := n.state
 	test := func(i, j, k int) bool {
 		c := s[i]
@@ -87,13 +63,13 @@ func (n *tictactoeNode) computeTerminal() (winner byte, terminal bool) {
 	testDiag2 := func() bool { return test(2, 4, 6) }
 	switch {
 	case testRow(0), testCol(0):
-		return s[0], true
+		return s[0]
 	case testRow(3), testCol(1), testDiag1(), testDiag2():
-		return s[4], true
+		return s[4]
 	case testRow(6), testCol(2):
-		return s[8], true
+		return s[8]
 	default:
-		return 0, n.depth >= 9
+		return 0
 	}
 }
 
@@ -102,60 +78,37 @@ func (s *SearchPlugin) Root() {
 }
 
 func (s *SearchPlugin) Expand(int) []mcts.FrontierAction {
-	if s.node.terminal {
+	if s.node.computeWinner() != 0 {
 		return nil
 	}
-	s.actions = s.actions[:0]
+	actions := make([]mcts.FrontierAction, 0, 9)
 	for i, state := range s.node.state {
 		if state != 0 {
 			continue
 		}
-		weight := 0.0
-		a := tictactoeAction{cell: byte(i), turn: s.node.turn()}
-		turn := s.node.turn()
-		s.Select(a)
-		if s.node.winner == turn {
-			weight = 1000000
-		}
-		s.Unselect(a)
-		s.actions = append(s.actions, mcts.FrontierAction{
-			Action: a,
-			Weight: weight,
+		actions = append(actions, mcts.FrontierAction{
+			Action: tictactoeAction(i),
 		})
 	}
-	return s.actions
+	return actions
 }
 
 func (s *SearchPlugin) Select(a mcts.Action) {
 	n := s.node
-	n.depth++
 	ta := a.(tictactoeAction)
-	idx := ta.cell
-	n.state[idx] = ta.turn
-	n.winner, n.terminal = n.computeTerminal()
-}
-
-func (s *SearchPlugin) Unselect(step tictactoeAction) {
-	n := s.node
-	n.depth--
-	idx := step.cell
-	n.state[idx] = 0
-	n.winner, n.terminal = n.computeTerminal()
+	n.state[ta] = s.node.turn()
+	n.depth++
 }
 
 func (s *SearchPlugin) Score() mcts.Score {
-	scores := model.Scores{PlayerScores: make([]float64, 2)}
-	if s.node.turn() == O {
-		scores.Player = 1
-	}
-	if !s.node.terminal {
-		return scores
-	}
-	switch s.node.winner {
+	// Depth penalty term rewards the earliest win.
+	scores := model.Scores{Player: s.node.player(), PlayerScores: make([]float32, 2)}
+	d := float32(-s.node.depth) / 1000
+	switch s.node.computeWinner() {
 	case X:
-		scores.PlayerScores[0]++
+		scores.PlayerScores[0] += 1 - d
 	case O:
-		scores.PlayerScores[1]++
+		scores.PlayerScores[1] += 1 - d
 	}
 	return scores
 }
@@ -164,7 +117,7 @@ func main() {
 	si := newSearchPlugin()
 
 	done := make(chan struct{})
-	timer := time.After(1 * time.Second)
+	timer := time.After(60 * time.Second)
 	go func() {
 		<-timer
 		done <- struct{}{}
@@ -173,12 +126,51 @@ func main() {
 	opts := mcts.Search{
 		SearchInterface: si,
 		NumEpisodes:     10000,
+		ExploreFactor:   mcts.DefaultExploreFactor,
 	}
-	for {
-		opts.Search()
+
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+
+	go func() {
+		<-ch
+		for _, e := range opts.PV() {
+			fmt.Println(e)
+		}
+		fmt.Println("---")
+		for _, a := range opts.RootActions() {
+			fmt.Println(opts.Stat(a).Last())
+		}
+		fmt.Println("---")
+		fmt.Println(opts.PV()[0].RawScore.(model.Scores))
+		fmt.Println("---")
+
+		var t gviz.Tree
+		t.Add(opts.PV(), true)
+		subtree := opts.Subtree(opts.PV().First().Action)
+		for i := 0; i < 1000; i++ {
+			t.Add(subtree.FilterV(
+				mcts.MaxDepthFilter(3),
+				mcts.AnyFilter(opts.Rand)), false)
+		}
+		f, err := os.OpenFile("tictactoe.dot", os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0755)
+		if err != nil {
+			panic(err)
+		}
+		if _, err := t.DOT(f); err != nil {
+			panic(err)
+		}
+		f.Close()
+		os.Exit(0)
+	}()
+
+	for lastPrint := time.Now(); ; {
+		if opts.Search(); time.Since(lastPrint) >= time.Second {
+			fmt.Println(opts.PV())
+			lastPrint = time.Now()
+		}
 		select {
 		case <-done:
-			fmt.Println(opts.PV())
 			return
 		default:
 		}
