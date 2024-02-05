@@ -18,14 +18,14 @@ const (
 type SummaryStats struct {
 	N         int
 	SampleN   int
-	Min       float32
-	Quartiles []float32
-	Mean      float32
-	Max       float32
-	Stddev    float32
+	Min       float64
+	Quartiles []float64
+	Mean      float64
+	Max       float64
+	Stddev    float64
 }
 
-func (s *SummaryStats) ZScore(x float32) float32 {
+func (s *SummaryStats) ZScore(x float64) float64 {
 	if s.SampleN == 0 {
 		return x
 	}
@@ -36,7 +36,7 @@ func (s *SummaryStats) String() string {
 	if s.SampleN == 0 {
 		return "no summary"
 	}
-	q1, q2, q3 := float32(math.NaN()), float32(math.NaN()), float32(math.NaN())
+	q1, q2, q3 := math.NaN(), math.NaN(), math.NaN()
 	if len(s.Quartiles) == 3 {
 		q1 = s.Quartiles[0]
 		q2 = s.Quartiles[1]
@@ -68,11 +68,11 @@ func Summarize(s *mcts.Search) SummaryStats {
 	s.Search()
 	// Compute fit stats.
 	var (
-		minScore     = float32(math.Inf(+1))
-		maxScore     = float32(math.Inf(-1))
-		scoreSum     float32
+		minScore     = math.Inf(+1)
+		maxScore     = math.Inf(-1)
+		scoreSum     float64
 		numSamples   int
-		scoreSamples = make([]float32, 0, scoreSampleCap)
+		scoreSamples = make([]float64, 0, scoreSampleCap)
 	)
 	for i := 0; i < numAnyVSamples; i++ {
 		// Sample score from random variations using reservoir sampling.
@@ -103,19 +103,19 @@ func Summarize(s *mcts.Search) SummaryStats {
 		return stats
 	}
 	stats.Min = minScore
-	stats.Quartiles = []float32{
+	stats.Quartiles = []float64{
 		scoreSamples[stats.SampleN/5],
 		scoreSamples[stats.SampleN/2],
 		scoreSamples[4*stats.SampleN/5],
 	}
-	stats.Mean = scoreSum / float32(stats.SampleN)
+	stats.Mean = scoreSum / float64(stats.SampleN)
 	stats.Max = maxScore
 
 	// Compute stddev.
-	var sdeSum float32
+	var sdeSum float64
 	for _, x := range scoreSamples {
 		sdeSum += (x - stats.Mean) * (x - stats.Mean)
 	}
-	stats.Stddev = float32(math.Sqrt(float64(sdeSum / float32(stats.SampleN))))
+	stats.Stddev = math.Sqrt(sdeSum / float64(stats.SampleN))
 	return stats
 }

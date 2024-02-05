@@ -33,7 +33,7 @@ func TestSelectVisitsRootActions(t *testing.T) {
 		if e.RawScore == nil {
 			t.Errorf("TestSelectVisitsRootActions(%s): RawScore not initialized for action", a)
 		}
-		if gotRollouts, wantRollouts := e.NumRollouts, float32(1); gotRollouts != wantRollouts {
+		if gotRollouts, wantRollouts := e.NumRollouts, float64(1); gotRollouts != wantRollouts {
 			t.Errorf("TestSelectVisitsRootActions(%s): got rollouts = %f, want %f", a, gotRollouts, wantRollouts)
 		}
 	}

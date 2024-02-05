@@ -25,6 +25,11 @@ type Search struct {
 	// SearchInterface implements the search environment.
 	SearchInterface
 
+	// InitRootScore returns the initial score assigned to the root node.
+	//
+	// If nil SearchInterface.Score will be called.
+	InitRootScore func() Score
+
 	// NumEpisodes ends the Search after the given fixed number
 	// of episodes. Default is 100.
 	NumEpisodes int
@@ -42,7 +47,7 @@ type Search struct {
 	//
 	// This should be made roughly proportional to scores obtained from random rollouts.
 	// Zero uses the default value of DefaultExploreFactor.
-	ExploreFactor float32
+	ExploreFactor float64
 }
 
 func (s *Search) patchDefaults() {
@@ -68,7 +73,11 @@ func (s *Search) Init() bool {
 	}
 	s.patchDefaults()
 	s.root = newTree(s)
-	initializeScore(s, s.root)
+	if s.InitRootScore == nil {
+		initializeScore(s, s.root)
+	} else {
+		s.root.Elem().rawScore = s.InitRootScore()
+	}
 	return true
 }
 
@@ -100,6 +109,6 @@ func (s *Search) searchEpisode() {
 	}
 	// Simulate and backprop score.
 	if rawScore, numRollouts := rollout(s, n); numRollouts != 0 {
-		backprop(n, rawScore, float32(numRollouts))
+		backprop(n, rawScore, numRollouts)
 	}
 }

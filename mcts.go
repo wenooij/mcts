@@ -23,8 +23,8 @@ type Action interface {
 // proportional to the values returned from Score.
 type FrontierAction struct {
 	Action        Action
-	Weight        float32
-	ExploreFactor float32
+	Weight        float64
+	ExploreFactor float64
 }
 
 // SearchInterface is the minimal interface to MCTS tree state.
@@ -118,7 +118,7 @@ type Score interface {
 	// It is best to return scores in the interval [-1, +1]. Using values outside this
 	// range may impact search quality due to disrupting the explore-exploit tradeoff.
 	// Adjust ExploreFactor proportionally if using values outside the interval.
-	Score() float32
+	Score() float64
 
 	// Add returns the sum of Scores of the same type.
 	//
@@ -143,5 +143,5 @@ type RolloutInterface interface {
 	// per epoch is helpful.
 	//
 	// Backpropagation is skipped when numRollouts is 0.
-	Rollout() (rawScore Score, numRollouts int)
+	Rollout() (rawScore Score, numRollouts float64)
 }

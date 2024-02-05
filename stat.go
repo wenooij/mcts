@@ -12,16 +12,16 @@ import (
 type StatEntry struct {
 	NodeType          NodeType
 	Action            Action
-	Score             float32
+	Score             float64
 	RawScore          Score
-	NumRollouts       float32
-	NumParentRollouts float32
-	PredictorWeight   float32
-	ExploreFactor     float32
-	Priority          float32
-	ExploitTerm       float32
-	ExploreTerm       float32
-	PredictorTerm     float32
+	NumRollouts       float64
+	NumParentRollouts float64
+	PredictorWeight   float64
+	ExploreFactor     float64
+	Priority          float64
+	ExploitTerm       float64
+	ExploreTerm       float64
+	PredictorTerm     float64
 	Depth             int
 	NumChildren       int
 }
@@ -120,8 +120,8 @@ func (r Search) Best() *StatEntry {
 }
 
 // MaxFilter returns a filter which selects the entries maximumizing f.
-func MaxFilter(f func(e StatEntry) float32) Filter {
-	return maxCmpFilter(f, func(a, b float32) int {
+func MaxFilter(f func(e StatEntry) float64) Filter {
+	return maxCmpFilter(f, func(a, b float64) int {
 		if a == b {
 			return 0
 		}
@@ -133,8 +133,8 @@ func MaxFilter(f func(e StatEntry) float32) Filter {
 }
 
 // MinFilter returns a filter which selects the entries maximumizing f.
-func MinFilter(f func(e StatEntry) float32) Filter {
-	return maxCmpFilter(f, func(a, b float32) int {
+func MinFilter(f func(e StatEntry) float64) Filter {
+	return maxCmpFilter(f, func(a, b float64) int {
 		if a == b {
 			return 0
 		}
@@ -145,11 +145,11 @@ func MinFilter(f func(e StatEntry) float32) Filter {
 	})
 }
 
-func maxCmpFilter(f func(e StatEntry) float32, cmp func(a, b float32) int) Filter {
+func maxCmpFilter(f func(e StatEntry) float64, cmp func(a, b float64) int) Filter {
 	return func(input []StatEntry) []StatEntry {
 		var (
 			maxEntries []StatEntry
-			maxValue   float32
+			maxValue   float64
 		)
 		for _, e := range input {
 			value := f(e)
@@ -158,7 +158,7 @@ func maxCmpFilter(f func(e StatEntry) float32, cmp func(a, b float32) int) Filte
 			} else if cmp > 0 {
 				maxEntries = maxEntries[:0]
 				maxEntries = append(maxEntries, e)
-				maxValue = e.NumRollouts
+				maxValue = value
 			}
 		}
 		return maxEntries
@@ -167,22 +167,22 @@ func maxCmpFilter(f func(e StatEntry) float32, cmp func(a, b float32) int) Filte
 
 // MaxRolloutsFilter returns a filter which selects the entries with maximum rollouts.
 func MaxRolloutsFilter() Filter {
-	return MaxFilter(func(e StatEntry) float32 { return e.NumRollouts })
+	return MaxFilter(func(e StatEntry) float64 { return e.NumRollouts })
 }
 
 // MaxScoreFilter returns a filter which selects the entries with the best normalized score.
 func MaxScoreFilter() Filter {
-	return MaxFilter(func(e StatEntry) float32 { return e.Score })
+	return MaxFilter(func(e StatEntry) float64 { return e.Score })
 }
 
 // MaxRawScoreFilter picks the node with the best raw score.
 func MaxRawScoreFilter() Filter {
-	return MaxFilter(func(e StatEntry) float32 { return e.RawScore.Score() })
+	return MaxFilter(func(e StatEntry) float64 { return e.RawScore.Score() })
 }
 
 // MinPriorityFilter picks the node with the highest raw score.
 func HighestPriorityFilter() Filter {
-	return MinFilter(func(e StatEntry) float32 { return e.Priority })
+	return MinFilter(func(e StatEntry) float64 { return e.Priority })
 }
 
 func RootActionFilter(a Action) Filter {

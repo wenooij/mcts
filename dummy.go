@@ -7,9 +7,9 @@ import (
 
 // Copied from github.com/wenooij/model/dummy to use in tests.
 
-type dummyScore float32
+type dummyScore float64
 
-func (s dummyScore) Score() float32    { return float32(s) }
+func (s dummyScore) Score() float64    { return float64(s) }
 func (s dummyScore) Add(b Score) Score { return s + b.(dummyScore) }
 
 type dummyAction int

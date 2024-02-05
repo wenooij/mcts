@@ -2,18 +2,18 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"os/signal"
 	"time"
 
 	"github.com/wenooij/mcts"
 	"github.com/wenooij/mcts/model"
-	"github.com/wenooij/mcts/model/gviz"
 )
 
+type mark byte
+
 const (
-	X = byte('X')
-	O = byte('O')
+	empty mark = iota
+	X
+	O
 )
 
 type SearchPlugin struct {
@@ -36,22 +36,22 @@ func (s tictactoeAction) String() string {
 
 type tictactoeNode struct {
 	depth int
-	state [9]byte
+	state [9]mark
 }
 
 func (n *tictactoeNode) Root() {
-	n.depth = 4
-	copy(n.state[:], []byte{
-		X, O, 0,
-		0, X, 0,
-		0, O, 0,
+	n.depth = 0
+	copy(n.state[:], []mark{
+		0, 0, 0,
+		0, 0, 0,
+		0, 0, 0,
 	})
 }
 
-func (n *tictactoeNode) player() int { return n.depth % 2 }
-func (n *tictactoeNode) turn() byte  { return "XO"[n.depth%2] }
+func (n *tictactoeNode) player() int { return n.depth & 1 }
+func (n *tictactoeNode) turn() mark  { return mark(1 + n.depth&1) }
 
-func (n *tictactoeNode) computeWinner() (winner byte) {
+func (n *tictactoeNode) computeWinner() (winner mark) {
 	s := n.state
 	test := func(i, j, k int) bool {
 		c := s[i]
@@ -73,9 +73,7 @@ func (n *tictactoeNode) computeWinner() (winner byte) {
 	}
 }
 
-func (s *SearchPlugin) Root() {
-	s.node.Root()
-}
+func (s *SearchPlugin) Root() { s.node.Root() }
 
 func (s *SearchPlugin) Expand(int) []mcts.FrontierAction {
 	if s.node.computeWinner() != 0 {
@@ -102,13 +100,13 @@ func (s *SearchPlugin) Select(a mcts.Action) {
 
 func (s *SearchPlugin) Score() mcts.Score {
 	// Depth penalty term rewards the earliest win.
-	scores := model.Scores{Player: s.node.player(), PlayerScores: make([]float32, 2)}
-	d := float32(-s.node.depth) / 1000
+	scores := model.Scores{Player: 1 - s.node.player(), PlayerScores: make([]float64, 2)}
+	d := float64(s.node.depth) / 1000
 	switch s.node.computeWinner() {
 	case X:
-		scores.PlayerScores[0] += 1 - d
+		scores.PlayerScores[0] = 1 - d
 	case O:
-		scores.PlayerScores[1] += 1 - d
+		scores.PlayerScores[1] = 1 - d
 	}
 	return scores
 }
@@ -126,6 +124,7 @@ func main() {
 	opts := mcts.Search{
 		SearchInterface: si,
 		NumEpisodes:     10000,
+		InitRootScore:   func() mcts.Score { return model.Scores{PlayerScores: make([]float64, 2)} },
 		ExploreFactor:   mcts.DefaultExploreFactor,
 	}
 

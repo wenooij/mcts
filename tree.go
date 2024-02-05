@@ -19,10 +19,10 @@ func (t NodeType) Root() bool     { return t&nodeRoot != 0 }
 type node struct {
 	nodeType      NodeType
 	rawScore      Score
-	numRollouts   float32
-	exploreFactor float32
-	weight        float32
-	priority      float32
+	numRollouts   float64
+	exploreFactor float64
+	weight        float64
+	priority      float64
 
 	// Topology.
 	childSet map[Action]*heapordered.Tree[*node]
@@ -42,7 +42,7 @@ func newNode(action FrontierAction) *node {
 		exploreFactor: action.ExploreFactor,
 		// Max priority for new nodes.
 		// This will be recomputed after the first attempt.
-		priority: float32(math.Inf(-1)),
+		priority: math.Inf(-1),
 		weight:   weight,
 		childSet: make(map[Action]*heapordered.Tree[*node]),
 		Action:   action.Action,
@@ -51,16 +51,16 @@ func newNode(action FrontierAction) *node {
 
 func (n *node) Prioirty() float64 { return float64(n.priority) }
 
-func (e *node) RawScore() float32 {
+func (e *node) RawScore() float64 {
 	if e.rawScore == nil {
-		return float32(math.Inf(+1))
+		return math.Inf(+1)
 	}
 	return e.rawScore.Score()
 }
 
-func (e *node) NormScore() float32 {
+func (e *node) NormScore() float64 {
 	if e.numRollouts == 0 {
-		return float32(math.Inf(+1))
+		return math.Inf(+1)
 	}
 	return e.rawScore.Score() / e.numRollouts
 }

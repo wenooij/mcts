@@ -6,7 +6,7 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-func backprop(frontier *heapordered.Tree[*node], rawScore Score, numRollouts float32) {
+func backprop(frontier *heapordered.Tree[*node], rawScore Score, numRollouts float64) {
 	for n := frontier; n != nil; n = n.Parent() {
 		e := n.Elem()
 		e.rawScore = e.rawScore.Add(rawScore)
@@ -15,8 +15,8 @@ func backprop(frontier *heapordered.Tree[*node], rawScore Score, numRollouts flo
 	}
 }
 
-func backpropNull(leaf *heapordered.Tree[*node]) {
-	for n := leaf; n != nil; n = n.Parent() {
+func backpropNull(frontier *heapordered.Tree[*node]) {
+	for n := frontier; n != nil; n = n.Parent() {
 		updatePrioritiesPUCB(n, n.Elem())
 	}
 }
@@ -29,31 +29,31 @@ func updatePrioritiesPUCB(n *heapordered.Tree[*node], e *node) {
 	n.Init()
 }
 
-func numParentRollouts(n *heapordered.Tree[*node]) float32 {
+func numParentRollouts(n *heapordered.Tree[*node]) float64 {
 	parent := n.Parent()
 	if parent == nil {
 		return 0
 	}
-	return float32(parent.Elem().numRollouts)
+	return parent.Elem().numRollouts
 }
 
 // exploit returns the mean win rate factor.
 //
 // precondition: numRollouts > 0.
-func exploit(rawScore, numRollouts float32) float32 { return rawScore / numRollouts }
+func exploit(rawScore, numRollouts float64) float64 { return rawScore / numRollouts }
 
 // explore returns the exploration optimism factor:
 // a function of the ratio of rollouts and parent rollouts.
 //
 // precondition: numRollouts >= 0 && numParentRollouts >= 0.
-func explore(numRollouts, numParentRollouts float32) float32 {
-	return float32(math.Sqrt(float64(fastLog(numParentRollouts+1) / numRollouts)))
+func explore(numRollouts, numParentRollouts float64) float64 {
+	return math.Sqrt(float64(fastLog(float32(numParentRollouts+1))) / numRollouts)
 }
 
 // predictor returns a predictor loss factor.
 //
 // precondition: weight > 0.
-func predictor(weight float32) float32 { return 2 / weight }
+func predictor(weight float64) float64 { return 2 / weight }
 
 // pucb is short for predictor weighted upper confidence bound on trees (PUCB).
 // It was introduced as a UCT extended with priors on actions.
@@ -64,12 +64,12 @@ func predictor(weight float32) float32 { return 2 / weight }
 //
 // precondition: numRollouts >= 0 && numParentRollouts >= 0.
 // precondition: weight > 0.
-func pucb(rawScore, numRollouts, numParentRollouts, weight, exploreFactor float32) float32 {
+func pucb(rawScore, numRollouts, numParentRollouts, weight, exploreFactor float64) float64 {
 	nf := 1 / numRollouts
-	exploit := rawScore * nf
-	explore1 := float32(math.Sqrt(float64(fastLog(numParentRollouts+1) * nf)))
+	exploit := float64(rawScore) * nf
+	explore1 := math.Sqrt(float64(fastLog(float32(numParentRollouts+1))) * nf)
 	predict := predictor(weight)
-	explore2 := float32(math.Sqrt(float64(fastLog(numParentRollouts+1) / numParentRollouts)))
-	pucb := exploit + exploreFactor*explore1 - predict*explore2
+	explore2 := math.Sqrt(float64(fastLog(float32(numParentRollouts+1))) / numParentRollouts)
+	pucb := exploit + float64(exploreFactor)*explore1 - float64(predict)*explore2
 	return pucb
 }

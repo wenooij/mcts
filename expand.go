@@ -23,8 +23,8 @@ func expand(s *Search, n *heapordered.Tree[*node]) *heapordered.Tree[*node] {
 	// Clear terminal bit.
 	n.Elem().nodeType &= ^nodeTerminal
 	var (
-		totalWeight    float32
-		uniformWeight  float32
+		totalWeight    float64
+		uniformWeight  float64
 		uniformWeights = true
 	)
 	for i, a := range actions {
@@ -42,7 +42,7 @@ func expand(s *Search, n *heapordered.Tree[*node]) *heapordered.Tree[*node] {
 	// Rosin (2.3) warns of worst-case regret in the uniform case.
 	// Set all weights to 1/√K.
 	if uniformWeights && len(n.Elem().childSet) > 1 {
-		w := 1 / float32(math.Sqrt(float64(len(n.Elem().childSet))))
+		w := 1 / math.Sqrt(float64(len(n.Elem().childSet)))
 		for _, child := range n.Elem().childSet {
 			child.Elem().weight = w
 		}

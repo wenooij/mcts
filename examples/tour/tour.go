@@ -38,9 +38,9 @@ func newTourPos(r *rand.Rand) *tourPos {
 	}
 }
 
-func (p *tourPos) DistanceTo(p2 *tourPos) float32 {
+func (p *tourPos) DistanceTo(p2 *tourPos) float64 {
 	dx, dy := p2.X-p.X, p2.Y-p.Y
-	return float32(math.Sqrt(float64(dx*dx + dy*dy)))
+	return math.Sqrt(float64(dx*dx + dy*dy))
 }
 
 func makeTourMap(n int, r *rand.Rand) map[int]*tourPos {
@@ -116,7 +116,7 @@ func (g *tourSearch) Root() {
 
 func (g *tourSearch) Score() mcts.Score {
 	// Calculate tour distance.
-	distance := float32(0)
+	distance := float64(0)
 	first := g.m[g.node.tour[0]]
 	last := first
 	for _, e := range g.node.tour[1:] {
