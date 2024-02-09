@@ -6,25 +6,25 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-func backprop(frontier *heapordered.Tree[*node], rawScore Score, numRollouts float64) {
+func backprop(frontier *heapordered.Tree[*node], rawScore Score, numRollouts, temp float64) {
 	for n := frontier; n != nil; n = n.Parent() {
 		e := n.Elem()
 		e.rawScore = e.rawScore.Add(rawScore)
 		e.numRollouts += numRollouts
-		updatePrioritiesPUCB(n, e)
+		updatePrioritiesPUCB(n, e, temp)
 	}
 }
 
-func backpropNull(frontier *heapordered.Tree[*node]) {
+func backpropNull(frontier *heapordered.Tree[*node], temp float64) {
 	for n := frontier; n != nil; n = n.Parent() {
-		updatePrioritiesPUCB(n, n.Elem())
+		updatePrioritiesPUCB(n, n.Elem(), temp)
 	}
 }
 
-func updatePrioritiesPUCB(n *heapordered.Tree[*node], e *node) {
+func updatePrioritiesPUCB(n *heapordered.Tree[*node], e *node, temp float64) {
 	for _, child := range e.childSet {
 		childElem := child.Elem()
-		childElem.priority = -pucb(childElem.RawScore(), childElem.numRollouts, e.numRollouts, childElem.weight, e.exploreFactor)
+		childElem.priority = -pucb(childElem.RawScore(), childElem.numRollouts, e.numRollouts, temp, childElem.weight, e.exploreFactor)
 	}
 	n.Init()
 }
@@ -64,12 +64,12 @@ func predictor(weight float64) float64 { return 2 / weight }
 //
 // precondition: numRollouts >= 0 && numParentRollouts >= 0.
 // precondition: weight > 0.
-func pucb(rawScore, numRollouts, numParentRollouts, weight, exploreFactor float64) float64 {
+func pucb(rawScore, numRollouts, numParentRollouts, temp, weight, exploreFactor float64) float64 {
 	nf := 1 / numRollouts
 	exploit := float64(rawScore) * nf
 	explore1 := math.Sqrt(float64(fastLog(float32(numParentRollouts+1))) * nf)
 	predict := predictor(weight)
 	explore2 := math.Sqrt(float64(fastLog(float32(numParentRollouts+1))) / numParentRollouts)
-	pucb := exploit + float64(exploreFactor)*explore1 - float64(predict)*explore2
+	pucb := exploit + temp*float64(exploreFactor)*explore1 - float64(predict)*explore2
 	return pucb
 }

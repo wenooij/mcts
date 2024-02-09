@@ -34,6 +34,12 @@ type Search struct {
 	// of episodes. Default is 100.
 	NumEpisodes int
 
+	// Temperature is a multiplier applied to the explore factor which can be used
+	// to add a simulated annealing extension to PUCT.
+	//
+	// The default value of 1 effectively disables temperature.
+	Temperature float64
+
 	// Seed provides repeatable randomness to the search.
 	// By default Seed is set to the current UNIX timestamp nanos.
 	Seed int64
@@ -56,6 +62,9 @@ func (s *Search) patchDefaults() {
 	}
 	if s.NumEpisodes == 0 {
 		s.NumEpisodes = 100
+	}
+	if s.Temperature == 0 {
+		s.Temperature = 1
 	}
 	if s.Rand == nil {
 		if s.Seed == 0 {
@@ -109,6 +118,6 @@ func (s *Search) searchEpisode() {
 	}
 	// Simulate and backprop score.
 	if rawScore, numRollouts := rollout(s, n); numRollouts != 0 {
-		backprop(n, rawScore, numRollouts)
+		backprop(n, rawScore, numRollouts, s.Temperature)
 	}
 }

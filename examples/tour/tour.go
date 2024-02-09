@@ -132,14 +132,10 @@ func (g *tourSearch) Score() mcts.Score {
 }
 
 func (g *tourSearch) Expand(int) []mcts.FrontierAction {
-	if g.r.Float64() < 1/float64(len(g.node.tour)) {
+	if g.node.depth >= 2*len(g.m) {
 		return nil
 	}
 	return g.actions
-}
-
-func (g *tourSearch) Rollout() (mcts.Score, int) {
-	return g.Score(), 1
 }
 
 func main() {

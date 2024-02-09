@@ -149,7 +149,7 @@ func maxCmpFilter(f func(e StatEntry) float64, cmp func(a, b float64) int) Filte
 	return func(input []StatEntry) []StatEntry {
 		var (
 			maxEntries []StatEntry
-			maxValue   float64
+			maxValue   = math.Inf(-1)
 		)
 		for _, e := range input {
 			value := f(e)
