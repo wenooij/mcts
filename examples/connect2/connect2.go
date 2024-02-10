@@ -60,7 +60,11 @@ func (s *connect2) Expand(int) []mcts.FrontierAction {
 }
 
 func (s *connect2) Score() mcts.Score {
-	scores := model.Scores{Player: 1 - int(s.nextStone()-1), PlayerScores: make([]float64, 2)}
+	player := int(s.nextStone() - 1)
+	if s.depth > initDepth {
+		player = 1 - player
+	}
+	scores := model.Scores{Player: player, PlayerScores: make([]float64, 2)}
 	switch s.winner() {
 	case white:
 		scores.PlayerScores[0] = 1
@@ -70,16 +74,15 @@ func (s *connect2) Score() mcts.Score {
 	return scores
 }
 
+const initDepth = 0
+
 func (s *connect2) Root() {
-	s.depth = 0
+	s.depth = initDepth
 	copy(s.state[:], []stone{0, 0, 0, 0})
 }
 
 func main() {
-	s := &mcts.Search{
-		SearchInterface: &connect2{},
-		InitRootScore:   func() mcts.Score { return model.Scores{PlayerScores: make([]float64, 2)} },
-	}
+	s := &mcts.Search{SearchInterface: &connect2{}}
 	for lastTime := (time.Time{}); ; {
 		if s.Search(); time.Since(lastTime) > time.Second {
 			fmt.Println(s.PV())
