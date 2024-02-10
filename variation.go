@@ -87,8 +87,8 @@ func (r Search) RootActions() []Action {
 	if r.root == nil {
 		return nil
 	}
-	actions := make([]Action, 0, len(r.root.Elem().childSet))
-	for _, child := range r.root.Elem().childSet {
+	actions := make([]Action, 0, len(r.root.Children()))
+	for _, child := range r.root.Children() {
 		actions = append(actions, child.Elem().action)
 	}
 	return actions

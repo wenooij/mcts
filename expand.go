@@ -41,14 +41,14 @@ func expand(s *Search, n *heapordered.Tree[*Node]) *heapordered.Tree[*Node] {
 	// Are the weights uniform?
 	// Rosin (2.3) warns of worst-case regret in the uniform case.
 	// Set all weights to 1/√K.
-	if uniformWeights && len(n.Elem().childSet) > 1 {
-		w := 1 / math.Sqrt(float64(len(n.Elem().childSet)))
-		for _, child := range n.Elem().childSet {
+	if uniformWeights && len(n.Children()) > 1 {
+		w := 1 / math.Sqrt(float64(len(n.Children())))
+		for _, child := range n.Children() {
 			child.Elem().predictWeight = w
 		}
 	} else {
 		// Normalize predictor weight.
-		for _, child := range n.Elem().childSet {
+		for _, child := range n.Children() {
 			child.Elem().predictWeight /= totalWeight
 		}
 	}

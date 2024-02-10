@@ -22,7 +22,7 @@ func backpropNull(frontier *heapordered.Tree[*Node], temp float64) {
 }
 
 func updatePrioritiesPUCB(n *heapordered.Tree[*Node], e *Node, temp float64) {
-	for _, child := range e.childSet {
+	for _, child := range n.Children() {
 		childElem := child.Elem()
 		childElem.numParentRollouts = e.numRollouts
 		childElem.priority = -childElem.PUCB(temp)

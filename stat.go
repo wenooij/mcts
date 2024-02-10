@@ -56,7 +56,7 @@ func (r Search) FilterV(filters ...Filter) Variation {
 
 func filterStatNode(node *heapordered.Tree[*Node], filters ...Filter) *Node {
 	stat := make([]*Node, 0, node.Len())
-	for _, n := range node.Elem().childSet {
+	for _, n := range node.Children() {
 		stat = append(stat, n.Elem())
 	}
 	for _, f := range filters {
@@ -207,7 +207,7 @@ func ReduceV[T any](s Search, r Reducer[T], v Variation) (n int, res T) {
 func reduceNode[T any](root *heapordered.Tree[*Node], r Reducer[T]) (res T) {
 	stat := root.Elem()
 	res = r(stat)
-	for _, e := range root.Elem().childSet {
+	for _, e := range root.Children() {
 		res = reduceNode(e, r)
 	}
 	return res

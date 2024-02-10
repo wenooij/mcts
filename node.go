@@ -11,12 +11,14 @@ type nodeType int
 const (
 	nodeTerminal nodeType = 1 << iota
 	nodeRoot
+	nodePartial
 	nodeExpanded
 )
 
-func (n nodeType) Terminal() bool { return n&nodeTerminal != 0 }
-func (n nodeType) Root() bool     { return n&nodeRoot != 0 }
-func (n nodeType) Expanded() bool { return n&nodeExpanded != 0 }
+func (n nodeType) Terminal() bool       { return n&nodeTerminal != 0 }
+func (n nodeType) Root() bool           { return n&nodeRoot != 0 }
+func (n nodeType) PartlyExpanded() bool { return n&nodePartial != 0 }
+func (n nodeType) Expanded() bool       { return n&nodeExpanded != 0 }
 
 type Node struct {
 	nodeType
@@ -28,9 +30,8 @@ type Node struct {
 	priority          float64
 
 	// Topology.
-	depth    int
-	childSet map[Action]*heapordered.Tree[*Node]
-	action   Action
+	depth  int
+	action Action
 }
 
 // newNode creates a new tree node element.
@@ -48,7 +49,6 @@ func newNode(action FrontierAction) *Node {
 		// This will be recomputed after the first attempt.
 		priority:      math.Inf(-1),
 		predictWeight: weight,
-		childSet:      make(map[Action]*heapordered.Tree[*Node]),
 		action:        action.Action,
 	}
 }
@@ -85,8 +85,12 @@ func newTree(s *Search) *heapordered.Tree[*Node] {
 
 func getOrCreateChild(s *Search, parent *heapordered.Tree[*Node], action FrontierAction) (child *heapordered.Tree[*Node], created bool) {
 	e := parent.Elem()
-	if child, ok := e.childSet[action.Action]; ok {
-		return child, false
+	if e.PartlyExpanded() {
+		// For partly expanded nodes we need to use the slow check
+		// to avoid wasting resources creating duplicate children.
+		if child := getChild(parent, action.Action); child != nil {
+			return child, false
+		}
 	}
 	if action.ExploreFactor == 0 {
 		action.ExploreFactor = e.exploreFactor
@@ -94,10 +98,14 @@ func getOrCreateChild(s *Search, parent *heapordered.Tree[*Node], action Frontie
 	node := newNode(action)
 	node.depth = e.depth + 1
 	child = parent.NewChild(node)
-	e.childSet[action.Action] = child
 	return child, true
 }
 
 func getChild(root *heapordered.Tree[*Node], action Action) (child *heapordered.Tree[*Node]) {
-	return root.Elem().childSet[action]
+	for _, e := range root.Children() {
+		if e.Elem().action == action {
+			return e
+		}
+	}
+	return nil
 }
