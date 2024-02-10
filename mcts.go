@@ -16,15 +16,9 @@ type Action interface {
 // Ideally, the predictor weight for X should be set to E[Mean(X_Score)].
 // The weight heuristic is usually tuned in an offline process.
 // Weight 0 will be smoothed to 1.
-//
-// ExploreFactor defines the exploration weighting for the node and its subtree.
-// If this is 0, the parent's ExploreFactor is copied. By default, a ExploreFactor is
-// applied uniformly to all nodes. It is critical that ExploreFactor be roughly
-// proportional to the values returned from Score.
 type FrontierAction struct {
-	Action        Action
-	Weight        float64
-	ExploreFactor float64
+	Action Action
+	Weight float64
 }
 
 // SearchInterface is the minimal interface to MCTS tree state.

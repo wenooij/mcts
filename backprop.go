@@ -6,29 +6,29 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-func backprop(frontier *heapordered.Tree[Node], rawScore Score, numRollouts, temp float64) {
+func backprop(frontier *heapordered.Tree[Node], rawScore Score, numRollouts, exploreFactor, exploreTemp float64) {
 	for n := frontier; n != nil; n = n.Parent() {
 		e := &n.E
 		// E will be fixed via Init in the next call to updatePrioritiesPUCB.
 		// Unless n is the root node where Priority is not used.
 		e.rawScore = e.rawScore.Add(rawScore)
 		e.numRollouts += numRollouts
-		updatePrioritiesPUCB(n, e.numRollouts, temp)
+		updatePrioritiesPUCB(n, e.numRollouts, exploreFactor, exploreTemp)
 	}
 }
 
-func backpropNull(frontier *heapordered.Tree[Node], temp float64) {
+func backpropNull(frontier *heapordered.Tree[Node], exploreFactor, exploreTemp float64) {
 	for n := frontier; n != nil; n = n.Parent() {
-		updatePrioritiesPUCB(n, n.E.numRollouts, temp)
+		updatePrioritiesPUCB(n, n.E.numRollouts, exploreFactor, exploreTemp)
 	}
 }
 
-func updatePrioritiesPUCB(n *heapordered.Tree[Node], numParentRollouts, temp float64) {
+func updatePrioritiesPUCB(n *heapordered.Tree[Node], numParentRollouts, exploreFactor, exploreTemp float64) {
 	for _, child := range n.Children() {
 		childElem := &child.E
 		// The next call to Init will heapify E.
 		childElem.numParentRollouts = numParentRollouts
-		childElem.priority = -childElem.PUCB(temp)
+		childElem.priority = -childElem.PUCB(exploreFactor * exploreTemp)
 	}
 	n.Init()
 }
@@ -65,12 +65,12 @@ func (n Node) PredictTempTerm() float64 {
 //
 // precondition: numRollouts >= 0 && numParentRollouts >= 0.
 // precondition: weight > 0.
-func (n Node) PUCB(exploreTemp float64) float64 {
+func (n Node) PUCB(exploreFactor float64) float64 {
 	nf := 1 / n.numRollouts
 	exploit := n.rawScoreValue() * nf
 	explore := math.Sqrt(float64(fastLog(float32(n.numParentRollouts+1))) * nf)
 	predict := n.PredictTerm()
 	perdictTemp := n.PredictTempTerm()
-	pucb := exploit + exploreTemp*float64(n.exploreFactor)*explore - float64(predict)*perdictTemp
+	pucb := exploit + float64(exploreFactor)*explore - float64(predict)*perdictTemp
 	return pucb
 }

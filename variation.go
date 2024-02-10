@@ -132,21 +132,19 @@ func (s *Search) InsertV(v Variation) {
 	for _, stat := range v.TrimRoot() {
 		var created bool
 		n, created = getOrCreateChild(s, n, FrontierAction{
-			Action:        stat.Action(),
-			Weight:        stat.PredictWeight(),
-			ExploreFactor: stat.ExploreFactor(),
+			Action: stat.Action(),
+			Weight: stat.PredictWeight(),
 		})
 		e := n.E
 		if created {
 			e.nodeType = stat.nodeType
 		} else {
-			e.nodeType &= ^nodeTerminal          // Clear the terminal bit.
-			e.exploreFactor = stat.exploreFactor // Reset the explore factor.
+			e.nodeType &= ^nodeTerminal // Clear the terminal bit.
 		}
 		e.numParentRollouts = stat.numRollouts
 		e.rawScore = stat.rawScore
 		e.numRollouts = stat.numRollouts
 	}
 	// Fix priorities.
-	backpropNull(n, s.ExploreTemperature)
+	backpropNull(n, s.ExploreFactor, s.ExploreTemperature)
 }

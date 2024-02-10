@@ -25,7 +25,6 @@ type Node struct {
 	rawScore          Score
 	numParentRollouts float64
 	numRollouts       float64
-	exploreFactor     float64
 	predictWeight     float64
 	priority          float64
 
@@ -44,7 +43,6 @@ func makeNode(action FrontierAction) Node {
 		weight = 1
 	}
 	return Node{
-		exploreFactor: action.ExploreFactor,
 		// Max priority for new nodes.
 		// This will be recomputed after the first attempt.
 		priority:      math.Inf(-1),
@@ -56,7 +54,6 @@ func makeNode(action FrontierAction) Node {
 func (n Node) Action() Action             { return n.action }
 func (n Node) NumRollouts() float64       { return n.numRollouts }
 func (n Node) PredictWeight() float64     { return n.predictWeight }
-func (n Node) ExploreFactor() float64     { return n.exploreFactor }
 func (n Node) NumParentRollouts() float64 { return n.numParentRollouts }
 func (n Node) Priority() float64          { return n.priority }
 func (n Node) RawScore() Score            { return n.rawScore }
@@ -75,9 +72,7 @@ func (n Node) rawScoreValue() float64 {
 }
 
 func newTree(s *Search) *heapordered.Tree[Node] {
-	step := FrontierAction{
-		ExploreFactor: s.ExploreFactor,
-	}
+	step := FrontierAction{}
 	root := makeNode(step)
 	root.nodeType |= nodeRoot
 	return heapordered.NewTree(root)
@@ -91,9 +86,6 @@ func getOrCreateChild(s *Search, parent *heapordered.Tree[Node], action Frontier
 		if child := getChild(parent, action.Action); child != nil {
 			return child, false
 		}
-	}
-	if action.ExploreFactor == 0 {
-		action.ExploreFactor = e.exploreFactor
 	}
 	node := makeNode(action)
 	node.depth = e.depth + 1

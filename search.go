@@ -109,6 +109,6 @@ func (s *Search) searchEpisode() {
 	}
 	// Simulate and backprop score.
 	if rawScore, numRollouts := rollout(s, n); numRollouts != 0 {
-		backprop(n, rawScore, numRollouts, s.ExploreTemperature)
+		backprop(n, rawScore, numRollouts, s.ExploreFactor, s.ExploreTemperature)
 	}
 }
