@@ -142,7 +142,7 @@ func main() {
 
 	layout := NewRandomLayout(r)
 	for _, e := range pv {
-		a := e.Action.(keySwapAction)
+		a := e.Action().(keySwapAction)
 		layout.Swap(a.p1, a.p2)
 	}
 

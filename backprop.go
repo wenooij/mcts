@@ -6,7 +6,7 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-func backprop(frontier *heapordered.Tree[*node], rawScore Score, numRollouts, temp float64) {
+func backprop(frontier *heapordered.Tree[*Node], rawScore Score, numRollouts, temp float64) {
 	for n := frontier; n != nil; n = n.Parent() {
 		e := n.Elem()
 		e.rawScore = e.rawScore.Add(rawScore)
@@ -15,47 +15,45 @@ func backprop(frontier *heapordered.Tree[*node], rawScore Score, numRollouts, te
 	}
 }
 
-func backpropNull(frontier *heapordered.Tree[*node], temp float64) {
+func backpropNull(frontier *heapordered.Tree[*Node], temp float64) {
 	for n := frontier; n != nil; n = n.Parent() {
 		updatePrioritiesPUCB(n, n.Elem(), temp)
 	}
 }
 
-func updatePrioritiesPUCB(n *heapordered.Tree[*node], e *node, temp float64) {
+func updatePrioritiesPUCB(n *heapordered.Tree[*Node], e *Node, temp float64) {
 	for _, child := range e.childSet {
 		childElem := child.Elem()
-		childElem.priority = -pucb(childElem.RawScore(), childElem.numRollouts, e.numRollouts, temp, childElem.weight, e.exploreFactor)
+		childElem.numParentRollouts = e.numRollouts
+		childElem.priority = -childElem.PUCB(temp)
 	}
 	n.Init()
 }
 
-func numParentRollouts(n *heapordered.Tree[*node]) float64 {
-	parent := n.Parent()
-	if parent == nil {
-		return 0
-	}
-	return parent.Elem().numRollouts
-}
-
-// exploit returns the mean win rate factor.
+// ExploitTerm returns the mean win rate factor.
 //
 // precondition: numRollouts > 0.
-func exploit(rawScore, numRollouts float64) float64 { return rawScore / numRollouts }
+func (n *Node) ExploitTerm() float64 { return n.rawScoreValue() / n.numRollouts }
 
-// explore returns the exploration optimism factor:
-// a function of the ratio of rollouts and parent rollouts.
+// ExploreTerm returns the exploration 'optimism' term.
+// A function of ratio of exploration of the node relative to the parent Node's.
 //
-// precondition: numRollouts >= 0 && numParentRollouts >= 0.
-func explore(numRollouts, numParentRollouts float64) float64 {
-	return math.Sqrt(float64(fastLog(float32(numParentRollouts+1))) / numRollouts)
+// precondition: numParentRollouts >= 0.
+func (n *Node) ExploreTerm() float64 {
+	return math.Sqrt(float64(fastLog(float32(n.numParentRollouts+1))) / n.numRollouts)
 }
 
-// predictor returns a predictor loss factor.
+// PredictTerm returns a predictor loss term for PUCT.
 //
-// precondition: weight > 0.
-func predictor(weight float64) float64 { return 2 / weight }
+// precondition: Weight > 0.
+func (n *Node) PredictTerm() float64 { return 2 / n.predictWeight }
 
-// pucb is short for predictor weighted upper confidence bound on trees (PUCB).
+// PredictTempTerm returns the temperature applied to the predictor term in PUCT.
+func (n *Node) PredictTempTerm() float64 {
+	return math.Sqrt(float64(fastLog(float32(n.numParentRollouts+9))) / n.numParentRollouts)
+}
+
+// PUCB is short for predictor weighted upper confidence bound on trees (PUCB).
 // It was introduced as a UCT extended with priors on actions.
 //
 // The computation for PUCB represents the fitness of a node for being selected
@@ -64,12 +62,12 @@ func predictor(weight float64) float64 { return 2 / weight }
 //
 // precondition: numRollouts >= 0 && numParentRollouts >= 0.
 // precondition: weight > 0.
-func pucb(rawScore, numRollouts, numParentRollouts, temp, weight, exploreFactor float64) float64 {
-	nf := 1 / numRollouts
-	exploit := float64(rawScore) * nf
-	explore1 := math.Sqrt(float64(fastLog(float32(numParentRollouts+1))) * nf)
-	predict := predictor(weight)
-	explore2 := math.Sqrt(float64(fastLog(float32(numParentRollouts+1))) / numParentRollouts)
-	pucb := exploit + temp*float64(exploreFactor)*explore1 - float64(predict)*explore2
+func (n *Node) PUCB(exploreTemp float64) float64 {
+	nf := 1 / n.numRollouts
+	exploit := n.rawScoreValue() * nf
+	explore := math.Sqrt(float64(fastLog(float32(n.numParentRollouts+1))) * nf)
+	predict := n.PredictTerm()
+	perdictTemp := n.PredictTempTerm()
+	pucb := exploit + exploreTemp*float64(n.exploreFactor)*explore - float64(predict)*perdictTemp
 	return pucb
 }

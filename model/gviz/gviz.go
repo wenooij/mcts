@@ -9,7 +9,7 @@ import (
 )
 
 type Tree struct {
-	elem     mcts.StatEntry
+	elem     *mcts.Node
 	children map[mcts.Action]*Tree
 	pv       bool
 }
@@ -31,11 +31,11 @@ func (t *Tree) Add(v mcts.Variation, pv bool) {
 		if t.children == nil {
 			t.children = make(map[mcts.Action]*Tree)
 		}
-		subtree := t.children[e.Action]
+		subtree := t.children[e.Action()]
 		if subtree == nil {
 			subtree = new(Tree)
 			subtree.elem = e
-			t.children[e.Action] = subtree
+			t.children[e.Action()] = subtree
 		}
 		t = subtree
 	}
@@ -73,11 +73,11 @@ func (t *treeDotter) recDOT(b *bytes.Buffer, parent string) {
 	}
 }
 
-func (t *treeDotter) writeNode(b *bytes.Buffer, s mcts.StatEntry, pv bool) string {
+func (t *treeDotter) writeNode(b *bytes.Buffer, s *mcts.Node, pv bool) string {
 	id := fmt.Sprint(t.nextId)
 	actionStr := "<root>"
 	if s.Action != nil {
-		actionStr = s.Action.String()
+		actionStr = s.Action().String()
 	}
 	nodeTypeStr := ""
 	pvStyle := ""
@@ -85,12 +85,12 @@ func (t *treeDotter) writeNode(b *bytes.Buffer, s mcts.StatEntry, pv bool) strin
 		nodeTypeStr = " PV"
 		pvStyle = ` style=filled, color="#A4FD78",`
 	}
-	if s.NodeType.Terminal() {
+	if s.Terminal() {
 		nodeTypeStr += " #"
 	}
 	t.nextId++
 	fmt.Fprintf(b, `%s [shape=square,%s label="%s%s\lrollouts: %.0f\lscore: %.2f\lpriority: %.2f\l"];`,
-		id, pvStyle, actionStr, nodeTypeStr, s.NumRollouts, s.Score, s.Priority)
+		id, pvStyle, actionStr, nodeTypeStr, s.NumRollouts(), s.Score(), s.Priority())
 	b.WriteByte('\n')
 	return id
 }

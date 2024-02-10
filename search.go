@@ -20,7 +20,7 @@ const DefaultExploreFactor = 1.224744871391589 // √3/√2
 // Many of the hyperparameters have drastic impacts on Search performance and need
 // to be experimentally tuned first. See FitParams in the model subpackage for more info.
 type Search struct {
-	root *heapordered.Tree[*node]
+	root *heapordered.Tree[*Node]
 
 	// SearchInterface implements the search environment.
 	SearchInterface
@@ -34,11 +34,11 @@ type Search struct {
 	// of episodes. Default is 100.
 	NumEpisodes int
 
-	// Temperature is a multiplier applied to the explore factor which can be used
+	// ExploreTemperature is a multiplier applied to the explore factor which can be used
 	// to add a simulated annealing extension to PUCT.
 	//
 	// The default value of 1 effectively disables temperature.
-	Temperature float64
+	ExploreTemperature float64
 
 	// Seed provides repeatable randomness to the search.
 	// By default Seed is set to the current UNIX timestamp nanos.
@@ -63,8 +63,8 @@ func (s *Search) patchDefaults() {
 	if s.NumEpisodes == 0 {
 		s.NumEpisodes = 100
 	}
-	if s.Temperature == 0 {
-		s.Temperature = 1
+	if s.ExploreTemperature == 0 {
+		s.ExploreTemperature = 1
 	}
 	if s.Rand == nil {
 		if s.Seed == 0 {
@@ -118,6 +118,6 @@ func (s *Search) searchEpisode() {
 	}
 	// Simulate and backprop score.
 	if rawScore, numRollouts := rollout(s, n); numRollouts != 0 {
-		backprop(n, rawScore, numRollouts, s.Temperature)
+		backprop(n, rawScore, numRollouts, s.ExploreTemperature)
 	}
 }

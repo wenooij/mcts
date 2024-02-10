@@ -5,7 +5,7 @@ import (
 )
 
 // rollout runs simulated rollouts from the given node and returns the results.
-func rollout(s *Search, n *heapordered.Tree[*node]) (rawScore Score, numRollouts float64) {
+func rollout(s *Search, n *heapordered.Tree[*Node]) (rawScore Score, numRollouts float64) {
 	if rollout, ok := s.SearchInterface.(RolloutInterface); ok {
 		// Call the custom Rollout implementation.
 		return rollout.Rollout()

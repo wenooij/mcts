@@ -175,35 +175,58 @@ func main() {
 		Rand:            r,
 		Seed:            *seed,
 		SearchInterface: s,
-		NumEpisodes:     1000,
-		ExploreFactor:   0.2,
+		NumEpisodes:     100,
 	}
-	summary := model.Summarize(&opts)
-	fmt.Println(summary.String())
-	s.summ = &summary
-	opts.ExploreFactor = mcts.DefaultExploreFactor
+	// summary := model.Summarize(&opts)
+	// fmt.Println(summary.String())
+	// s.summ = &summary
+	epoch := 0
+	const initTemp = 500
+	opts.ExploreTemperature = initTemp
 	for lastPrint := (time.Time{}); ; {
 		if opts.Search(); time.Since(lastPrint) >= time.Second {
 			// Reconstruct and print the best tour.
 			// Results can be pasted into the tool.
 			// https://www.lancaster.ac.uk/fas/psych/software/TSP/TSP.html.
-			pv := opts.PV()
+			pv := opts.FilterV(mcts.MaxFilter(func(e *mcts.Node) float64 {
+				if math.IsInf(e.Score(), 0) {
+					return math.Inf(-1)
+				}
+				return e.Score()
+			}), mcts.MaxRolloutsFilter(), mcts.AnyFilter(r))
 			tour := make([]int, len(s.root))
 			copy(tour, s.root)
 			for _, e := range pv.TrimRoot() {
-				a := e.Action.(tourAction)
+				a := e.Action().(tourAction)
 				tour[a.i], tour[a.j] = tour[a.j], tour[a.i]
 			}
-			fmt.Printf("[%f] ", pv[0].Score)
+			fmt.Printf("[%f] ", pv.Last().Score())
 			for i, e := range tour {
 				fmt.Printf("%d", e+1)
 				if i+1 < len(tour) {
 					fmt.Print(" ")
 				}
 			}
-			fmt.Printf(" =(%f)\n", -pv.Last().Score*summary.Stddev-summary.Mean)
+			fmt.Println()
+			// fmt.Printf(" =(%f)\n", -pv.Last().Score*summary.Stddev-summary.Mean)
 
 			lastPrint = time.Now()
+
+			// Next epoch update temperature.
+			epoch++
+			if opts.ExploreTemperature <= 50 {
+				fmt.Println("Reset temperature to start another pass")
+				opts.Reset()
+				opts.ExploreTemperature = initTemp
+				opts.InsertV(pv.TrimRoot())
+			} else if opts.ExploreTemperature <= 65 && opts.ExploreTemperature >= 1 {
+				opts.ExploreTemperature *= .99
+			} else if opts.ExploreTemperature <= 100 {
+				opts.ExploreTemperature *= .98
+			} else {
+				opts.ExploreTemperature *= .85
+			}
+			fmt.Println("Temp is now: ", opts.ExploreTemperature)
 		}
 	}
 }

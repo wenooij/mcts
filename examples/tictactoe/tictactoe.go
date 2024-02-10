@@ -39,8 +39,10 @@ type tictactoeNode struct {
 	state [9]mark
 }
 
+const rootDepth = 0
+
 func (n *tictactoeNode) Root() {
-	n.depth = 0
+	n.depth = rootDepth
 	copy(n.state[:], []mark{
 		0, 0, 0,
 		0, 0, 0,
@@ -100,7 +102,11 @@ func (s *SearchPlugin) Select(a mcts.Action) {
 
 func (s *SearchPlugin) Score() mcts.Score {
 	// Depth penalty term rewards the earliest win.
-	scores := model.Scores{Player: 1 - s.node.player(), PlayerScores: make([]float64, 2)}
+	player := s.node.player()
+	if s.node.depth > rootDepth {
+		player = 1 - player
+	}
+	scores := model.Scores{Player: player, PlayerScores: make([]float64, 2)}
 	d := float64(s.node.depth) / 1000
 	switch s.node.computeWinner() {
 	case X:
@@ -124,44 +130,8 @@ func main() {
 	opts := mcts.Search{
 		SearchInterface: si,
 		NumEpisodes:     10000,
-		InitRootScore:   func() mcts.Score { return model.Scores{PlayerScores: make([]float64, 2)} },
 		ExploreFactor:   mcts.DefaultExploreFactor,
 	}
-
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt)
-
-	go func() {
-		<-ch
-		for _, e := range opts.PV() {
-			fmt.Println(e)
-		}
-		fmt.Println("---")
-		for _, a := range opts.RootActions() {
-			fmt.Println(opts.Stat(a).Last())
-		}
-		fmt.Println("---")
-		fmt.Println(opts.PV()[0].RawScore.(model.Scores))
-		fmt.Println("---")
-
-		var t gviz.Tree
-		t.Add(opts.PV(), true)
-		subtree := opts.Subtree(opts.PV().First().Action)
-		for i := 0; i < 1000; i++ {
-			t.Add(subtree.FilterV(
-				mcts.MaxDepthFilter(3),
-				mcts.AnyFilter(opts.Rand)), false)
-		}
-		f, err := os.OpenFile("tictactoe.dot", os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0755)
-		if err != nil {
-			panic(err)
-		}
-		if _, err := t.DOT(f); err != nil {
-			panic(err)
-		}
-		f.Close()
-		os.Exit(0)
-	}()
 
 	for lastPrint := time.Now(); ; {
 		if opts.Search(); time.Since(lastPrint) >= time.Second {

@@ -2,12 +2,12 @@ package mcts
 
 import "github.com/wenooij/heapordered"
 
-func selectChild(s *Search, n *heapordered.Tree[*node]) *heapordered.Tree[*node] {
+func selectChild(s *Search, n *heapordered.Tree[*Node]) *heapordered.Tree[*Node] {
 	child := n.Min()
 	if child == nil {
 		return nil
 	}
-	s.Select(child.Elem().Action)
+	s.Select(child.Elem().action)
 	initializeScore(s, child)
 	return child
 }
@@ -15,7 +15,7 @@ func selectChild(s *Search, n *heapordered.Tree[*node]) *heapordered.Tree[*node]
 // initializeScore is called when selecting a node for the first time.
 //
 // precondition n must be the current node (s.Select(n.Action) has been called, or we are at the root).
-func initializeScore(s *Search, n *heapordered.Tree[*node]) {
+func initializeScore(s *Search, n *heapordered.Tree[*Node]) {
 	if e := n.Elem(); e.rawScore == nil {
 		e.rawScore = s.Score()
 	}

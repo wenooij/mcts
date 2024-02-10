@@ -38,7 +38,7 @@ func main() {
 		select {
 		case <-done:
 			pv := opts.FilterV(
-				mcts.PredicateFilter(func(e mcts.StatEntry) bool { return e.NumRollouts >= 1_000 }),
+				mcts.PredicateFilter(func(e *mcts.Node) bool { return e.NumRollouts() >= 1_000 }),
 				mcts.AnyFilter(r))
 			fmt.Println(pv)
 			fmt.Println("---")

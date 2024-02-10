@@ -18,16 +18,16 @@ func TestNodeTypes(t *testing.T) {
 		for i, e := range anyV {
 			switch i {
 			case 0:
-				if !e.NodeType.Root() {
+				if !e.Root() {
 					t.Errorf("TestNodeTypes(): expected root node %d of %q", i, anyV)
 				}
 			case 2:
-				if !e.NodeType.Terminal() {
+				if !e.Terminal() {
 					t.Errorf("TestNodeTypes(): expected terminal node %d of %q", i, anyV)
 				}
 			default:
-				if e.NodeType != 0 {
-					t.Errorf("TestNodeTypes(): internal node %d of %q has type = %v, want 0", i, anyV, e.NodeType)
+				if e.nodeType != 0 {
+					t.Errorf("TestNodeTypes(): internal node %d of %q has type = %v, want 0", i, anyV, e.nodeType)
 				}
 			}
 		}

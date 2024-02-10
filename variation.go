@@ -10,42 +10,42 @@ import (
 // The first element in the Variation may be a root node.
 // It will have a nil Action as well among other differences.
 // Use NodeType.Root to check or Variation.TrimRoot to trim it.
-type Variation []StatEntry
+type Variation []*Node
 
 // Root returns the StatEntry corresponding to the root.
 //
 // Root returns nil if the Variation is not rooted.
-func (v Variation) Root() *StatEntry {
-	if len(v) == 0 || v[0].NodeType.Root() {
+func (v Variation) Root() *Node {
+	if len(v) == 0 || v[0].Root() {
 		return nil
 	}
-	return &v[0]
+	return v[0]
 }
 
 // First returns the first StatEntry other than the root.
 //
 // First returns nil if the Variation is empty.
-func (v Variation) First() *StatEntry {
+func (v Variation) First() *Node {
 	if v = v.TrimRoot(); len(v) == 0 {
 		return nil
 	}
-	return &v[0]
+	return v[0]
 }
 
 // Last returns the Last StatEntry for this variation.
 //
 // Last returns nil if the variation is empty.
-func (v Variation) Last() *StatEntry {
+func (v Variation) Last() *Node {
 	if v = v.TrimRoot(); len(v) == 0 {
 		return nil
 	}
 	leaf := v[len(v)-1]
-	return &leaf
+	return leaf
 }
 
 // TrimRoot returns the Variation v without its root node.
 func (v Variation) TrimRoot() Variation {
-	if len(v) == 0 || !v[0].NodeType.Root() {
+	if len(v) == 0 || !v[0].Root() {
 		return v
 	}
 	return v[1:]
@@ -57,12 +57,12 @@ func (v Variation) String() (s string) {
 	}
 	var sb strings.Builder
 	defer func() {
-		fmt.Fprintf(&sb, " (%d)", int64(v[0].NumRollouts))
+		fmt.Fprintf(&sb, " (%d)", int64(v[0].NumRollouts()))
 		s = sb.String()
 	}()
-	fmt.Fprintf(&sb, "[%f]", v[0].Score)
+	fmt.Fprintf(&sb, "[%f]", v[0].Score())
 	for _, e := range v.TrimRoot() {
-		fmt.Fprintf(&sb, " %s", e.Action.String())
+		fmt.Fprintf(&sb, " %s", e.Action().String())
 	}
 	return sb.String()
 }
@@ -89,7 +89,7 @@ func (r Search) RootActions() []Action {
 	}
 	actions := make([]Action, 0, len(r.root.Elem().childSet))
 	for _, child := range r.root.Elem().childSet {
-		actions = append(actions, child.Elem().Action)
+		actions = append(actions, child.Elem().action)
 	}
 	return actions
 }
@@ -103,7 +103,7 @@ func (r Search) Stat(vs ...Action) Variation {
 		return nil
 	}
 	res := make(Variation, 0, 1+len(vs))
-	res = append(res, makeStatEntry(n))
+	res = append(res, n.Elem())
 	for _, s := range vs {
 		child := getChild(n, s)
 		if child == nil {
@@ -112,7 +112,7 @@ func (r Search) Stat(vs ...Action) Variation {
 		}
 		// Add the StatEntry and continue down the line.
 		n = child
-		res = append(res, makeStatEntry(n))
+		res = append(res, n.Elem())
 	}
 	return res
 }
@@ -126,23 +126,27 @@ func (r Search) Stat(vs ...Action) Variation {
 func (s *Search) InsertV(v Variation) {
 	s.Init()
 	n := s.root
-	for _, stat := range v {
+	if root := v.Root(); root != nil {
+		// Insert stat at Root.
+	}
+	for _, stat := range v.TrimRoot() {
 		var created bool
 		n, created = getOrCreateChild(s, n, FrontierAction{
-			Action:        stat.Action,
-			Weight:        stat.PredictorWeight,
-			ExploreFactor: stat.ExploreFactor,
+			Action:        stat.Action(),
+			Weight:        stat.PredictWeight(),
+			ExploreFactor: stat.ExploreFactor(),
 		})
 		e := n.Elem()
 		if created {
-			e.nodeType = stat.NodeType
+			e.nodeType = stat.nodeType
 		} else {
 			e.nodeType &= ^nodeTerminal          // Clear the terminal bit.
-			e.exploreFactor = stat.ExploreFactor // Reset the explore factor.
+			e.exploreFactor = stat.exploreFactor // Reset the explore factor.
 		}
-		e.rawScore = stat.RawScore
-		e.numRollouts += stat.NumRollouts
+		e.numParentRollouts = stat.numRollouts
+		e.rawScore = stat.rawScore
+		e.numRollouts = stat.numRollouts
 	}
 	// Fix priorities.
-	backpropNull(n, s.Temperature)
+	backpropNull(n, s.ExploreTemperature)
 }
