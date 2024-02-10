@@ -10,7 +10,7 @@ import (
 // The first element in the Variation may be a root node.
 // It will have a nil Action as well among other differences.
 // Use NodeType.Root to check or Variation.TrimRoot to trim it.
-type Variation []*Node
+type Variation []Node
 
 // Root returns the StatEntry corresponding to the root.
 //
@@ -19,7 +19,7 @@ func (v Variation) Root() *Node {
 	if len(v) == 0 || v[0].Root() {
 		return nil
 	}
-	return v[0]
+	return &v[0]
 }
 
 // First returns the first StatEntry other than the root.
@@ -29,7 +29,7 @@ func (v Variation) First() *Node {
 	if v = v.TrimRoot(); len(v) == 0 {
 		return nil
 	}
-	return v[0]
+	return &v[0]
 }
 
 // Last returns the Last StatEntry for this variation.
@@ -40,7 +40,7 @@ func (v Variation) Last() *Node {
 		return nil
 	}
 	leaf := v[len(v)-1]
-	return leaf
+	return &leaf
 }
 
 // TrimRoot returns the Variation v without its root node.
@@ -89,7 +89,7 @@ func (r Search) RootActions() []Action {
 	}
 	actions := make([]Action, 0, len(r.root.Children()))
 	for _, child := range r.root.Children() {
-		actions = append(actions, child.Elem().action)
+		actions = append(actions, child.E.action)
 	}
 	return actions
 }
@@ -103,7 +103,7 @@ func (r Search) Stat(vs ...Action) Variation {
 		return nil
 	}
 	res := make(Variation, 0, 1+len(vs))
-	res = append(res, n.Elem())
+	res = append(res, n.E)
 	for _, s := range vs {
 		child := getChild(n, s)
 		if child == nil {
@@ -112,7 +112,7 @@ func (r Search) Stat(vs ...Action) Variation {
 		}
 		// Add the StatEntry and continue down the line.
 		n = child
-		res = append(res, n.Elem())
+		res = append(res, n.E)
 	}
 	return res
 }
@@ -136,7 +136,7 @@ func (s *Search) InsertV(v Variation) {
 			Weight:        stat.PredictWeight(),
 			ExploreFactor: stat.ExploreFactor(),
 		})
-		e := n.Elem()
+		e := n.E
 		if created {
 			e.nodeType = stat.nodeType
 		} else {

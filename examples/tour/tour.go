@@ -10,6 +10,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/pkg/profile"
 	"github.com/wenooij/mcts"
 	"github.com/wenooij/mcts/model"
 )
@@ -139,6 +140,9 @@ func (g *tourSearch) Expand(int) []mcts.FrontierAction {
 }
 
 func main() {
+	// defer profile.Start(profile.MemProfile, profile.MemProfileRate(1)).Stop()
+	defer profile.Start().Stop()
+
 	seed := flag.Int64("seed", time.Now().UnixNano(), "Random seed")
 	n := flag.Int("n", 10, "Number of tour stops")
 	randomMap := flag.Bool("randomize_map", false, "Randomize the tour map")
@@ -188,7 +192,7 @@ func main() {
 			// Reconstruct and print the best tour.
 			// Results can be pasted into the tool.
 			// https://www.lancaster.ac.uk/fas/psych/software/TSP/TSP.html.
-			pv := opts.FilterV(mcts.MaxFilter(func(e *mcts.Node) float64 {
+			pv := opts.FilterV(mcts.MaxFilter(func(e mcts.Node) float64 {
 				if math.IsInf(e.Score(), 0) {
 					return math.Inf(-1)
 				}
@@ -215,10 +219,7 @@ func main() {
 			// Next epoch update temperature.
 			epoch++
 			if opts.ExploreTemperature <= 50 {
-				fmt.Println("Reset temperature to start another pass")
-				opts.Reset()
-				opts.ExploreTemperature = initTemp
-				opts.InsertV(pv.TrimRoot())
+				break
 			} else if opts.ExploreTemperature <= 65 && opts.ExploreTemperature >= 1 {
 				opts.ExploreTemperature *= .99
 			} else if opts.ExploreTemperature <= 100 {

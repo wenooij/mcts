@@ -9,19 +9,23 @@ import (
 // expand calls Expand in the search interface to get more moves.
 //
 // the fringe argument is set to true during the rollout phase.
-func expand(s *Search, n *heapordered.Tree[*Node]) *heapordered.Tree[*Node] {
+func expand(s *Search, n *heapordered.Tree[Node]) *heapordered.Tree[Node] {
 	actions := s.Expand(0)
 
 	if len(actions) == 0 {
 		// Set the terminal node bit.
-		n.Elem().nodeType |= nodeTerminal
+		e := n.E
+		e.nodeType |= nodeTerminal
+		n.E = e
 		return nil
 	}
 	// Avoid bias from move generation order.
 	s.Rand.Shuffle(len(actions), func(i, j int) { actions[i], actions[j] = actions[j], actions[i] })
 
 	// Clear terminal bit.
-	n.Elem().nodeType &= ^nodeTerminal
+	e := n.E
+	e.nodeType &= ^nodeTerminal
+	n.E = e
 	var (
 		totalWeight    float64
 		uniformWeight  float64
@@ -29,12 +33,13 @@ func expand(s *Search, n *heapordered.Tree[*Node]) *heapordered.Tree[*Node] {
 	)
 	for i, a := range actions {
 		child, _ := getOrCreateChild(s, n, a)
-		w := child.Elem().predictWeight
+		w := child.E.predictWeight
 		if i == 0 {
 			uniformWeight = w
 		} else if w != uniformWeight {
 			uniformWeights = false
 		}
+		child.Grow(100)
 		// Sum predictor weights to later normalize.
 		totalWeight += w
 	}
@@ -44,12 +49,16 @@ func expand(s *Search, n *heapordered.Tree[*Node]) *heapordered.Tree[*Node] {
 	if uniformWeights && len(n.Children()) > 1 {
 		w := 1 / math.Sqrt(float64(len(n.Children())))
 		for _, child := range n.Children() {
-			child.Elem().predictWeight = w
+			e := child.E
+			e.predictWeight = w
+			child.E = e
 		}
 	} else {
 		// Normalize predictor weight.
 		for _, child := range n.Children() {
-			child.Elem().predictWeight /= totalWeight
+			e := child.E
+			e.predictWeight /= totalWeight
+			child.E = e
 		}
 	}
 	// Select an element to expand.

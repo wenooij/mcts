@@ -20,7 +20,7 @@ const DefaultExploreFactor = 1.224744871391589 // √3/√2
 // Many of the hyperparameters have drastic impacts on Search performance and need
 // to be experimentally tuned first. See FitParams in the model subpackage for more info.
 type Search struct {
-	root *heapordered.Tree[*Node]
+	root *heapordered.Tree[Node]
 
 	// SearchInterface implements the search environment.
 	SearchInterface

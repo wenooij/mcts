@@ -9,7 +9,7 @@ import (
 )
 
 type Tree struct {
-	elem     *mcts.Node
+	elem     mcts.Node
 	children map[mcts.Action]*Tree
 	pv       bool
 }
@@ -73,7 +73,7 @@ func (t *treeDotter) recDOT(b *bytes.Buffer, parent string) {
 	}
 }
 
-func (t *treeDotter) writeNode(b *bytes.Buffer, s *mcts.Node, pv bool) string {
+func (t *treeDotter) writeNode(b *bytes.Buffer, s mcts.Node, pv bool) string {
 	id := fmt.Sprint(t.nextId)
 	actionStr := "<root>"
 	if s.Action != nil {
