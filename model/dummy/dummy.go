@@ -30,4 +30,3 @@ func (s Search) Select(mcts.Action) {}
 func (s Search) Score() mcts.Score {
 	return mcts.Score{[]float64{rand.NormFloat64()}, model.MaximizeObjective}
 }
-func (s Search) Rollout() (mcts.Score, int) { return s.Score(), 1 }

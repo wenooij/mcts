@@ -22,6 +22,8 @@ func expand(s *Search, n *heapordered.Tree[Node]) *heapordered.Tree[Node] {
 	// Avoid bias from generation order.
 	s.Rand.Shuffle(len(actions), func(i, j int) { actions[i], actions[j] = actions[j], actions[i] })
 
+	n.Grow(len(actions))
+
 	// Clear terminal bit.
 	e.nodeType &= ^nodeTerminal
 	var (
@@ -37,7 +39,6 @@ func expand(s *Search, n *heapordered.Tree[Node]) *heapordered.Tree[Node] {
 		} else if w != uniformWeight {
 			uniformWeights = false
 		}
-		child.Grow(s.InitialNodeCap)
 		// Sum predictor weights to later normalize.
 		totalWeight += w
 	}

@@ -38,7 +38,6 @@ func (s dummySearch) Expand(n int) []FrontierAction {
 	return b
 }
 
-func (s *dummySearch) Root()                    { s.depth = 0 }
-func (s *dummySearch) Select(Action)            { s.depth++ }
-func (s dummySearch) Score() Score              { return Score{[]float64{s.Rand.NormFloat64()}, maximizeObjective} }
-func (s dummySearch) Rollout() (Score, int) { return s.Score(), 1 }
+func (s *dummySearch) Root()         { s.depth = 0 }
+func (s *dummySearch) Select(Action) { s.depth++ }
+func (s dummySearch) Score() Score   { return Score{[]float64{s.Rand.NormFloat64()}, maximizeObjective} }

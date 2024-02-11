@@ -16,7 +16,7 @@ type Variation []Node
 //
 // Root returns nil if the Variation is not rooted.
 func (v Variation) Root() *Node {
-	if len(v) == 0 || v[0].Root() {
+	if len(v) == 0 || !v[0].Root() {
 		return nil
 	}
 	return &v[0]

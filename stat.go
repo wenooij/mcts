@@ -109,11 +109,14 @@ func MinFilter(f func(e Node) float64) Filter {
 
 func maxCmpFilter(f func(e Node) float64, cmp func(a, b float64) int) Filter {
 	return func(input []Node) []Node {
+		if len(input) == 0 {
+			return nil
+		}
 		var (
-			maxEntries []Node
-			maxValue   = math.Inf(-1)
+			maxEntries = []Node{input[0]}
+			maxValue   = f(input[0])
 		)
-		for _, e := range input {
+		for _, e := range input[1:] {
 			value := f(e)
 			if cmp := cmp(value, maxValue); cmp == 0 {
 				maxEntries = append(maxEntries, e)
@@ -128,9 +131,7 @@ func maxCmpFilter(f func(e Node) float64, cmp func(a, b float64) int) Filter {
 }
 
 // MaxRolloutsFilter returns a filter which selects the entries with maximum rollouts.
-func MaxRolloutsFilter() Filter {
-	return MaxFilter(func(e Node) float64 { return e.numRollouts })
-}
+func MaxRolloutsFilter() Filter { return MaxFilter(func(e Node) float64 { return e.numRollouts }) }
 
 // MaxScoreFilter returns a filter which selects the entries with the best normalized score.
 func MaxScoreFilter() Filter { return MaxFilter(func(e Node) float64 { return e.Score() }) }
