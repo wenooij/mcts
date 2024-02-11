@@ -127,9 +127,9 @@ func (g *tourSearch) Score() mcts.Score {
 	}
 	distance += last.DistanceTo(first)
 	if g.summ == nil {
-		return model.Score(-distance) // Minimize distance.
+		return mcts.Score{[]float64{distance}, model.MinimizeObjective} // Minimize distance.
 	}
-	return model.Score(g.summ.ZScore(-distance))
+	return mcts.Score{[]float64{g.summ.ZScore(distance)}, model.MinimizeObjective}
 }
 
 func (g *tourSearch) Expand(int) []mcts.FrontierAction {

@@ -25,7 +25,9 @@ func (s Search) Expand(n int) []mcts.FrontierAction {
 	return b
 }
 
-func (s Search) Root()                      {}
-func (s Search) Select(mcts.Action)         {}
-func (s Search) Score() mcts.Score          { return model.Score(rand.NormFloat64()) }
+func (s Search) Root()              {}
+func (s Search) Select(mcts.Action) {}
+func (s Search) Score() mcts.Score {
+	return mcts.Score{[]float64{rand.NormFloat64()}, model.MaximizeObjective}
+}
 func (s Search) Rollout() (mcts.Score, int) { return s.Score(), 1 }

@@ -53,13 +53,7 @@ func (n Node) Score() float64 {
 	if n.numRollouts == 0 {
 		return math.Inf(+1)
 	}
-	return n.rawScore.Score() / n.numRollouts
-}
-func (n Node) rawScoreValue() float64 {
-	if n.rawScore == nil {
-		return math.Inf(+1)
-	}
-	return n.rawScore.Score()
+	return n.rawScore.Apply() / n.numRollouts
 }
 
 func newTree(s *Search) *heapordered.Tree[Node] {

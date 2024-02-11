@@ -64,12 +64,12 @@ func (s *connect2) Score() mcts.Score {
 	if s.depth > initDepth {
 		player = 1 - player
 	}
-	scores := model.Scores{Player: player, PlayerScores: make([]float64, 2)}
+	scores := mcts.Score{make([]float64, 2), model.ScorePlayer(player).Objective}
 	switch s.winner() {
 	case white:
-		scores.PlayerScores[0] = 1
+		scores.Counters[0] = 1
 	case black:
-		scores.PlayerScores[1] = 1
+		scores.Counters[1] = 1
 	}
 	return scores
 }

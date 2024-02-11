@@ -133,14 +133,10 @@ func MaxRolloutsFilter() Filter {
 }
 
 // MaxScoreFilter returns a filter which selects the entries with the best normalized score.
-func MaxScoreFilter() Filter {
-	return MaxFilter(func(e Node) float64 { return e.Score() })
-}
+func MaxScoreFilter() Filter { return MaxFilter(func(e Node) float64 { return e.Score() }) }
 
 // MaxRawScoreFilter picks the node with the best raw score.
-func MaxRawScoreFilter() Filter {
-	return MaxFilter(func(e Node) float64 { return e.rawScoreValue() })
-}
+func MaxRawScoreFilter() Filter { return MaxFilter(func(e Node) float64 { return e.rawScore.Apply() }) }
 
 // MinPriorityFilter picks the node with the highest raw score.
 func HighestPriorityFilter() Filter {

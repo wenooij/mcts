@@ -1,6 +1,19 @@
 // Package mcts provides an implementation of general multi-agent Monte-Carlo tree search (MCTS).
 package mcts
 
+type Score struct {
+	Counters []float64
+	ObjectiveFunc
+}
+
+func (s Score) Add(s2 Score) {
+	for i, v := range s2.Counters {
+		s.Counters[i] += v
+	}
+}
+
+func (s Score) Apply() float64 { return s.ObjectiveFunc(s.Counters) }
+
 // Action represents an edge in the a game tree.
 //
 // String should return a standard representation of the Action.
@@ -86,38 +99,21 @@ type SearchInterface interface {
 	// Expand must always eventually return a terminal if using the default rollout strategy.
 	Expand(n int) []FrontierAction
 
-	// Score is an interface which returns the objective evaluation in terminal
-	// positions or the zero score at internal nodes.
+	// Score is a record for scorekeeping in search.
 	//
 	// Score will be called on each expanded node and on each terminal state reached.
 	//
-	// Score is not relied on in terminal states when search implements RolloutInterface.
-	Score() Score
-}
-
-// Score is an interface for scorekeeping in search.
-//
-// Score is provided to simplify the implementation of
-// multiplayer games where multiple scores will be tracked at each position.
-//
-// For single-player applications implementations can wrap a single float64.
-//
-// See github.com/wenooij/mcts/model for reusable scalar score implementations.
-type Score interface {
-	// Score returns the objective evaluation for the Score.
+	// Score represents the objective score for the terminal Node to be maximized.
 	//
-	// The Score value will be maximized so Score should be relative to
-	// the current position and side to move in multiplayer contexts.
+	// The slice is provided to aid in multiplayer games
+	// where multiple player results can be more simply tracked.
 	//
 	// It is best to return scores in the interval [-1, +1]. Using values outside this
 	// range may impact search quality due to disrupting the explore-exploit tradeoff.
 	// Adjust ExploreFactor proportionally if using values outside the interval.
-	Score() float64
-
-	// Add returns the sum of Scores of the same type.
 	//
-	// Add may have a pointer receiver and modify itself so long as it returns the result.
-	Add(Score) Score
+	// See github.com/wenooij/mcts/model for reusable scalar score implementations.
+	Score() Score
 }
 
 type RolloutInterface interface {

@@ -107,7 +107,7 @@ func (g *keyboardSearch) Score() mcts.Score {
 	}
 	sample := targetSample[i:end]
 	score, _ := g.node.layout.Test(sample)
-	return model.Score(-float64(score) / sampleLength)
+	return mcts.Score{[]float64{float64(score) / sampleLength}, model.MinimizeObjective}
 }
 
 func (g *keyboardSearch) Rollout() (mcts.Score, int) {

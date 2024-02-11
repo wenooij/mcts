@@ -64,13 +64,13 @@ func (n *nimState) Choices() int {
 
 func (n *nimState) Score() mcts.Score {
 	player := n.Player()
-	scores := model.Scores{Player: player, PlayerScores: make([]float64, 2)}
+	scores := mcts.Score{make([]float64, 2), model.ScorePlayer(player).Objective}
 	switch n.Choices() {
 	case 0:
-		scores.PlayerScores[player]++
+		scores.Counters[player]++
 		return scores
 	case 1:
-		scores.PlayerScores[1-player]++
+		scores.Counters[1-player]++
 		return scores
 	}
 	return scores

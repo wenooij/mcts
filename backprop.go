@@ -6,12 +6,14 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
+type ObjectiveFunc func([]float64) float64
+
 func backprop(frontier *heapordered.Tree[Node], rawScore Score, numRollouts, exploreFactor, exploreTemp float64) {
 	for n := frontier; n != nil; n = n.Parent() {
 		e := &n.E
 		// E will be fixed via Init in the next call to updatePrioritiesPUCB.
 		// Unless n is the root node where Priority is not used.
-		e.rawScore = e.rawScore.Add(rawScore)
+		e.rawScore.Add(rawScore)
 		e.numRollouts += numRollouts
 		updatePrioritiesPUCB(n, e.numRollouts, exploreFactor, exploreTemp)
 	}
@@ -36,7 +38,7 @@ func updatePrioritiesPUCB(n *heapordered.Tree[Node], numParentRollouts, exploreF
 // ExploitTerm returns the mean win rate factor.
 //
 // precondition: numRollouts > 0.
-func (n Node) ExploitTerm() float64 { return n.rawScoreValue() / n.numRollouts }
+func (n Node) ExploitTerm() float64 { return n.Score() }
 
 // ExploreTerm returns the exploration 'optimism' term.
 // A function of ratio of exploration of the node relative to the parent Node's.
@@ -67,7 +69,7 @@ func (n Node) PredictTempTerm() float64 {
 // precondition: weight > 0.
 func (n Node) PUCB(exploreFactor float64) float64 {
 	nf := 1 / n.numRollouts
-	exploit := n.rawScoreValue() * nf
+	exploit := n.Score() // TODO(wes): Make branchless and reuse nf.
 	explore := math.Sqrt(float64(fastLog(float32(n.numParentRollouts+1))) * nf)
 	predict := n.PredictTerm()
 	perdictTemp := n.PredictTempTerm()

@@ -106,13 +106,13 @@ func (s *SearchPlugin) Score() mcts.Score {
 	if s.node.depth > rootDepth {
 		player = 1 - player
 	}
-	scores := model.Scores{Player: player, PlayerScores: make([]float64, 2)}
+	scores := mcts.Score{make([]float64, 2), model.ScorePlayer(player).Objective}
 	d := float64(s.node.depth) / 1000
 	switch s.node.computeWinner() {
 	case X:
-		scores.PlayerScores[0] = 1 - d
+		scores.Counters[0] = 1 - d
 	case O:
-		scores.PlayerScores[1] = 1 - d
+		scores.Counters[1] = 1 - d
 	}
 	return scores
 }
