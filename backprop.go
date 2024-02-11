@@ -55,7 +55,8 @@ func (n Node) PredictTerm() float64 { return 2 / n.predictWeight }
 
 // PredictTempTerm returns the temperature applied to the predictor term in PUCT.
 func (n Node) PredictTempTerm() float64 {
-	return math.Sqrt(float64(fastLog(float32(n.numParentRollouts+9))) / n.numParentRollouts)
+	const e1 = math.E - 1
+	return math.Sqrt(float64(fastLog(float32(n.numParentRollouts+e1))) / n.numParentRollouts)
 }
 
 // PUCB is short for predictor weighted upper confidence bound on trees (PUCB).
@@ -69,7 +70,7 @@ func (n Node) PredictTempTerm() float64 {
 // precondition: weight > 0.
 func (n Node) PUCB(exploreFactor float64) float64 {
 	nf := 1 / n.numRollouts
-	exploit := n.Score() // TODO(wes): Make branchless and reuse nf.
+	exploit := n.rawScoreValue() * nf
 	explore := math.Sqrt(float64(fastLog(float32(n.numParentRollouts+1))) * nf)
 	predict := n.PredictTerm()
 	perdictTemp := n.PredictTempTerm()

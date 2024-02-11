@@ -55,6 +55,12 @@ func (n Node) Score() float64 {
 	}
 	return n.rawScore.Apply() / n.numRollouts
 }
+func (n Node) rawScoreValue() float64 {
+	if n.numRollouts == 0 {
+		return math.Inf(+1)
+	}
+	return n.rawScore.Apply()
+}
 
 func newTree(s *Search) *heapordered.Tree[Node] {
 	step := FrontierAction{}
