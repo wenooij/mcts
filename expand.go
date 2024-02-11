@@ -37,7 +37,7 @@ func expand(s *Search, n *heapordered.Tree[Node]) *heapordered.Tree[Node] {
 		} else if w != uniformWeight {
 			uniformWeights = false
 		}
-		child.Grow(100)
+		child.Grow(s.InitialNodeCap)
 		// Sum predictor weights to later normalize.
 		totalWeight += w
 	}

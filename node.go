@@ -80,7 +80,6 @@ func getOrCreateChild(s *Search, parent *heapordered.Tree[Node], action Frontier
 	node := makeNode(action)
 	child = heapordered.NewTree(node, math.Inf(-1))
 	parent.NewChildTree(child)
-	child.Grow(10)
 	return child, true
 }
 

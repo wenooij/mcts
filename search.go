@@ -35,6 +35,13 @@ type Search struct {
 	// The default value of 1 effectively disables temperature.
 	ExploreTemperature float64
 
+	// InitialNodeCap can be used to allocate a fixed capacity of spaces
+	// for child nodes which can yield a positive boost to performace at
+	// the cost of higher memory usage.
+	//
+	// The default value is 20.
+	InitialNodeCap int
+
 	// Seed provides repeatable randomness to the search.
 	// By default Seed is set to the current UNIX timestamp nanos.
 	Seed int64
@@ -66,6 +73,9 @@ func (s *Search) patchDefaults() {
 			s.Seed = time.Now().UnixNano()
 		}
 		s.Rand = rand.New(rand.NewSource(s.Seed))
+	}
+	if s.InitialNodeCap == 0 {
+		s.InitialNodeCap = 20
 	}
 }
 
