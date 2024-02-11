@@ -18,7 +18,7 @@ func (t *Tree) Add(v mcts.Variation, pv bool) {
 	if len(v) == 0 {
 		return
 	}
-	if t.elem.Action == nil {
+	if t.elem.Action() == nil {
 		t.elem = v[0]
 	}
 	if len(v) == 1 {
@@ -76,7 +76,7 @@ func (t *treeDotter) recDOT(b *bytes.Buffer, parent string) {
 func (t *treeDotter) writeNode(b *bytes.Buffer, s mcts.Node, pv bool) string {
 	id := fmt.Sprint(t.nextId)
 	actionStr := "<root>"
-	if s.Action != nil {
+	if s.Action() != nil {
 		actionStr = s.Action().String()
 	}
 	nodeTypeStr := ""
@@ -89,8 +89,8 @@ func (t *treeDotter) writeNode(b *bytes.Buffer, s mcts.Node, pv bool) string {
 		nodeTypeStr += " #"
 	}
 	t.nextId++
-	fmt.Fprintf(b, `%s [shape=square,%s label="%s%s\lrollouts: %.0f\lscore: %.2f\lpriority: %.2f\l"];`,
-		id, pvStyle, actionStr, nodeTypeStr, s.NumRollouts(), s.Score(), s.Priority())
+	fmt.Fprintf(b, `%s [shape=square,%s label="%s%s\lrollouts: %.0f\lscore: %.2f\l"];`,
+		id, pvStyle, actionStr, nodeTypeStr, s.NumRollouts(), s.Score())
 	b.WriteByte('\n')
 	return id
 }

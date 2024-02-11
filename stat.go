@@ -144,15 +144,15 @@ func MaxRawScoreFilter() Filter {
 
 // MinPriorityFilter picks the node with the highest raw score.
 func HighestPriorityFilter() Filter {
-	return MinFilter(func(e Node) float64 { return e.priority })
+	panic("not implemented")
 }
 
 func RootActionFilter(a Action) Filter {
-	return PredicateFilter(func(e Node) bool { return e.depth != 1 || e.Action() == a })
+	panic("not implemented")
 }
 
 func MaxDepthFilter(depth int) Filter {
-	return PredicateFilter(func(e Node) bool { return e.Depth() <= depth })
+	panic("not implemented")
 }
 
 // AnyFilter returns a filter which selects a random entry.

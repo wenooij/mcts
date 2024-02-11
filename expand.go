@@ -11,21 +11,19 @@ import (
 // the fringe argument is set to true during the rollout phase.
 func expand(s *Search, n *heapordered.Tree[Node]) *heapordered.Tree[Node] {
 	actions := s.Expand(0)
+	e := &n.E
+	defer func() { e.nodeType |= nodeExpanded }()
 
 	if len(actions) == 0 {
 		// Set the terminal node bit.
-		e := n.E
 		e.nodeType |= nodeTerminal
-		n.E = e
 		return nil
 	}
-	// Avoid bias from move generation order.
+	// Avoid bias from generation order.
 	s.Rand.Shuffle(len(actions), func(i, j int) { actions[i], actions[j] = actions[j], actions[i] })
 
 	// Clear terminal bit.
-	e := n.E
 	e.nodeType &= ^nodeTerminal
-	n.E = e
 	var (
 		totalWeight    float64
 		uniformWeight  float64
@@ -49,16 +47,14 @@ func expand(s *Search, n *heapordered.Tree[Node]) *heapordered.Tree[Node] {
 	if uniformWeights && len(n.Children()) > 1 {
 		w := 1 / math.Sqrt(float64(len(n.Children())))
 		for _, child := range n.Children() {
-			e := child.E
+			e := &child.E
 			e.predictWeight = w
-			child.E = e
 		}
 	} else {
 		// Normalize predictor weight.
 		for _, child := range n.Children() {
-			e := child.E
+			e := &child.E
 			e.predictWeight /= totalWeight
-			child.E = e
 		}
 	}
 	// Select an element to expand.

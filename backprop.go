@@ -26,9 +26,9 @@ func backpropNull(frontier *heapordered.Tree[Node], exploreFactor, exploreTemp f
 func updatePrioritiesPUCB(n *heapordered.Tree[Node], numParentRollouts, exploreFactor, exploreTemp float64) {
 	for _, child := range n.Children() {
 		childElem := &child.E
-		// The next call to Init will heapify E.
 		childElem.numParentRollouts = numParentRollouts
-		childElem.priority = -childElem.PUCB(exploreFactor * exploreTemp)
+		// The next call to Init will heapify n.
+		child.Priority = -childElem.PUCB(exploreFactor * exploreTemp)
 	}
 	n.Init()
 }

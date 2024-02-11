@@ -22,12 +22,16 @@ func TestNodeTypes(t *testing.T) {
 					t.Errorf("TestNodeTypes(): expected root node %d of %q", i, anyV)
 				}
 			case 2:
-				if !e.Terminal() {
+				if e.Expanded() && !e.Terminal() {
 					t.Errorf("TestNodeTypes(): expected terminal node %d of %q", i, anyV)
 				}
 			default:
-				if e.nodeType != 0 {
-					t.Errorf("TestNodeTypes(): internal node %d of %q has type = %v, want 0", i, anyV, e.nodeType)
+				var want nodeType
+				if e.Expanded() {
+					want = nodeExpanded
+				}
+				if e.nodeType != want {
+					t.Errorf("TestNodeTypes(): internal node %d of %q has type = %v, want %v", i, anyV, e.nodeType, want)
 				}
 			}
 		}

@@ -16,9 +16,8 @@ func selectChild(s *Search, n *heapordered.Tree[Node]) *heapordered.Tree[Node] {
 //
 // precondition n must be the current node (s.Select(n.Action) has been called, or we are at the root).
 func initializeScore(s *Search, n *heapordered.Tree[Node]) {
-	if e := n.E; e.rawScore == nil {
-		e.rawScore = s.Score()
+	if e := &n.E; e.rawScore == nil {
 		// E will be heapified on the first call to backprop.
-		n.E = e
+		e.rawScore = s.Score()
 	}
 }

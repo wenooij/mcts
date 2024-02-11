@@ -185,7 +185,7 @@ func main() {
 	// fmt.Println(summary.String())
 	// s.summ = &summary
 	epoch := 0
-	const initTemp = 500
+	const initTemp = 100
 	opts.ExploreTemperature = initTemp
 	for lastPrint := (time.Time{}); ; {
 		if opts.Search(); time.Since(lastPrint) >= time.Second {
