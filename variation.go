@@ -16,7 +16,7 @@ type Variation []Node
 //
 // Root returns nil if the Variation is not rooted.
 func (v Variation) Root() *Node {
-	if len(v) == 0 || !v[0].Root() {
+	if len(v) == 0 || v[0].Action() == nil {
 		return nil
 	}
 	return &v[0]
@@ -45,7 +45,7 @@ func (v Variation) Last() *Node {
 
 // TrimRoot returns the Variation v without its root node.
 func (v Variation) TrimRoot() Variation {
-	if len(v) == 0 || !v[0].Root() {
+	if len(v) == 0 || v[0].action != nil {
 		return v
 	}
 	return v[1:]
@@ -84,11 +84,11 @@ func (r Search) AnyV() Variation { return r.FilterV(AnyFilter(r.Rand)) }
 //
 // This may be a subset of the available RootActions.
 func (r Search) RootActions() []Action {
-	if r.root == nil {
+	if r.Tree == nil {
 		return nil
 	}
-	actions := make([]Action, 0, len(r.root.Children()))
-	for _, child := range r.root.Children() {
+	actions := make([]Action, 0, len(r.Tree.Children()))
+	for _, child := range r.Tree.Children() {
 		actions = append(actions, child.E.action)
 	}
 	return actions
@@ -98,7 +98,7 @@ func (r Search) RootActions() []Action {
 //
 // The returned Variation stops if the next action is not present in the Search tree.
 func (r Search) Stat(vs ...Action) Variation {
-	n := r.root
+	n := r.Tree
 	if n == nil {
 		return nil
 	}
@@ -125,22 +125,16 @@ func (r Search) Stat(vs ...Action) Variation {
 // The Search is initialized if it had not already done so.
 func (s *Search) InsertV(v Variation) {
 	s.Init()
-	n := s.root
+	n := s.Tree
 	if root := v.Root(); root != nil {
 		// Insert stat at Root.
 	}
 	for _, stat := range v.TrimRoot() {
-		var created bool
-		n, created = getOrCreateChild(s, n, FrontierAction{
+		n, _ = getOrCreateChild(s, n, FrontierAction{
 			Action: stat.Action(),
 			Weight: stat.PredictWeight(),
 		})
 		e := n.E
-		if created {
-			e.nodeType = stat.nodeType
-		} else {
-			e.nodeType &= ^nodeTerminal // Clear the terminal bit.
-		}
 		e.numParentRollouts = stat.numRollouts
 		e.rawScore = stat.rawScore
 		e.numRollouts = stat.numRollouts

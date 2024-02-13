@@ -41,7 +41,7 @@ func PredicateFilter(f func(Node) bool) Filter {
 // To guarantee a line is selected, add AnyFilter as the last element in the chain.
 func (r Search) FilterV(filters ...Filter) Variation {
 	var res Variation
-	node := r.root
+	node := r.Tree
 	res = append(res, node.E)
 	for node != nil {
 		e := filterStatNode(node, filters...)
@@ -75,10 +75,10 @@ func filterStatNode(node *heapordered.Tree[Node], filters ...Filter) *Node {
 
 // Best returns one of the best actions for this Search root or nil.
 func (r Search) Best() *Node {
-	if r.root == nil {
+	if r.Tree == nil {
 		return nil
 	}
-	return filterStatNode(r.root, MaxRolloutsFilter(), AnyFilter(r.Rand))
+	return filterStatNode(r.Tree, MaxRolloutsFilter(), AnyFilter(r.Rand))
 }
 
 // MaxFilter returns a filter which selects the entries maximumizing f.
@@ -166,7 +166,7 @@ func AnyFilter(r *rand.Rand) Filter {
 //
 // If not all of v is present, Subtree returns nil.
 func (s Search) Subtree(actions ...Action) *Search {
-	n := s.root
+	n := s.Tree
 	if n == nil {
 		return nil
 	}
@@ -179,7 +179,7 @@ func (s Search) Subtree(actions ...Action) *Search {
 		}
 		n = child
 	}
-	s.root = n
+	s.Tree = n
 	return &s
 }
 
@@ -187,10 +187,10 @@ func (s Search) Subtree(actions ...Action) *Search {
 type Reducer[T any] func(e Node) T
 
 // Reduce the subtree by calling r and return the final result.
-func Reduce[T any](s Search, r Reducer[T]) (res T) { return reduceNode(s.root, r) }
+func Reduce[T any](s Search, r Reducer[T]) (res T) { return reduceNode(s.Tree, r) }
 
 func ReduceV[T any](s Search, r Reducer[T], v Variation) (n int, res T) {
-	node := s.root
+	node := s.Tree
 	for i, e := range v {
 		if node == nil {
 			return i, res

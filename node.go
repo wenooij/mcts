@@ -6,20 +6,7 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-type nodeType int
-
-const (
-	nodeTerminal nodeType = 1 << iota
-	nodeRoot
-	nodeExpanded
-)
-
-func (n nodeType) Terminal() bool { return n&nodeTerminal != 0 }
-func (n nodeType) Root() bool     { return n&nodeRoot != 0 }
-func (n nodeType) Expanded() bool { return n&nodeExpanded != 0 }
-
 type Node struct {
-	nodeType
 	action            Action
 	rawScore          Score
 	numParentRollouts float64
@@ -55,28 +42,15 @@ func (n Node) Score() float64 {
 	}
 	return n.rawScore.Apply() / n.numRollouts
 }
-func (n Node) rawScoreValue() float64 {
-	if n.numRollouts == 0 {
-		return math.Inf(+1)
-	}
-	return n.rawScore.Apply()
-}
+func (n Node) rawScoreValue() float64 { return n.rawScore.Apply() }
 
 func newTree(s *Search) *heapordered.Tree[Node] {
 	step := FrontierAction{}
 	root := makeNode(step)
-	root.nodeType |= nodeRoot
 	return heapordered.NewTree(root, math.Inf(-1))
 }
 
 func getOrCreateChild(s *Search, parent *heapordered.Tree[Node], action FrontierAction) (child *heapordered.Tree[Node], created bool) {
-	if false {
-		// For partly expanded nodes we need to use the slow check
-		// to avoid wasting resources creating duplicate children.
-		if child := getChild(parent, action.Action); child != nil {
-			return child, false
-		}
-	}
 	node := makeNode(action)
 	child = heapordered.NewTree(node, math.Inf(-1))
 	parent.NewChildTree(child)

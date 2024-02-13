@@ -20,7 +20,7 @@ const DefaultExploreFactor = 1.224744871391589 // √3/√2
 // Many of the hyperparameters have drastic impacts on Search performance and need
 // to be experimentally tuned first. See FitParams in the model subpackage for more info.
 type Search struct {
-	root *heapordered.Tree[Node]
+	*heapordered.Tree[Node]
 
 	// SearchInterface implements the search environment.
 	SearchInterface
@@ -72,18 +72,18 @@ func (s *Search) patchDefaults() {
 // Init create a new root for the search if it doesn't exist yet.
 // Init additionally patches default parameter values.
 func (s *Search) Init() bool {
-	if s.root != nil {
+	if s.Tree != nil {
 		return false
 	}
 	s.patchDefaults()
-	s.root = newTree(s)
-	initializeScore(s, s.root)
+	s.Tree = newTree(s)
+	initializeScore(s, s.Tree)
 	return true
 }
 
 // Reset deletes the search continuation and RNG so the next call to Search starts from scratch.
 func (s *Search) Reset() {
-	s.root = nil
+	s.Tree = nil
 	s.Rand = nil
 }
 
@@ -98,8 +98,8 @@ func (s *Search) Search() {
 }
 
 func (s *Search) searchEpisode() {
-	n := s.root
-	s.Root() // Reset to root.
+	n := s.Tree
+	s.SearchInterface.Root() // Reset to root.
 	// Select the best leaf node by MAB policy.
 	for child := selectChild(s, n); child != nil; n, child = child, selectChild(s, child) {
 	}
