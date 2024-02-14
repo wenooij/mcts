@@ -140,5 +140,5 @@ func (s *Search) InsertV(v Variation) {
 		e.numRollouts = stat.numRollouts
 	}
 	// Fix priorities.
-	backpropNull(n, s.ExploreFactor, s.ExploreTemperature)
+	backpropNull(n, s.ExploreFactor)
 }

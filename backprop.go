@@ -8,29 +8,29 @@ import (
 
 type ObjectiveFunc func([]float64) float64
 
-func backprop(frontier *heapordered.Tree[Node], rawScore Score, numRollouts, exploreFactor, exploreTemp float64) {
+func backprop(frontier *heapordered.Tree[Node], rawScore Score, numRollouts, exploreFactor float64) {
 	for n := frontier; n != nil; n = n.Parent() {
 		e := &n.E
 		// E will be fixed via Init in the next call to updatePrioritiesPUCB.
 		// Unless n is the root node where Priority is not used.
 		e.rawScore.Add(rawScore)
 		e.numRollouts += numRollouts
-		updatePrioritiesPUCB(n, e.numRollouts, exploreFactor, exploreTemp)
+		updatePrioritiesPUCB(n, e.numRollouts, exploreFactor)
 	}
 }
 
-func backpropNull(frontier *heapordered.Tree[Node], exploreFactor, exploreTemp float64) {
+func backpropNull(frontier *heapordered.Tree[Node], exploreFactor float64) {
 	for n := frontier; n != nil; n = n.Parent() {
-		updatePrioritiesPUCB(n, n.E.numRollouts, exploreFactor, exploreTemp)
+		updatePrioritiesPUCB(n, n.E.numRollouts, exploreFactor)
 	}
 }
 
-func updatePrioritiesPUCB(n *heapordered.Tree[Node], numParentRollouts, exploreFactor, exploreTemp float64) {
+func updatePrioritiesPUCB(n *heapordered.Tree[Node], numParentRollouts, exploreFactor float64) {
 	for _, child := range n.Children() {
 		childElem := &child.E
 		childElem.numParentRollouts = numParentRollouts
 		// The next call to Init will heapify n.
-		child.Priority = -childElem.PUCB(exploreFactor * exploreTemp)
+		child.Priority = -child.E.PUCB(exploreFactor)
 	}
 	n.Init()
 }
