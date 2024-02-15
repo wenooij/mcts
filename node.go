@@ -7,11 +7,10 @@ import (
 )
 
 type Node struct {
-	action            Action
-	rawScore          Score
-	numParentRollouts float64
-	numRollouts       float64
-	predictWeight     float64
+	Action      Action
+	Score       Score
+	NumRollouts float64
+	PriorWeight float64
 }
 
 // makeNode creates a tree node element.
@@ -26,23 +25,13 @@ func makeNode(action FrontierAction) Node {
 	return Node{
 		// Max priority for new nodes.
 		// This will be recomputed after the first attempt.
-		predictWeight: weight,
-		action:        action.Action,
+		PriorWeight: weight,
+		Action:      action.Action,
 	}
 }
 
-func (n Node) Action() Action             { return n.action }
-func (n Node) NumRollouts() float64       { return n.numRollouts }
-func (n Node) PredictWeight() float64     { return n.predictWeight }
-func (n Node) NumParentRollouts() float64 { return n.numParentRollouts }
-func (n Node) RawScore() Score            { return n.rawScore }
-func (n Node) Score() float64 {
-	if n.numRollouts == 0 {
-		return math.Inf(+1)
-	}
-	return n.rawScore.Apply() / n.numRollouts
-}
-func (n Node) rawScoreValue() float64 { return n.rawScore.Apply() }
+func (n Node) RawScore() Score        { return n.Score }
+func (n Node) rawScoreValue() float64 { return n.Score.Apply() }
 
 func newTree(s *Search) *heapordered.Tree[Node] {
 	step := FrontierAction{}
@@ -59,7 +48,7 @@ func getOrCreateChild(s *Search, parent *heapordered.Tree[Node], action Frontier
 
 func getChild(root *heapordered.Tree[Node], action Action) (child *heapordered.Tree[Node]) {
 	for _, e := range root.Children() {
-		if e.E.action == action {
+		if e.E.Action == action {
 			return e
 		}
 	}

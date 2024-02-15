@@ -25,14 +25,14 @@ func TestBackpropFeatures(t *testing.T) {
 		t.Errorf("TestBackpropFeatures(): got root Priority = %f, want %f", gotP, wantP)
 	}
 	// Expected number of rollouts at each PV node.
-	if gotN, wantN := gotPV[0].NumRollouts(), float64(3); gotN != wantN {
+	if gotN, wantN := gotPV[0].NumRollouts, float64(3); gotN != wantN {
 		t.Errorf("TestBackpropFeatures(): got PV[0] NumRollouts = %f, want %f", gotN, wantN)
 	}
 	for i := 0; i < 3; i++ {
 		if gotPV[i].RawScore().ObjectiveFunc == nil {
 			t.Errorf("TestBackpropFeatures(): got uninitialized score at PV[%d]", i)
 		}
-		if gotN, wantN := gotPV[i+1].NumRollouts(), float64(3-i); gotN != wantN {
+		if gotN, wantN := gotPV[i+1].NumRollouts, float64(3-i); gotN != wantN {
 			t.Errorf("TestBackpropFeatures(): got PV[%d] NumRollouts = %f, want %f", i+1, gotN, wantN)
 		}
 	}

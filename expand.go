@@ -21,7 +21,7 @@ func expand(s *Search, n *heapordered.Tree[Node]) *heapordered.Tree[Node] {
 	for _, a := range actions {
 		child, _ := getOrCreateChild(s, n, a)
 		// Sum predictor weights to later normalize.
-		totalWeight += child.E.predictWeight
+		totalWeight += child.E.PriorWeight
 	}
 	// Normalize predictor weight.
 	if totalWeight == 0 {
@@ -29,7 +29,7 @@ func expand(s *Search, n *heapordered.Tree[Node]) *heapordered.Tree[Node] {
 	}
 	for _, child := range n.Children() {
 		e := &child.E
-		e.predictWeight /= totalWeight
+		e.PriorWeight /= totalWeight
 	}
 	// Select an element to expand.
 	return selectChild(s, n)

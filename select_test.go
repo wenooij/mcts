@@ -27,13 +27,13 @@ func TestSelectVisitsRootActions(t *testing.T) {
 			continue
 		}
 		e := v.Last()
-		if e.Action() != a {
+		if e.Action != a {
 			t.Errorf("TestSelectVisitsRootActions(%s): Stat did not return a Variation with a matching action", a)
 		}
 		if e.RawScore().ObjectiveFunc == nil {
 			t.Errorf("TestSelectVisitsRootActions(%s): RawScore not initialized for action", a)
 		}
-		if gotRollouts, wantRollouts := e.NumRollouts(), float64(1); gotRollouts != wantRollouts {
+		if gotRollouts, wantRollouts := e.NumRollouts, float64(1); gotRollouts != wantRollouts {
 			t.Errorf("TestSelectVisitsRootActions(%s): got rollouts = %f, want %f", a, gotRollouts, wantRollouts)
 		}
 	}

@@ -10,7 +10,7 @@ import (
 )
 
 func (e Node) appendString(sb *strings.Builder) {
-	fmt.Fprintf(sb, "[%f] %s (%d)", e.Score(), e.Action(), int64(e.NumRollouts()))
+	fmt.Fprintf(sb, "[%f] %s (%d)", e.Score.Apply(), e.Action, int64(e.NumRollouts))
 }
 
 func (e Node) String() string {
@@ -49,7 +49,7 @@ func (r Search) FilterV(filters ...Filter) Variation {
 			break
 		}
 		res = append(res, *e)
-		node = getChild(node, e.action)
+		node = getChild(node, e.Action)
 	}
 	return res
 }
@@ -131,13 +131,13 @@ func maxCmpFilter(f func(e Node) float64, cmp func(a, b float64) int) Filter {
 }
 
 // MaxRolloutsFilter returns a filter which selects the entries with maximum rollouts.
-func MaxRolloutsFilter() Filter { return MaxFilter(func(e Node) float64 { return e.numRollouts }) }
+func MaxRolloutsFilter() Filter { return MaxFilter(func(e Node) float64 { return e.NumRollouts }) }
 
 // MaxScoreFilter returns a filter which selects the entries with the best normalized score.
-func MaxScoreFilter() Filter { return MaxFilter(func(e Node) float64 { return e.Score() }) }
+func MaxScoreFilter() Filter { return MaxFilter(func(e Node) float64 { return e.Score.Apply() }) }
 
 // MaxRawScoreFilter picks the node with the best raw score.
-func MaxRawScoreFilter() Filter { return MaxFilter(func(e Node) float64 { return e.rawScore.Apply() }) }
+func MaxRawScoreFilter() Filter { return MaxFilter(func(e Node) float64 { return e.Score.Apply() }) }
 
 // MinPriorityFilter picks the node with the highest raw score.
 func HighestPriorityFilter() Filter {
@@ -196,7 +196,7 @@ func ReduceV[T any](s Search, r Reducer[T], v Variation) (n int, res T) {
 			return i, res
 		}
 		res = r(node.E)
-		node = getChild(node, e.action)
+		node = getChild(node, e.Action)
 	}
 	return len(v), res
 }

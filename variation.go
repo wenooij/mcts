@@ -16,7 +16,7 @@ type Variation []Node
 //
 // Root returns nil if the Variation is not rooted.
 func (v Variation) Root() *Node {
-	if len(v) == 0 || v[0].Action() == nil {
+	if len(v) == 0 || v[0].Action == nil {
 		return nil
 	}
 	return &v[0]
@@ -45,7 +45,7 @@ func (v Variation) Last() *Node {
 
 // TrimRoot returns the Variation v without its root node.
 func (v Variation) TrimRoot() Variation {
-	if len(v) == 0 || v[0].action != nil {
+	if len(v) == 0 || v[0].Action != nil {
 		return v
 	}
 	return v[1:]
@@ -57,12 +57,12 @@ func (v Variation) String() (s string) {
 	}
 	var sb strings.Builder
 	defer func() {
-		fmt.Fprintf(&sb, " (%d)", int64(v[0].NumRollouts()))
+		fmt.Fprintf(&sb, " (%d)", int64(v[0].NumRollouts))
 		s = sb.String()
 	}()
-	fmt.Fprintf(&sb, "[%f]", v[0].Score())
+	fmt.Fprintf(&sb, "[%f]", v[0].Score.Apply())
 	for _, e := range v.TrimRoot() {
-		fmt.Fprintf(&sb, " %s", e.Action().String())
+		fmt.Fprintf(&sb, " %s", e.Action.String())
 	}
 	return sb.String()
 }
@@ -89,7 +89,7 @@ func (r Search) RootActions() []Action {
 	}
 	actions := make([]Action, 0, len(r.Tree.Children()))
 	for _, child := range r.Tree.Children() {
-		actions = append(actions, child.E.action)
+		actions = append(actions, child.E.Action)
 	}
 	return actions
 }
@@ -131,13 +131,12 @@ func (s *Search) InsertV(v Variation) {
 	}
 	for _, stat := range v.TrimRoot() {
 		n, _ = getOrCreateChild(s, n, FrontierAction{
-			Action: stat.Action(),
-			Weight: stat.PredictWeight(),
+			Action: stat.Action,
+			Weight: stat.PriorWeight,
 		})
 		e := n.E
-		e.numParentRollouts = stat.numRollouts
-		e.rawScore = stat.rawScore
-		e.numRollouts = stat.numRollouts
+		e.Score = stat.Score
+		e.NumRollouts = stat.NumRollouts
 	}
 	// Fix priorities.
 	backpropNull(n, s.ExploreFactor)
