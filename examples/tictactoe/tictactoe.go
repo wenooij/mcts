@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/wenooij/mcts"
@@ -18,11 +19,13 @@ const (
 
 type SearchPlugin struct {
 	node *tictactoeNode
+	r    *rand.Rand
 }
 
 func newSearchPlugin() *SearchPlugin {
 	p := &SearchPlugin{
 		node: new(tictactoeNode),
+		r:    rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 	p.Root()
 	return p
@@ -88,6 +91,7 @@ func (s *SearchPlugin) Expand(int) []mcts.FrontierAction {
 		}
 		actions = append(actions, mcts.FrontierAction{
 			Action: tictactoeAction(i),
+			Weight: rand.ExpFloat64(),
 		})
 	}
 	return actions

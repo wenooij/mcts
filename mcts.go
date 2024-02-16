@@ -2,8 +2,8 @@
 package mcts
 
 type Score struct {
-	Counters []float64
-	ObjectiveFunc
+	Counters  []float64
+	Objective ObjectiveFunc
 }
 
 func (s Score) Add(s2 Score) {
@@ -12,7 +12,7 @@ func (s Score) Add(s2 Score) {
 	}
 }
 
-func (s Score) Apply() float64 { return s.ObjectiveFunc(s.Counters) }
+func (s Score) Apply() float64 { return s.Objective(s.Counters) }
 
 // Action represents an edge in the a game tree.
 //

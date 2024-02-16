@@ -122,10 +122,12 @@ func (s *search) Rollout() (mcts.Score, int) {
 		mse -= (actual - exp) * (actual - exp)
 		trials++
 	}
-	return mcts.Score{[]float64{mse}, model.MinimizeObjective}, trials
+	return mcts.Score{Counters: []float64{mse}, Objective: model.MinimizeSum}, trials
 }
 
-func (s *search) Score() mcts.Score { return mcts.Score{[]float64{0}, model.MinimizeObjective} }
+func (s *search) Score() mcts.Score {
+	return mcts.Score{Counters: []float64{0}, Objective: model.MinimizeSum}
+}
 
 func main() {
 	s := mcts.Search{
@@ -134,21 +136,17 @@ func main() {
 		ExploreFactor:   mcts.DefaultExploreFactor,
 	}
 
-	s.ExploreTemperature = 1000
-	for printNSec := time.Now(); ; {
+	for lastPrint := time.Now(); ; {
 		s.Search()
-		if time.Since(printNSec) > time.Second {
+		if time.Since(lastPrint) > time.Second {
 			sCopy := new(search)
 			sCopy.Root()
 			pv := s.PV()
 			for _, e := range pv.TrimRoot() {
-				sCopy.Select(e.Action())
+				sCopy.Select(e.Action)
 			}
-			fmt.Printf("[%.16f] %.16f, %.16f (%f)\n", pv.Last().Score(), sCopy.c0.Mid(), sCopy.c1.Mid(), pv.Last().NumRollouts())
-			printNSec = time.Now()
-		}
-		if s.ExploreTemperature >= 1 {
-			s.ExploreTemperature--
+			fmt.Printf("[%.16f] %.16f, %.16f (%f)\n", pv.Last().Score.Apply(), sCopy.c0.Mid(), sCopy.c1.Mid(), pv.Last().NumRollouts)
+			lastPrint = time.Now()
 		}
 	}
 }

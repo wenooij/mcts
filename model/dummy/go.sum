@@ -1,6 +1,0 @@
-github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
-github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
-github.com/wenooij/heapordered v0.0.0-20240121043232-06dcc2753d12 h1:qZrcmd3Y+eIEps5mkEZDnlTVDcAAlqiETdp2o/nNGz0=
-github.com/wenooij/heapordered v0.0.0-20240121043232-06dcc2753d12/go.mod h1:YeuEtIWDc+439SGM3YWrj43aWNjo1G3B82xo4ScxRO4=
-github.com/wenooij/mcts v0.0.0-20240121043607-745ca436676b h1:D8ND5mApFNGEypcxpy334+D/+DssKYT2ebLkfBGiCR4=
-github.com/wenooij/mcts v0.0.0-20240121043607-745ca436676b/go.mod h1:Qbnz05be6/HMMdH8n9ujEjRz36e+4EvIbWG1fGNDX5M=

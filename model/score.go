@@ -1,9 +1,15 @@
 package model
 
-func MinimizeObjective(scores []float64) float64 { return -sumValues(scores) }
-func MaximizeObjective(scores []float64) float64 { return sumValues(scores) }
+func MinimizeSum(scores []float64) float64 { return -sumValues(scores) }
+func MaximizeSum(scores []float64) float64 { return sumValues(scores) }
 
 func sumValues(vs []float64) float64 {
+	switch len(vs) {
+	case 1:
+		return vs[0]
+	case 2:
+		return vs[0] + vs[1]
+	}
 	var sum float64
 	for _, v := range vs {
 		sum += v
@@ -19,6 +25,10 @@ func sumValues(vs []float64) float64 {
 type ScorePlayer int
 
 func (s ScorePlayer) Objective(scores []float64) float64 {
+	switch len(scores) {
+	case 2:
+		return scores[s] - scores[1-s]
+	}
 	score := scores[s]
 	n := len(scores)
 	if n <= 1 {

@@ -77,23 +77,24 @@ func Summarize(s *mcts.Search) SummaryStats {
 	for i := 0; i < numAnyVSamples; i++ {
 		// Sample score from random variations using reservoir sampling.
 		for _, e := range s.AnyV() {
-			if math.IsInf(e.Score(), 0) {
+			score := e.Score.Apply()
+			if math.IsInf(score, 0) {
 				// Inf scores cannot contribute to statistics.
 				continue
 			}
 			if len(scoreSamples) < scoreSampleCap {
-				scoreSamples = append(scoreSamples, e.Score())
+				scoreSamples = append(scoreSamples, e.Score.Apply())
 			} else if j := s.Rand.Intn(numSamples); j < scoreSampleCap {
 				scoreSum -= scoreSamples[j]
-				scoreSamples[j] = e.Score()
+				scoreSamples[j] = score
 			}
-			if e.Score() < minScore {
-				minScore = e.Score()
+			if score < minScore {
+				minScore = score
 			}
-			if e.Score() > maxScore {
-				maxScore = e.Score()
+			if score > maxScore {
+				maxScore = score
 			}
-			scoreSum += e.Score()
+			scoreSum += score
 			numSamples++
 		}
 	}

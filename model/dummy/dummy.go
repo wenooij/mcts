@@ -28,5 +28,5 @@ func (s Search) Expand(n int) []mcts.FrontierAction {
 func (s Search) Root()              {}
 func (s Search) Select(mcts.Action) {}
 func (s Search) Score() mcts.Score {
-	return mcts.Score{[]float64{rand.NormFloat64()}, model.MaximizeObjective}
+	return mcts.Score{Counters: []float64{rand.NormFloat64()}, Objective: model.MaximizeSum}
 }

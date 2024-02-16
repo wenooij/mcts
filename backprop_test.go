@@ -29,7 +29,7 @@ func TestBackpropFeatures(t *testing.T) {
 		t.Errorf("TestBackpropFeatures(): got PV[0] NumRollouts = %f, want %f", gotN, wantN)
 	}
 	for i := 0; i < 3; i++ {
-		if gotPV[i].RawScore().ObjectiveFunc == nil {
+		if gotPV[i].RawScore().Objective == nil {
 			t.Errorf("TestBackpropFeatures(): got uninitialized score at PV[%d]", i)
 		}
 		if gotN, wantN := gotPV[i+1].NumRollouts, float64(3-i); gotN != wantN {

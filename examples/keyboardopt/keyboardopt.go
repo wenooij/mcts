@@ -107,7 +107,7 @@ func (g *keyboardSearch) Score() mcts.Score {
 	}
 	sample := targetSample[i:end]
 	score, _ := g.node.layout.Test(sample)
-	return mcts.Score{[]float64{float64(score) / sampleLength}, model.MinimizeObjective}
+	return mcts.Score{[]float64{float64(score) / sampleLength}, model.MinimizeSum}
 }
 
 func (g *keyboardSearch) Rollout() (mcts.Score, float64) {
@@ -142,7 +142,7 @@ func main() {
 
 	layout := NewRandomLayout(r)
 	for _, e := range pv {
-		a := e.Action().(keySwapAction)
+		a := e.Action.(keySwapAction)
 		layout.Swap(a.p1, a.p2)
 	}
 

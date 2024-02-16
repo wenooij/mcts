@@ -56,14 +56,11 @@ func (v Variation) String() (s string) {
 		return ""
 	}
 	var sb strings.Builder
-	defer func() {
-		fmt.Fprintf(&sb, " (%d)", int64(v[0].NumRollouts))
-		s = sb.String()
-	}()
-	fmt.Fprintf(&sb, "[%f]", v[0].Score.Apply())
+	fmt.Fprintf(&sb, "[%f]", v[0].Score.Apply()/v[0].NumRollouts)
 	for _, e := range v.TrimRoot() {
 		fmt.Fprintf(&sb, " %s", e.Action.String())
 	}
+	fmt.Fprintf(&sb, " (%d)", int64(v[0].NumRollouts))
 	return sb.String()
 }
 
