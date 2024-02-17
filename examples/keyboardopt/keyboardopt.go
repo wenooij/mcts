@@ -11,6 +11,7 @@ import (
 
 	"github.com/wenooij/mcts"
 	"github.com/wenooij/mcts/model"
+	"github.com/wenooij/mcts/searchops"
 )
 
 //go:embed targetsample.txt
@@ -72,15 +73,16 @@ func newKeyboardSearch(r *rand.Rand) *keyboardSearch {
 	}
 }
 
-func (g *keyboardSearch) Select(a mcts.Action) {
+func (g *keyboardSearch) Select(a mcts.Action) bool {
 	ksa := a.(keySwapAction)
 	if child, ok := g.node.children[ksa]; ok {
 		g.node = child
-		return
+		return true
 	}
 	child := g.node.newChildKeyboardNode(ksa)
 	g.node.children[ksa] = child
 	g.node = child
+	return true
 }
 
 func (g *keyboardSearch) Root() {
@@ -99,7 +101,7 @@ func (g *keyboardSearch) Expand(int) []mcts.FrontierAction {
 	return actions
 }
 
-func (g *keyboardSearch) Score() mcts.Score {
+func (g *keyboardSearch) Score() mcts.Score[int] {
 	i := rand.Intn(len(targetSample))
 	end := i + sampleLength
 	if end > len(targetSample) {
@@ -107,16 +109,19 @@ func (g *keyboardSearch) Score() mcts.Score {
 	}
 	sample := targetSample[i:end]
 	score, _ := g.node.layout.Test(sample)
-	return mcts.Score{[]float64{float64(score) / sampleLength}, model.MinimizeSum}
+	return mcts.Score[int]{
+		Counter:   score,
+		Objective: model.MinimizeScalar[int],
+	}
 }
 
-func (g *keyboardSearch) Rollout() (mcts.Score, float64) {
+func (g *keyboardSearch) Rollout() (mcts.Score[int], float64) {
 	return g.Score(), 1
 }
 
 func main() {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	s := newKeyboardSearch(r)
+	ks := newKeyboardSearch(r)
 
 	done := make(chan struct{})
 	go func() {
@@ -124,12 +129,13 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search{
+	s := mcts.Search[int]{
 		ExploreFactor:   40,
-		SearchInterface: s,
+		SearchInterface: ks,
 	}
+	s.Root()
 	for run := true; run; {
-		opts.Search()
+		s.Search()
 		select {
 		case <-done:
 			run = false
@@ -137,11 +143,11 @@ func main() {
 		}
 	}
 
-	pv := opts.PV()
+	pv := searchops.PV(s.Tree)
 	fmt.Println(pv)
 
 	layout := NewRandomLayout(r)
-	for _, e := range pv {
+	for _, e := range pv.TrimRoot() {
 		a := e.Action.(keySwapAction)
 		layout.Swap(a.p1, a.p2)
 	}

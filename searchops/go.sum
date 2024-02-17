@@ -1,10 +1,6 @@
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
-github.com/wenooij/heapordered v0.0.0-20240210223521-2a843116e42e h1:B5O8iD5P4faHsJ816VZtDDA4pxp/K6A5LOqZCLlRg6E=
-github.com/wenooij/heapordered v0.0.0-20240210223521-2a843116e42e/go.mod h1:YeuEtIWDc+439SGM3YWrj43aWNjo1G3B82xo4ScxRO4=
 github.com/wenooij/heapordered v0.0.0-20240217051654-5ef0db893916 h1:VvPBUPQw/MGH0iLbQczf7edg9lFJgDaFmSLA1KE0zXQ=
 github.com/wenooij/heapordered v0.0.0-20240217051654-5ef0db893916/go.mod h1:YeuEtIWDc+439SGM3YWrj43aWNjo1G3B82xo4ScxRO4=
 github.com/wenooij/mcts v0.0.0-20240211212131-148ff13169b1 h1:a8aaAi9MKkLBF4RCqp59LOPiXdLWTcMA5kqsB4Y8xic=
 github.com/wenooij/mcts v0.0.0-20240211212131-148ff13169b1/go.mod h1:FL9Ee0oqdCjC46XlRoxjlrnquMfSPouBCknVgPD5G9g=
-golang.org/x/exp v0.0.0-20240213143201-ec583247a57a h1:HinSgX1tJRX3KsL//Gxynpw5CTOAIPhgL4W8PNiIpVE=
-golang.org/x/exp v0.0.0-20240213143201-ec583247a57a/go.mod h1:CxmFvTBINI24O/j8iY7H1xHzx2i4OsyguNBmN/uPtqc=

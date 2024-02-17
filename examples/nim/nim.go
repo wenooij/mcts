@@ -7,6 +7,7 @@ import (
 
 	"github.com/wenooij/mcts"
 	"github.com/wenooij/mcts/model"
+	"github.com/wenooij/mcts/searchops"
 )
 
 type nimAction struct {
@@ -62,23 +63,32 @@ func (n *nimState) Choices() int {
 	return choices
 }
 
-func (n *nimState) Score() mcts.Score {
+var playerObjectives = [2]func(model.TwoPlayerScalars[int]) float64{
+	model.MaximizePlayer1Scalars[int],
+	model.MaximizePlayer2Scalars[int],
+}
+
+func (n *nimState) Score() mcts.Score[model.TwoPlayerScalars[int]] {
 	player := n.Player()
-	scores := mcts.Score{make([]float64, 2), model.ScorePlayer(player).Objective}
+	scores := mcts.Score[model.TwoPlayerScalars[int]]{
+		Counter:   model.TwoPlayerScalars[int]{},
+		Objective: playerObjectives[player],
+	}
 	switch n.Choices() {
 	case 0:
-		scores.Counters[player]++
+		scores.Counter[player]++
 		return scores
 	case 1:
-		scores.Counters[1-player]++
+		scores.Counter[1-player]++
 		return scores
 	}
 	return scores
 }
 
-func (n *nimState) Select(a mcts.Action) {
+func (n *nimState) Select(a mcts.Action) bool {
 	na := a.(nimAction)
 	n.piles[na.pile] -= nimPile(na.n)
+	return true
 }
 
 func (s *nimState) Expand(int) []mcts.FrontierAction {
@@ -109,12 +119,15 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search{SearchInterface: n}
+	s := mcts.Search[model.TwoPlayerScalars[int]]{
+		SearchInterface: n,
+		AddCounters:     model.AddTwoPlayerScalars[int],
+	}
 	for {
-		opts.Search()
+		s.Search()
 		select {
 		case <-done:
-			fmt.Println(opts.PV())
+			fmt.Println(searchops.PV(s.Tree))
 			return
 		default:
 		}

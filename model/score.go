@@ -1,21 +1,28 @@
 package model
 
-func MinimizeSum(scores []float64) float64 { return -sumValues(scores) }
-func MaximizeSum(scores []float64) float64 { return sumValues(scores) }
+import "golang.org/x/exp/constraints"
 
-func sumValues(vs []float64) float64 {
-	switch len(vs) {
-	case 1:
-		return vs[0]
-	case 2:
-		return vs[0] + vs[1]
-	}
-	var sum float64
-	for _, v := range vs {
-		sum += v
-	}
-	return sum
+type Scalar interface {
+	constraints.Float | int | int64
 }
+
+func AddScalar[T Scalar](c1, c2 T) T       { return c1 + c2 }
+func MaximizeScalar[T Scalar](c T) float64 { return float64(c) }
+func MinimizeScalar[T Scalar](c T) float64 { return float64(-c) }
+
+type TwoPlayerScalars[T Scalar] [2]T
+
+func AddTwoPlayerScalars[T Scalar](c1, c2 TwoPlayerScalars[T]) TwoPlayerScalars[T] {
+	c1[0] += c2[0]
+	c1[1] += c2[1]
+	return c1
+}
+
+func MaximizePlayer1Scalars[T Scalar](c TwoPlayerScalars[T]) float64 { return float64(c[0] - c[1]) }
+func MaximizePlayer2Scalars[T Scalar](c TwoPlayerScalars[T]) float64 { return float64(c[1] - c[0]) }
+
+func MinimizePlayer1Scalars[T Scalar](c TwoPlayerScalars[T]) float64 { return float64(-c[0] + c[1]) }
+func MinimizePlayer2Scalars[T Scalar](c TwoPlayerScalars[T]) float64 { return float64(-c[1] + c[0]) }
 
 // ScorePlayer wraps a player index for multiplayer scorekeeping in zero-sum games.
 //

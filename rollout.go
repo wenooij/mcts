@@ -5,21 +5,26 @@ import (
 )
 
 // rollout runs simulated rollouts from the given node and returns the results.
-func rollout(s *Search, n *heapordered.Tree[Node]) (rawScore Score, numRollouts float64) {
-	if rollout, ok := s.SearchInterface.(RolloutInterface); ok {
-		// Call the custom Rollout implementation.
-		return rollout.Rollout()
+func rollout[T Counter](s *Search[T], n *heapordered.Tree[Node[T]]) (counters T, numRollouts float64) {
+	if s.RolloutInterface != nil {
+		// Call the custom Rollout implementation if available.
+		return s.Rollout()
 	}
 	// Rollout using the default policy (using Expand).
 	for {
+		var ok bool
 		switch actions := s.Expand(1); len(actions) {
 		case 0:
 			// Return the score for the terminal position.
-			return s.Score(), 1
+			return s.Score().Counter, 1
 		case 1:
-			s.Select(actions[0].Action)
+			ok = s.Select(actions[0].Action)
 		default:
-			s.Select(actions[s.Rand.Intn(len(actions))].Action)
+			ok = s.Select(actions[s.Rand.Intn(len(actions))].Action)
+		}
+		if !ok {
+			// Return the score for the terminal position.
+			return s.Score().Counter, 1
 		}
 	}
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/wenooij/mcts"
 	"github.com/wenooij/mcts/model"
+	"github.com/wenooij/mcts/searchops"
 )
 
 type stone byte
@@ -40,10 +41,11 @@ func (s *connect2) nextStone() stone {
 	return stone(1 + s.depth&1)
 }
 
-func (s *connect2) Select(a mcts.Action) {
+func (s *connect2) Select(a mcts.Action) bool {
 	action := a.(action)
 	s.state[action] = s.nextStone()
 	s.depth++
+	return true
 }
 
 func (s *connect2) Expand(int) []mcts.FrontierAction {
@@ -59,17 +61,25 @@ func (s *connect2) Expand(int) []mcts.FrontierAction {
 	return actions
 }
 
-func (s *connect2) Score() mcts.Score {
+var playerObjectives = [2]func(model.TwoPlayerScalars[int]) float64{
+	model.MaximizePlayer1Scalars[int],
+	model.MaximizePlayer2Scalars[int],
+}
+
+func (s *connect2) Score() mcts.Score[model.TwoPlayerScalars[int]] {
 	player := int(s.nextStone() - 1)
 	if s.depth > initDepth {
 		player = 1 - player
 	}
-	scores := mcts.Score{make([]float64, 2), model.ScorePlayer(player).Objective}
+	scores := mcts.Score[model.TwoPlayerScalars[int]]{
+		Counter:   model.TwoPlayerScalars[int]{},
+		Objective: playerObjectives[player],
+	}
 	switch s.winner() {
 	case white:
-		scores.Counters[0] = 1
+		scores.Counter[0] = 1
 	case black:
-		scores.Counters[1] = 1
+		scores.Counter[1] = 1
 	}
 	return scores
 }
@@ -82,10 +92,13 @@ func (s *connect2) Root() {
 }
 
 func main() {
-	s := &mcts.Search{SearchInterface: &connect2{}}
+	s := &mcts.Search[model.TwoPlayerScalars[int]]{
+		SearchInterface: &connect2{},
+		AddCounters:     model.AddTwoPlayerScalars[int],
+	}
 	for lastTime := (time.Time{}); ; {
 		if s.Search(); time.Since(lastTime) > time.Second {
-			fmt.Println(s.PV())
+			fmt.Println(searchops.PV(s.Tree))
 			lastTime = time.Now()
 		}
 	}

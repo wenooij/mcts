@@ -1,19 +1,6 @@
 // Package mcts provides an implementation of general multi-agent Monte-Carlo tree search (MCTS).
 package mcts
 
-type Score struct {
-	Counters  []float64
-	Objective ObjectiveFunc
-}
-
-func (s Score) Add(s2 Score) {
-	for i, v := range s2.Counters {
-		s.Counters[i] += v
-	}
-}
-
-func (s Score) Apply() float64 { return s.Objective(s.Counters) }
-
 // Action represents an edge in the a game tree.
 //
 // String should return a standard representation of the Action.
@@ -21,12 +8,15 @@ type Action interface {
 	String() string
 }
 
-// FrontierAction wraps an Action returned from Expand with extra parameters to apply to its subtree.
+// FrontierAction wraps an expanded Action with an prior weight parameter.
 //
-// Weight is an optional predictor used to bias the MAB policy as described in
-// <Rosin, Christopher D. "Multi-armed bandits with episode context."
-// Annals of Mathematics and Artificial Intelligence 61.3 (2011)>
-// Ideally, the predictor weight for X should be set to E[Mean(X_Score)].
+// Weight is an optional prior term used to bias the MAB policy as described in
+// <Rosin, Christopher D. "Multi-armed bandits with episode context." (2011)>
+// and iterated upon in the Alpha Go Zero paper.
+//
+// Ideally, the prior weight for action A should be a logit or normalized probability
+// value proportional to P(A), the probability of choosing A in the optimal strategy.
+//
 // The weight heuristic is usually tuned in an offline process.
 // Weight 0 will be smoothed to 1.
 type FrontierAction struct {
@@ -50,7 +40,7 @@ type FrontierAction struct {
 // at each level, until it reaches a frontier leaf node where a random rollout
 // is started. The implementor has two choices for the rollout:
 //
-//  1. Implement ScoreInterface and rely on the defeault rollout strategy.
+//  1. Implement SearchInterface and rely on the defeault rollout strategy.
 //  2. Implement RolloutInterface and use a custom strategy.
 //
 // Which one to use will depend on one's needs:
@@ -76,7 +66,7 @@ type FrontierAction struct {
 // may actually hinder the explorative performance of MCTS.
 // Note that Expand can be made less expensive by reusing the same slice.
 // The slice will not be retained by the implementation in this package.
-type SearchInterface interface {
+type SearchInterface[T Counter] interface {
 	// Root resets the current search to root.
 	//
 	// Root is called multiple times in Search before the selection phase
@@ -86,8 +76,17 @@ type SearchInterface interface {
 	// Select applies the given Action.
 	//
 	// Select is called multiple times during the selection phase.
-	// Select will also be called during rollout if Search does not implement RolloutInterface.
-	Select(Action)
+	// Select will also be called during rollout if the Search is not provided a custom
+	// RolloutInterface.
+	//
+	// Select should usually return true but may return false to better support chance nodes.
+	// An example is when the legality of an Action is dependent on a chance node higher up in
+	// the tree.
+	//
+	// If Select returns false, a rollout is attempted from the given node instead and Expand
+	// is skipped. If part of a Rollout already, the Score is immediately propagated from the
+	// current node.
+	Select(Action) bool
 
 	// Expand returns at most n available actions.
 	// When n <= 0, all available actions are returned.
@@ -113,25 +112,26 @@ type SearchInterface interface {
 	// Adjust ExploreFactor proportionally if using values outside the interval.
 	//
 	// See github.com/wenooij/mcts/model for reusable scalar score implementations.
-	Score() Score
+	Score() Score[T]
 }
 
-type RolloutInterface interface {
+type RolloutInterface[T Counter] interface {
 	// Rollout is an optional interface method which performs random rollouts from the current node
 	// and returns a raw score sum and number of rollouts performed.
 	//
 	// If the Search implementation does not satisfy RolloutInterface, Expand will be called during
 	// the rollout instead.
 	//
-	// The rollout phase tends to be the most expensive part of MCTS.
+	// For complex games, the rollout can be one of the more expensive part of MCTS.
 	// The implementor should consider RolloutInterface if the default rollout strategy
-	// proves too expensive.
+	// of calling Expand(1) is infeasible.
 	//
-	// Raw score is usually defined as the sum of Scores obtained from Score after numRollouts
-	// random rollouts. Note that rawScore should returned as is and not predivided by numRollouts.
+	// The counters obtained from Rollout represent the sum of scores after numRollouts
+	// random rollouts. Note that score should returned is and not predivided by numRollouts.
+	//
 	// Generally numRollouts can just be 1. numRollouts can be increased if multiple rollouts
 	// per epoch is helpful.
 	//
 	// Backpropagation is skipped when numRollouts is 0.
-	Rollout() (rawScore Score, numRollouts float64)
+	Rollout() (counters T, numRollouts float64)
 }

@@ -10,10 +10,12 @@ import (
 
 	"github.com/wenooij/mcts"
 	"github.com/wenooij/mcts/model/dummy"
+	"github.com/wenooij/mcts/searchops"
 )
 
 func main() {
 	B := flag.Int("b", 10, "Dummy branching factor")
+	D := flag.Int("d", 10, "Dummy branching factor")
 	flag.Parse()
 
 	seed := flag.Int64("seed", time.Now().UnixNano(), "Random seed")
@@ -23,23 +25,23 @@ func main() {
 
 	done := make(chan struct{})
 	go func() {
-		<-time.After(1 * time.Second)
+		<-time.After(60 * time.Second)
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search{
+	s := mcts.Search[float64]{
 		Rand:            r,
 		Seed:            *seed,
-		SearchInterface: dummy.Search{B: int(*B), Rand: r},
+		SearchInterface: &dummy.Search{BranchFactor: int(*B), MaxDepth: int(*D), Rand: r},
 		ExploreFactor:   0.5,
 	}
 	for {
-		opts.Search()
+		s.Search()
 		select {
 		case <-done:
-			pv := opts.FilterV(
-				mcts.PredicateFilter(func(e mcts.Node) bool { return e.NumRollouts >= 1_000 }),
-				mcts.AnyFilter(r))
+			pv := searchops.FilterV[float64](s.Tree,
+				searchops.FilterNodePredicate[float64](func(n mcts.Node[float64]) bool { return n.NumRollouts >= 1_000 }),
+				searchops.AnyFilter[float64](r))
 			fmt.Println(pv)
 			fmt.Println("---")
 			fmt.Println(pv.Last().Score)

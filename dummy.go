@@ -7,16 +7,6 @@ import (
 
 // Copied from github.com/wenooij/model/dummy to use in tests.
 
-func maximizeObjective(scores []float64) float64 { return sumValues(scores) }
-
-func sumValues(vs []float64) float64 {
-	var sum float64
-	for _, v := range vs {
-		sum += v
-	}
-	return sum
-}
-
 type dummyAction int
 
 func (s dummyAction) String() string { return strconv.FormatInt(int64(s), 10) }
@@ -38,6 +28,11 @@ func (s dummySearch) Expand(n int) []FrontierAction {
 	return b
 }
 
-func (s *dummySearch) Root()         { s.depth = 0 }
-func (s *dummySearch) Select(Action) { s.depth++ }
-func (s dummySearch) Score() Score   { return Score{[]float64{s.Rand.NormFloat64()}, maximizeObjective} }
+func (s *dummySearch) Root()              { s.depth = 0 }
+func (s *dummySearch) Select(Action) bool { s.depth++; return true }
+func (s dummySearch) Score() Score[float64] {
+	return Score[float64]{
+		Counter:   s.Rand.NormFloat64(),
+		Objective: func(x float64) float64 { return x },
+	}
+}

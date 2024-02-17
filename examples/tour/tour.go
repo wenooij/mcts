@@ -10,9 +10,9 @@ import (
 	"slices"
 	"time"
 
-	"github.com/pkg/profile"
 	"github.com/wenooij/mcts"
 	"github.com/wenooij/mcts/model"
+	"github.com/wenooij/mcts/searchops"
 )
 
 type tourAction struct {
@@ -76,7 +76,6 @@ func (n *tourNode) apply(a tourAction) {
 type tourSearch struct {
 	m       map[int]*tourPos
 	r       *rand.Rand
-	summ    *model.SummaryStats
 	root    []int
 	actions []mcts.FrontierAction
 	node    *tourNode
@@ -102,8 +101,9 @@ func newTourSearch(tourMap map[int]*tourPos, r *rand.Rand) *tourSearch {
 	return s
 }
 
-func (g *tourSearch) Select(a mcts.Action) {
+func (g *tourSearch) Select(a mcts.Action) bool {
 	g.node.apply(a.(tourAction))
+	return true
 }
 
 func (g *tourSearch) Root() {
@@ -115,7 +115,7 @@ func (g *tourSearch) Root() {
 	g.node.action = tourAction{}
 }
 
-func (g *tourSearch) Score() mcts.Score {
+func (g *tourSearch) Score() mcts.Score[float64] {
 	// Calculate tour distance.
 	distance := float64(0)
 	first := g.m[g.node.tour[0]]
@@ -126,7 +126,10 @@ func (g *tourSearch) Score() mcts.Score {
 		last = curr
 	}
 	distance += last.DistanceTo(first)
-	return mcts.Score{Counters: []float64{distance}, Objective: model.MinimizeSum}
+	return mcts.Score[float64]{
+		Counter:   distance,
+		Objective: model.MinimizeScalar[float64],
+	}
 }
 
 func (g *tourSearch) Expand(int) []mcts.FrontierAction {
@@ -137,9 +140,6 @@ func (g *tourSearch) Expand(int) []mcts.FrontierAction {
 }
 
 func main() {
-	// defer profile.Start(profile.MemProfile, profile.MemProfileRate(1)).Stop()
-	defer profile.Start().Stop()
-
 	seed := flag.Int64("seed", time.Now().UnixNano(), "Random seed")
 	n := flag.Int("n", 10, "Number of tour stops")
 	randomMap := flag.Bool("randomize_map", false, "Randomize the tour map")
@@ -170,34 +170,35 @@ func main() {
 		fmt.Printf("%d,%d\n", p.X, p.Y)
 	}
 	fmt.Println("---")
-	s := newTourSearch(tourMap, r)
+	tourSearch := newTourSearch(tourMap, r)
 
-	opts := mcts.Search{
+	s := mcts.Search[float64]{
 		Rand:            r,
 		Seed:            *seed,
-		SearchInterface: s,
+		SearchInterface: tourSearch,
+		AddCounters:     model.AddScalar[float64],
 		NumEpisodes:     100,
 	}
 	for lastPrint := (time.Time{}); ; {
-		if opts.Search(); time.Since(lastPrint) >= time.Second {
+		if s.Search(); time.Since(lastPrint) >= time.Second {
 			// Reconstruct and print the best tour.
 			// Results can be pasted into the tool.
 			// https://www.lancaster.ac.uk/fas/psych/software/TSP/TSP.html.
-			pv := opts.PV()
-			tour := make([]int, len(s.root))
-			copy(tour, s.root)
+			pv := searchops.PV(s.Tree)
+			tour := make([]int, len(tourSearch.root))
+			copy(tour, tourSearch.root)
 			for _, e := range pv.TrimRoot() {
 				a := e.Action.(tourAction)
 				tour[a.i], tour[a.j] = tour[a.j], tour[a.i]
 			}
-			fmt.Printf("[%f] ", pv.Last().Score.Apply())
+			fmt.Printf("[%f] ", pv.Last().Score.Apply()/float64(pv.Last().NumRollouts))
 			for i, e := range tour {
 				fmt.Printf("%d", e+1)
 				if i+1 < len(tour) {
 					fmt.Print(" ")
 				}
 			}
-			fmt.Println()
+			fmt.Printf(" (%f)\n", pv[0].NumRollouts)
 
 			lastPrint = time.Now()
 		}

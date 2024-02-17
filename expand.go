@@ -7,7 +7,7 @@ import (
 // expand calls Expand in the search interface to get more moves.
 //
 // the fringe argument is set to true during the rollout phase.
-func expand(s *Search, n *heapordered.Tree[Node]) *heapordered.Tree[Node] {
+func expand[T Counter](s *Search[T], n *heapordered.Tree[Node[T]]) (child *heapordered.Tree[Node[T]]) {
 	actions := s.Expand(0)
 	if len(actions) == 0 {
 		return nil
@@ -19,7 +19,7 @@ func expand(s *Search, n *heapordered.Tree[Node]) *heapordered.Tree[Node] {
 
 	var totalWeight float64
 	for _, a := range actions {
-		child, _ := getOrCreateChild(s, n, a)
+		child, _ := createChild(s, n, a)
 		// Sum predictor weights to later normalize.
 		totalWeight += child.E.PriorWeight
 	}
@@ -27,10 +27,13 @@ func expand(s *Search, n *heapordered.Tree[Node]) *heapordered.Tree[Node] {
 	if totalWeight == 0 {
 		panic("expand: got totalWeight = 0")
 	}
-	for _, child := range n.Children() {
+	// Normalize the weights.
+	for i := 0; i < n.Len(); i++ {
+		child := n.At(i)
 		e := &child.E
 		e.PriorWeight /= totalWeight
 	}
-	// Select an element to expand.
-	return selectChild(s, n)
+	// Select a child element to expand.
+	child, _ = selectChild(s, n)
+	return child
 }

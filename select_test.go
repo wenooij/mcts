@@ -3,38 +3,31 @@ package mcts
 import (
 	"math/rand"
 	"testing"
+
+	"github.com/wenooij/heapordered"
 )
 
 func TestSelectVisitsRootActions(t *testing.T) {
 	const numRootActions = 20
 
 	r := rand.New(rand.NewSource(1337))
-	s := Search{
+	s := Search[float64]{
 		SearchInterface: &dummySearch{BranchFactor: numRootActions, MaxDepth: 1, Rand: r},
 		Rand:            r,
 		NumEpisodes:     numRootActions,
 	}
 	s.Search()
 
-	rootActions := s.RootActions()
-	if gotActions, wantActions := len(rootActions), numRootActions; gotActions != wantActions {
-		t.Errorf("TestSelectVisitsRootActions(): got actions = %d, want %d", gotActions, wantActions)
+	rootChildren := make([]*heapordered.Tree[Node[float64]], 0, s.Tree.Len())
+	for i := 0; i < s.Tree.Len(); i++ {
+		rootChildren = append(rootChildren, s.Tree.At(i))
 	}
-	for _, a := range rootActions {
-		v := s.Stat(a)
-		if len(v) != 2 {
-			t.Errorf("TestSelectVisitsRootActions(%s): Stat did not return a Variation containing the action", a)
-			continue
-		}
-		e := v.Last()
-		if e.Action != a {
-			t.Errorf("TestSelectVisitsRootActions(%s): Stat did not return a Variation with a matching action", a)
-		}
-		if e.RawScore().Objective == nil {
-			t.Errorf("TestSelectVisitsRootActions(%s): RawScore not initialized for action", a)
-		}
-		if gotRollouts, wantRollouts := e.NumRollouts, float64(1); gotRollouts != wantRollouts {
-			t.Errorf("TestSelectVisitsRootActions(%s): got rollouts = %f, want %f", a, gotRollouts, wantRollouts)
+	if gotActions, wantActions := len(rootChildren), numRootActions; gotActions != wantActions {
+		t.Errorf("TestSelectVisitsRootActions(): got children = %d, want %d", gotActions, wantActions)
+	}
+	for _, child := range rootChildren {
+		if gotRollouts, wantRollouts := child.E.NumRollouts, float64(1); gotRollouts != wantRollouts {
+			t.Errorf("TestSelectVisitsRootActions(%s): got rollouts = %f, want %f", child.E.Action, gotRollouts, wantRollouts)
 		}
 	}
 }

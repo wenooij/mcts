@@ -8,15 +8,21 @@ import (
 
 	"github.com/wenooij/mcts"
 	"github.com/wenooij/mcts/model"
+	"github.com/wenooij/mcts/searchops"
 )
 
-// best 1.3453431065831190, -0.3531000000000000
+// Best known constants for (c0, c1):
+//
+//	(1.3613281250000000, -0.3720703125000000).
+//
+// Suite MSE: 0.0025929671246558.
+
 const (
-	eps  = 1e-12
-	c0Lo = 1.345342
-	c0Hi = 1.345344
-	c1Lo = -0.35309
-	c1Hi = -0.35311
+	eps  = 1e-10
+	c0Lo = -2
+	c0Hi = 2
+	c1Lo = -2
+	c1Hi = 2
 )
 
 type constRange struct {
@@ -26,7 +32,7 @@ type constRange struct {
 
 func (c constRange) Range() float64              { return c.hi - c.lo }
 func (c constRange) Mid() float64                { return c.Range()/2 + c.lo }
-func (c constRange) Sample(r *rand.Rand) float64 { return r.Float64() * c.Mid() }
+func (c constRange) Sample(r *rand.Rand) float64 { return c.Mid() + r.NormFloat64()/10 }
 
 func (c constRange) Minimized() bool { return c.Range() <= eps }
 
@@ -49,12 +55,12 @@ type search struct {
 	c1 c1
 }
 
-func (s *search) FastLog2(x float32) float32 {
+func FastLog2(x, c0, c1 float32) float32 {
 	tmp := math.Float32bits(x)
 	expb := uint64(tmp) >> 23
 	tmp = (tmp & 0x7fffff) | (0x7f << 23)
 	out := math.Float32frombits(tmp) - 1
-	return out*(float32(s.c0.Sample(s.r))+float32(s.c1.Sample(s.r))*out) - 127 + float32(expb)
+	return out*(c0+c1*out) - 127 + float32(expb)
 }
 
 func (s *search) Root() {
@@ -80,7 +86,7 @@ func (s *search) Expand(int) []mcts.FrontierAction {
 	}
 	return actions
 }
-func (s *search) Select(a mcts.Action) {
+func (s *search) Select(a mcts.Action) bool {
 	switch a := a.(type) {
 	case c0:
 		s.c0 = a
@@ -89,6 +95,7 @@ func (s *search) Select(a mcts.Action) {
 	default:
 		panic("bad action")
 	}
+	return true
 }
 
 var logSuite = []float32{
@@ -113,27 +120,39 @@ var logSuite = []float32{
 	7971335130788603544, 6614297601711074061, 8513686800572735716, 16121352637960683916,
 }
 
-func (s *search) Rollout() (mcts.Score, int) {
-	var mse float64
-	var trials int
+func Eval(c0, c1 float32) (mse float32) {
 	for _, x := range logSuite {
-		actual := math.Log2(float64(x))
-		exp := float64(s.FastLog2(x))
-		mse -= (actual - exp) * (actual - exp)
-		trials++
+		actual := float32(math.Log2(float64(x)))
+		exp := FastLog2(x, c0, c1)
+		mse += (actual - exp) * (actual - exp)
 	}
-	return mcts.Score{Counters: []float64{mse}, Objective: model.MinimizeSum}, trials
+	return mse
 }
 
-func (s *search) Score() mcts.Score {
-	return mcts.Score{Counters: []float64{0}, Objective: model.MinimizeSum}
+func (s *search) Rollout() (float32, float64) {
+	var mse float32
+	for _, x := range logSuite {
+		actual := float32(math.Log2(float64(x)))
+		c0 := s.c0.Sample(s.r)
+		c1 := s.c1.Sample(s.r)
+		exp := FastLog2(x, float32(c0), float32(c1))
+		mse += (actual - exp) * (actual - exp)
+	}
+	return mse, float64(len(logSuite))
+}
+
+func (s *search) Score() mcts.Score[float32] {
+	return mcts.Score[float32]{
+		Counter:   0,
+		Objective: model.MinimizeScalar[float32],
+	}
 }
 
 func main() {
-	s := mcts.Search{
-		SearchInterface: &search{r: rand.New(rand.NewSource(time.Now().UnixNano()))},
+	as := &search{r: rand.New(rand.NewSource(time.Now().UnixNano()))}
+	s := mcts.Search[float32]{
+		SearchInterface: as,
 		NumEpisodes:     10000,
-		ExploreFactor:   mcts.DefaultExploreFactor,
 	}
 
 	for lastPrint := time.Now(); ; {
@@ -141,11 +160,13 @@ func main() {
 		if time.Since(lastPrint) > time.Second {
 			sCopy := new(search)
 			sCopy.Root()
-			pv := s.PV()
+			pv := searchops.PV(s.Tree)
 			for _, e := range pv.TrimRoot() {
 				sCopy.Select(e.Action)
 			}
-			fmt.Printf("[%.16f] %.16f, %.16f (%f)\n", pv.Last().Score.Apply(), sCopy.c0.Mid(), sCopy.c1.Mid(), pv.Last().NumRollouts)
+			last := pv.Last()
+			c0, c1 := float32(sCopy.c0.Mid()), float32(sCopy.c1.Mid())
+			fmt.Printf("[%.8f] %.32f, %.32f (%f)\n", Eval(c0, c1), c0, c1, last.NumRollouts)
 			lastPrint = time.Now()
 		}
 	}

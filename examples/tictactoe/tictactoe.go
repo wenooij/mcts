@@ -7,6 +7,7 @@ import (
 
 	"github.com/wenooij/mcts"
 	"github.com/wenooij/mcts/model"
+	"github.com/wenooij/mcts/searchops"
 )
 
 type mark byte
@@ -97,26 +98,32 @@ func (s *SearchPlugin) Expand(int) []mcts.FrontierAction {
 	return actions
 }
 
-func (s *SearchPlugin) Select(a mcts.Action) {
+func (s *SearchPlugin) Select(a mcts.Action) bool {
 	n := s.node
 	ta := a.(tictactoeAction)
 	n.state[ta] = s.node.turn()
 	n.depth++
+	return true
 }
 
-func (s *SearchPlugin) Score() mcts.Score {
+func (s *SearchPlugin) Score() mcts.Score[model.TwoPlayerScalars[int64]] {
 	// Depth penalty term rewards the earliest win.
 	player := s.node.player()
 	if s.node.depth > rootDepth {
 		player = 1 - player
 	}
-	scores := mcts.Score{make([]float64, 2), model.ScorePlayer(player).Objective}
-	d := float64(s.node.depth) / 1000
+	scores := mcts.Score[model.TwoPlayerScalars[int64]]{Counter: model.TwoPlayerScalars[int64]{0, 0}}
+	if player == 0 {
+		scores.Objective = model.MaximizePlayer1Scalars[int64]
+	} else {
+		scores.Objective = model.MaximizePlayer2Scalars[int64]
+	}
+	d := int64(s.node.depth)
 	switch s.node.computeWinner() {
 	case X:
-		scores.Counters[0] = 1 - d
+		scores.Counter[0] = 100 - d/4
 	case O:
-		scores.Counters[1] = 1 - d
+		scores.Counter[1] = 100 - d/4
 	}
 	return scores
 }
@@ -131,15 +138,16 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	opts := mcts.Search{
+	s := mcts.Search[model.TwoPlayerScalars[int64]]{
 		SearchInterface: si,
 		NumEpisodes:     10000,
+		AddCounters:     model.AddTwoPlayerScalars[int64],
 		ExploreFactor:   mcts.DefaultExploreFactor,
 	}
 
 	for lastPrint := time.Now(); ; {
-		if opts.Search(); time.Since(lastPrint) >= time.Second {
-			fmt.Println(opts.PV())
+		if s.Search(); time.Since(lastPrint) >= time.Second {
+			fmt.Println(searchops.PV(s.Tree))
 			lastPrint = time.Now()
 		}
 		select {

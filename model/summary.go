@@ -6,6 +6,7 @@ import (
 	"math"
 	"slices"
 
+	"github.com/wenooij/heapordered"
 	"github.com/wenooij/mcts"
 )
 
@@ -57,7 +58,7 @@ func (s *SummaryStats) String() string {
 
 // FitParams tunes a search by computing stats from a smaller search
 // and updating the ExploreFactor.
-func Summarize(s *mcts.Search) SummaryStats {
+func Summarize[T mcts.Counter](s *mcts.Search[T]) SummaryStats {
 	// Initialize the search for now, but leave the root as we found it.
 	oldNumEpisodes := s.NumEpisodes
 	defer func() { s.NumEpisodes = oldNumEpisodes }()
@@ -76,14 +77,22 @@ func Summarize(s *mcts.Search) SummaryStats {
 	)
 	for i := 0; i < numAnyVSamples; i++ {
 		// Sample score from random variations using reservoir sampling.
-		for _, e := range s.AnyV() {
-			score := e.Score.Apply()
+		var anyV []*heapordered.Tree[mcts.Node[T]]
+		for t := s.Tree; t != nil; {
+			n := t.Len()
+			child := t.At(s.Rand.Intn(n))
+			anyV = append(anyV, child)
+			t = child
+		}
+
+		for _, e := range anyV {
+			score := e.E.Score.Apply()
 			if math.IsInf(score, 0) {
 				// Inf scores cannot contribute to statistics.
 				continue
 			}
 			if len(scoreSamples) < scoreSampleCap {
-				scoreSamples = append(scoreSamples, e.Score.Apply())
+				scoreSamples = append(scoreSamples, score)
 			} else if j := s.Rand.Intn(numSamples); j < scoreSampleCap {
 				scoreSum -= scoreSamples[j]
 				scoreSamples[j] = score

@@ -9,7 +9,7 @@ import (
 	"github.com/wenooij/mcts"
 )
 
-func DOT(w io.Writer, t *heapordered.Tree[mcts.Node]) (n int, err error) {
+func DOT[T mcts.Counter](w io.Writer, t *heapordered.Tree[mcts.Node[T]]) (n int, err error) {
 	var b bytes.Buffer
 	b.WriteString("digraph G {\n")
 	parent := writeNode(&b, t, 0, true, true)
@@ -19,17 +19,18 @@ func DOT(w io.Writer, t *heapordered.Tree[mcts.Node]) (n int, err error) {
 	return
 }
 
-func recDOT(b *bytes.Buffer, parent string, t *heapordered.Tree[mcts.Node], nextId int) int {
-	for _, child := range t.Children() {
+func recDOT[T mcts.Counter](b *bytes.Buffer, parent string, t *heapordered.Tree[mcts.Node[T]], nextId int) int {
+	for i := 0; i < t.Len(); i++ {
+		child := t.At(i)
 		a := writeNode(b, child, nextId, false, false)
 		nextId++
 		fmt.Fprintf(b, "  %s -> %s;\n", parent, a)
-		nextId = recDOT(b, a, child, nextId)
+		nextId = recDOT[T](b, a, child, nextId)
 	}
 	return nextId
 }
 
-func writeNode(b *bytes.Buffer, s *heapordered.Tree[mcts.Node], nextId int, root, pv bool) string {
+func writeNode[T mcts.Counter](b *bytes.Buffer, s *heapordered.Tree[mcts.Node[T]], nextId int, root, pv bool) string {
 	id := fmt.Sprint(nextId)
 	actionStr := "<root>"
 	e := s.E
@@ -42,10 +43,10 @@ func writeNode(b *bytes.Buffer, s *heapordered.Tree[mcts.Node], nextId int, root
 		nodeTypeStr = " PV"
 		pvStyle = ` style=filled, color="#A4FD78",`
 	}
-	if len(s.Children()) == 0 {
+	if s.Len() == 0 {
 		nodeTypeStr += " #"
 	}
-	fmt.Fprintf(b, `%s [shape=square,%s label="%s%s\lrollouts: %.0f\lscore: %.2f\l"];`,
+	fmt.Fprintf(b, `%s [shape=square,%s label="%s%s\lrollouts: %f\lscore: %.2f\l"];`,
 		id, pvStyle, actionStr, nodeTypeStr, e.NumRollouts, e.Score.Apply())
 	b.WriteByte('\n')
 	return id
