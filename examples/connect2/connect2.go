@@ -22,8 +22,9 @@ type action byte
 func (a action) String() string { return string('0' + a) }
 
 type connect2 struct {
-	state [4]stone
-	depth int
+	state      [4]stone
+	depth      int
+	objectives [2]func(model.TwoPlayerScalars[int]) float64
 }
 
 func (s connect2) winner() stone {
@@ -61,19 +62,10 @@ func (s *connect2) Expand(int) []mcts.FrontierAction {
 	return actions
 }
 
-var playerObjectives = [2]func(model.TwoPlayerScalars[int]) float64{
-	model.MaximizePlayer1Scalars[int],
-	model.MaximizePlayer2Scalars[int],
-}
-
 func (s *connect2) Score() mcts.Score[model.TwoPlayerScalars[int]] {
-	player := int(s.nextStone() - 1)
-	if s.depth > initDepth {
-		player = 1 - player
-	}
 	scores := mcts.Score[model.TwoPlayerScalars[int]]{
 		Counter:   model.TwoPlayerScalars[int]{},
-		Objective: playerObjectives[player],
+		Objective: s.objectives[model.TwoPlayerIndexByDepth(s.depth)],
 	}
 	switch s.winner() {
 	case white:

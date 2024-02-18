@@ -23,10 +23,11 @@ func (s nimAction) String() string {
 }
 
 type nimState struct {
-	N     int
-	r     *rand.Rand
-	piles []nimPile
-	depth int
+	N          int
+	r          *rand.Rand
+	piles      []nimPile
+	depth      int
+	objectives [2]func(model.TwoPlayerScalars[int]) float64
 }
 
 func (n *nimState) Root() {
@@ -63,16 +64,11 @@ func (n *nimState) Choices() int {
 	return choices
 }
 
-var playerObjectives = [2]func(model.TwoPlayerScalars[int]) float64{
-	model.MaximizePlayer1Scalars[int],
-	model.MaximizePlayer2Scalars[int],
-}
-
 func (n *nimState) Score() mcts.Score[model.TwoPlayerScalars[int]] {
 	player := n.Player()
 	scores := mcts.Score[model.TwoPlayerScalars[int]]{
 		Counter:   model.TwoPlayerScalars[int]{},
-		Objective: playerObjectives[player],
+		Objective: n.objectives[model.TwoPlayerIndexByDepth(n.depth)],
 	}
 	switch n.Choices() {
 	case 0:
@@ -113,23 +109,14 @@ func main() {
 	n := &nimState{N: 4, r: r}
 	n.Root()
 
-	done := make(chan struct{})
-	go func() {
-		time.Sleep(5 * time.Second)
-		done <- struct{}{}
-	}()
-
 	s := mcts.Search[model.TwoPlayerScalars[int]]{
 		SearchInterface: n,
 		AddCounters:     model.AddTwoPlayerScalars[int],
 	}
-	for {
-		s.Search()
-		select {
-		case <-done:
+	for lastTime := (time.Time{}); ; {
+		if s.Search(); time.Since(lastTime) > time.Second {
 			fmt.Println(searchops.PV(s.Tree))
-			return
-		default:
+			lastTime = time.Now()
 		}
 	}
 }

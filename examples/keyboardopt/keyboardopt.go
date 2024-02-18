@@ -111,7 +111,7 @@ func (g *keyboardSearch) Score() mcts.Score[int] {
 	score, _ := g.node.layout.Test(sample)
 	return mcts.Score[int]{
 		Counter:   score,
-		Objective: model.MinimizeScalar[int],
+		Objective: model.Minimize[int],
 	}
 }
 

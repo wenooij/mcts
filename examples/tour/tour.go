@@ -128,7 +128,7 @@ func (g *tourSearch) Score() mcts.Score[float64] {
 	distance += last.DistanceTo(first)
 	return mcts.Score[float64]{
 		Counter:   distance,
-		Objective: model.MinimizeScalar[float64],
+		Objective: model.Minimize[float64],
 	}
 }
 
@@ -176,7 +176,6 @@ func main() {
 		Rand:            r,
 		Seed:            *seed,
 		SearchInterface: tourSearch,
-		AddCounters:     model.AddScalar[float64],
 		NumEpisodes:     100,
 	}
 	for lastPrint := (time.Time{}); ; {

@@ -2,6 +2,7 @@ package mcts
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"time"
 	"unsafe"
@@ -12,7 +13,7 @@ import (
 // DefaultExploreFactor based on the theory assuming scores normalized to the interval [-1, +1].
 //
 // In practice, ExploreFactor is a tunable hyperparameter.
-const DefaultExploreFactor = 1.224744871391589 // √3/√2
+const DefaultExploreFactor = math.Sqrt2
 
 // Search contains options used to run the MCTS Search.
 //
@@ -49,7 +50,7 @@ type Search[T Counter] struct {
 	// will need to supply a function yourself. The common values of T are:
 	// float32, float64, [2]float64, []float64, int, and int64.
 	// AddCounters for counters in the model package need to be supplied manually.
-	AddCounters func(T, T) T
+	AddCounters func(*T, T)
 
 	// ExploreFactor is a tuneable parameter which weights the explore side of the
 	// MAB policy.
@@ -86,28 +87,27 @@ func (s *Search[T]) patchDefaults() {
 		var t T
 		switch any(t).(type) {
 		case float32:
-			f := func(x1, x2 float32) float32 { return x1 + x2 }
-			s.AddCounters = *(*func(T, T) T)(unsafe.Pointer(&f))
+			f := func(x1 *float32, x2 float32) { *x1 += x2 }
+			s.AddCounters = *(*func(*T, T))(unsafe.Pointer(&f))
 		case float64:
-			f := func(x1, x2 float64) float64 { return x1 + x2 }
-			s.AddCounters = *(*func(T, T) T)(unsafe.Pointer(&f))
+			f := func(x1 *float64, x2 float64) { *x1 += x2 }
+			s.AddCounters = *(*func(*T, T))(unsafe.Pointer(&f))
 		case [2]float64:
-			f := func(c1, c2 [2]float64) [2]float64 { c1[0] += c2[0]; c1[1] += c2[1]; return c1 }
-			s.AddCounters = *(*func(T, T) T)(unsafe.Pointer(&f))
+			f := func(c1 *[2]float64, c2 [2]float64) { c1[0] += c2[0]; c1[1] += c2[1] }
+			s.AddCounters = *(*func(*T, T))(unsafe.Pointer(&f))
 		case []float64:
-			f := func(c1, c2 []float64) []float64 {
+			f := func(c1 *[]float64, c2 []float64) {
 				for i, v := range c2 {
-					c1[i] += v
+					(*c1)[i] += v
 				}
-				return c1
 			}
-			s.AddCounters = *(*func(T, T) T)(unsafe.Pointer(&f))
+			s.AddCounters = *(*func(*T, T))(unsafe.Pointer(&f))
 		case int:
-			f := func(x1, x2 int) int { return x1 + x2 }
-			s.AddCounters = *(*func(T, T) T)(unsafe.Pointer(&f))
+			f := func(x1 *int, x2 int) { *x1 += x2 }
+			s.AddCounters = *(*func(*T, T))(unsafe.Pointer(&f))
 		case int64:
-			f := func(x1, x2 int64) int64 { return x1 + x2 }
-			s.AddCounters = *(*func(T, T) T)(unsafe.Pointer(&f))
+			f := func(x1 *int64, x2 int64) { *x1 += x2 }
+			s.AddCounters = *(*func(*T, T))(unsafe.Pointer(&f))
 		default:
 			panic(fmt.Errorf("Search.Init: could not automatically determine a value for AddCounters for type %T: must supply a custom function", t))
 		}

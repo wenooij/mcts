@@ -6,10 +6,10 @@ import (
 	"github.com/wenooij/heapordered"
 )
 
-func backprop[T Counter](frontier *heapordered.Tree[Node[T]], add func(T, T) T, counters T, numRollouts, exploreFactor float64) {
+func backprop[T Counter](frontier *heapordered.Tree[Node[T]], add func(*T, T), counters T, numRollouts, exploreFactor float64) {
 	for n := frontier; n != nil; n = n.Parent() {
 		e := &n.E
-		e.Score.Counter = add(e.Score.Counter, counters)
+		add(&e.Score.Counter, counters)
 		e.NumRollouts += numRollouts
 		if n.Parent() != nil {
 			n.Fix()

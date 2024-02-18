@@ -23,7 +23,16 @@ type Game struct {
 	limit      int                         // absolute limit of coin flip sums.
 	pass       int                         // pass count. 1: Last turn of play. 2: game is over.
 	playerSums model.TwoPlayerScalars[int] // player coin flip sums.
+	objectives [2]func(model.TwoPlayerScalars[int]) float64
 	r          *rand.Rand
+}
+
+func newGame(r *rand.Rand, limit int) *Game {
+	return &Game{
+		limit:      limit,
+		objectives: model.MaximizeTwoPlayers[int](),
+		r:          r,
+	}
 }
 
 func (g *Game) Root() { g.depth = 0; g.pass = 0; g.playerSums = [2]int{0, 0} }
@@ -70,19 +79,10 @@ func (g *Game) Flip(player int) {
 	}
 }
 
-var playerObjectives = [2]func(model.TwoPlayerScalars[int]) float64{
-	model.MaximizePlayer1Scalars[int],
-	model.MaximizePlayer2Scalars[int],
-}
-
 func (g Game) Score() mcts.Score[model.TwoPlayerScalars[int]] {
-	player := g.depth & 1
-	if g.depth > 0 {
-		player = 1 - player
-	}
 	score := mcts.Score[model.TwoPlayerScalars[int]]{
 		Counter:   model.TwoPlayerScalars[int]{},
-		Objective: playerObjectives[player],
+		Objective: g.objectives[model.TwoPlayerIndexByDepth(g.depth)],
 	}
 	// Test loss conditions.
 	for i := 0; i < 2; i++ {
@@ -107,8 +107,9 @@ func (g Game) Score() mcts.Score[model.TwoPlayerScalars[int]] {
 func main() {
 	const limit = 3
 	r := rand.New(rand.NewSource(1337))
+	g := newGame(r, limit)
 	s := mcts.Search[model.TwoPlayerScalars[int]]{
-		SearchInterface: &Game{limit: limit, r: r},
+		SearchInterface: g,
 		AddCounters:     model.AddTwoPlayerScalars[int],
 		Rand:            r,
 	}

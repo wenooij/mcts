@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"slices"
 	"time"
 
 	"github.com/wenooij/mcts"
@@ -19,15 +20,19 @@ const (
 )
 
 type SearchPlugin struct {
-	node *tictactoeNode
-	r    *rand.Rand
+	node       *tictactoeNode
+	actions    []mcts.FrontierAction
+	objectives [2]func(model.TwoPlayerScalars[int64]) float64
+	r          *rand.Rand
 }
 
 func newSearchPlugin() *SearchPlugin {
 	p := &SearchPlugin{
-		node: new(tictactoeNode),
-		r:    rand.New(rand.NewSource(time.Now().UnixNano())),
+		node:       new(tictactoeNode),
+		objectives: model.MaximizeTwoPlayers[int64](),
+		r:          rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
+	p.actions = slices.Grow(p.actions, 9)
 	p.Root()
 	return p
 }
@@ -54,8 +59,7 @@ func (n *tictactoeNode) Root() {
 	})
 }
 
-func (n *tictactoeNode) player() int { return n.depth & 1 }
-func (n *tictactoeNode) turn() mark  { return mark(1 + n.depth&1) }
+func (n *tictactoeNode) turn() mark { return mark(1 + n.depth&1) }
 
 func (n *tictactoeNode) computeWinner() (winner mark) {
 	s := n.state
@@ -85,17 +89,17 @@ func (s *SearchPlugin) Expand(int) []mcts.FrontierAction {
 	if s.node.computeWinner() != 0 {
 		return nil
 	}
-	actions := make([]mcts.FrontierAction, 0, 9)
+	s.actions = s.actions[:0]
 	for i, state := range s.node.state {
 		if state != 0 {
 			continue
 		}
-		actions = append(actions, mcts.FrontierAction{
+		s.actions = append(s.actions, mcts.FrontierAction{
 			Action: tictactoeAction(i),
 			Weight: rand.ExpFloat64(),
 		})
 	}
-	return actions
+	return s.actions
 }
 
 func (s *SearchPlugin) Select(a mcts.Action) bool {
@@ -108,22 +112,16 @@ func (s *SearchPlugin) Select(a mcts.Action) bool {
 
 func (s *SearchPlugin) Score() mcts.Score[model.TwoPlayerScalars[int64]] {
 	// Depth penalty term rewards the earliest win.
-	player := s.node.player()
-	if s.node.depth > rootDepth {
-		player = 1 - player
+	scores := mcts.Score[model.TwoPlayerScalars[int64]]{
+		Counter:   model.TwoPlayerScalars[int64]{0, 0},
+		Objective: s.objectives[model.TwoPlayerIndexByDepth(s.node.depth)],
 	}
-	scores := mcts.Score[model.TwoPlayerScalars[int64]]{Counter: model.TwoPlayerScalars[int64]{0, 0}}
-	if player == 0 {
-		scores.Objective = model.MaximizePlayer1Scalars[int64]
-	} else {
-		scores.Objective = model.MaximizePlayer2Scalars[int64]
-	}
-	d := int64(s.node.depth)
+	// Applying a depth penalty enables MCTS to find the easrliest win, in theory.
 	switch s.node.computeWinner() {
 	case X:
-		scores.Counter[0] = 100 - d/4
+		scores.Counter[0] = 100 - int64(s.node.depth)
 	case O:
-		scores.Counter[1] = 100 - d/4
+		scores.Counter[1] = 100 - int64(s.node.depth)
 	}
 	return scores
 }
@@ -131,16 +129,8 @@ func (s *SearchPlugin) Score() mcts.Score[model.TwoPlayerScalars[int64]] {
 func main() {
 	si := newSearchPlugin()
 
-	done := make(chan struct{})
-	timer := time.After(60 * time.Second)
-	go func() {
-		<-timer
-		done <- struct{}{}
-	}()
-
 	s := mcts.Search[model.TwoPlayerScalars[int64]]{
 		SearchInterface: si,
-		NumEpisodes:     10000,
 		AddCounters:     model.AddTwoPlayerScalars[int64],
 		ExploreFactor:   mcts.DefaultExploreFactor,
 	}
@@ -149,11 +139,6 @@ func main() {
 		if s.Search(); time.Since(lastPrint) >= time.Second {
 			fmt.Println(searchops.PV(s.Tree))
 			lastPrint = time.Now()
-		}
-		select {
-		case <-done:
-			return
-		default:
 		}
 	}
 }

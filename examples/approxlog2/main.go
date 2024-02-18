@@ -144,7 +144,7 @@ func (s *search) Rollout() (float32, float64) {
 func (s *search) Score() mcts.Score[float32] {
 	return mcts.Score[float32]{
 		Counter:   0,
-		Objective: model.MinimizeScalar[float32],
+		Objective: model.Minimize[float32],
 	}
 }
 
