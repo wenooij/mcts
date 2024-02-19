@@ -120,6 +120,9 @@ func (s *Search[T]) Init() bool {
 	if s.Tree != nil {
 		return false
 	}
+	if s.SearchInterface == nil {
+		panic("Search.Init: Search.SearchInterface is nil. A search implementation is required before calling Search or Init.")
+	}
 	s.patchDefaults()
 	s.Tree = newTree(s)
 	initializeScore(s, s.Tree)

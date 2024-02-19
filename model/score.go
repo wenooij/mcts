@@ -33,11 +33,27 @@ func MaximizeTwoPlayers[T Scalar]() [2]func(TwoPlayerScalars[T]) float64 {
 	return [2]func(TwoPlayerScalars[T]) float64{MaximizePlayer1[T], MaximizePlayer2[T]}
 }
 
+func MaximizeNPlayers[T Scalar](n int) []func([]T) float64 {
+	maximize := make([]func([]T) float64, n)
+	for i := range maximize {
+		maximize[i] = ScorePlayer[T](i).Objective
+	}
+	return maximize
+}
+
 func MinimizePlayer1[T Scalar](c TwoPlayerScalars[T]) float64 { return -MaximizePlayer1[T](c) }
 func MinimizePlayer2[T Scalar](c TwoPlayerScalars[T]) float64 { return -MaximizePlayer2[T](c) }
 
 func MinimizeTwoPlayers[T Scalar]() [2]func(TwoPlayerScalars[T]) float64 {
 	return [2]func(TwoPlayerScalars[T]) float64{MinimizePlayer1[T], MinimizePlayer2[T]}
+}
+
+func MinimizeNPlayers[T Scalar](n int) []func([]T) float64 {
+	minimize := make([]func([]T) float64, n)
+	for i := range minimize {
+		minimize[i] = func(x []T) float64 { return -ScorePlayer[T](i).Objective(x) }
+	}
+	return minimize
 }
 
 // ScorePlayer wraps a player index for multiplayer scorekeeping in zero-sum games.
