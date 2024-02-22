@@ -1,19 +1,35 @@
 package mcts
 
-import "github.com/wenooij/heapordered"
-
 // selectChild selects the highest priority child from the min heap.
-func selectChild[T Counter](s *Search[T], n *heapordered.Tree[Node[T]]) (child *heapordered.Tree[Node[T]], expand bool) {
-	if child = n.Min(); child == nil {
+func selectChild[T Counter](s *Search[T], n *TableEntry[T]) (child *Edge[T], expand bool) {
+	if len(*n) == 0 {
 		return nil, true
 	}
-	if !s.Select(child.E.Action) {
+	child = (*n)[0]
+	if !s.Select(child.Action) {
 		// Select may return false if this node is no longer legal
 		// Possibly due to the outcome of chance node higher up the tree.
-		// In that case return child = nil, expand = false, then
-		// start a rollout from n.
+		// In SearchHash, Select may return false after a cycle is detected
+		// or after a maximum depth is reached.
+		//
+		// In either case return child = nil, expand = false, then
+		// backprop the score from n.
 		return nil, false
 	}
+	if child.Dst == nil {
+		// Insert initial node.
+		// We couldn't do this in expand because Hash
+		// expects to be called only after Select.
+		h := s.Hash()
+		// Dst will already be in Table if dst is a transposition.
+		dst, ok := s.Table[h]
+		if !ok {
+			dst = &TableEntry[T]{}
+			s.Table[h] = dst
+		}
+		child.Dst = dst
+	}
+	s.hashTrajectory = append(s.hashTrajectory, child)
 	initializeScore(s, child)
 	return child, false
 }
@@ -21,10 +37,9 @@ func selectChild[T Counter](s *Search[T], n *heapordered.Tree[Node[T]]) (child *
 // initializeScore is called when selecting a node for the first time.
 //
 // precondition: n must be the current node (s.Select(n.Action) has been called, or we are at the root).
-func initializeScore[T Counter](s *Search[T], n *heapordered.Tree[Node[T]]) {
-	if n.E.NumRollouts == 0 {
+func initializeScore[T Counter](s *Search[T], e *Edge[T]) {
+	if e.Score.Objective == nil {
 		// E will be heapified on the first call to backprop.
-		e := &n.E
 		e.Score = s.Score()
 	}
 }

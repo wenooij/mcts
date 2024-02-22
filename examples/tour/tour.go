@@ -5,9 +5,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"hash/maphash"
 	"math"
 	"math/rand"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/wenooij/mcts"
@@ -79,13 +82,26 @@ type tourSearch struct {
 	root    []int
 	actions []mcts.FrontierAction
 	node    *tourNode
+	expandN int
 }
 
-func newTourSearch(tourMap map[int]*tourPos, r *rand.Rand) *tourSearch {
+func newTourSearch(tourMap map[int]*tourPos, r *rand.Rand, tour string) *tourSearch {
+	var root []int
+	if tour != "" {
+		for _, s := range strings.Split(tour, " ") {
+			i, err := strconv.ParseInt(s, 10, 64) // May be 32 on some arch?
+			if err != nil {
+				panic(err)
+			}
+			root = append(root, int(i))
+		}
+	} else {
+		root = rootTour(len(tourMap), r)
+	}
 	s := &tourSearch{
 		m:    tourMap,
 		r:    r,
-		root: rootTour(len(tourMap), r),
+		root: root,
 		node: new(tourNode),
 	}
 	s.actions = slices.Grow(s.actions, len(tourMap))
@@ -102,6 +118,9 @@ func newTourSearch(tourMap map[int]*tourPos, r *rand.Rand) *tourSearch {
 }
 
 func (g *tourSearch) Select(a mcts.Action) bool {
+	if g.node.depth >= 2*len(g.m) {
+		return false
+	}
 	g.node.apply(a.(tourAction))
 	return true
 }
@@ -113,9 +132,18 @@ func (g *tourSearch) Root() {
 	copy(g.node.tour, g.root)
 	g.node.depth = 0
 	g.node.action = tourAction{}
+	g.expandN = 0
 }
 
 func (g *tourSearch) Score() mcts.Score[float64] {
+	score := mcts.Score[float64]{
+		Counter:   -float64(g.node.depth),
+		Objective: model.Minimize[float64],
+	}
+	if g.expandN == 0 {
+		return score
+	}
+	score.Objective = nil
 	// Calculate tour distance.
 	distance := float64(0)
 	first := g.m[g.node.tour[0]]
@@ -126,37 +154,84 @@ func (g *tourSearch) Score() mcts.Score[float64] {
 		last = curr
 	}
 	distance += last.DistanceTo(first)
-	return mcts.Score[float64]{
-		Counter:   distance,
-		Objective: model.Minimize[float64],
-	}
+	score.Counter += distance
+	return score
 }
 
-func (g *tourSearch) Expand(int) []mcts.FrontierAction {
-	if g.node.depth >= 2*len(g.m) {
+func (g *tourSearch) Expand(n int) []mcts.FrontierAction {
+	if g.expandN = n; g.node.depth >= 2*len(g.m) {
 		return nil
 	}
 	return g.actions
 }
 
+var seed = maphash.MakeSeed()
+
+func (g *tourSearch) Hash() uint64 {
+	var h maphash.Hash
+	h.SetSeed(seed)
+	for _, i := range g.node.tour {
+		h.WriteByte(byte(i))
+	}
+	return h.Sum64()
+}
+
 func main() {
+	tour := flag.String("tour", "", "When provided, seeds the initial tour with 1-indexed space delimited stops")
 	seed := flag.Int64("seed", time.Now().UnixNano(), "Random seed")
 	n := flag.Int("n", 10, "Number of tour stops")
 	randomMap := flag.Bool("randomize_map", false, "Randomize the tour map")
 	flag.Parse()
 
 	r := rand.New(rand.NewSource(*seed))
+	// Default tour for n=10.
+	// Replace this with your own.
+	// TODO(wes): Add a flag.
 	pos := []*tourPos{
-		{54, 66},
-		{34, 29},
-		{30, 31},
-		{45, 54},
-		{72, 47},
-		{30, 7},
-		{46, 62},
-		{36, 84},
-		{13, 81},
-		{68, 69},
+		// {54, 66},
+		// {34, 29},
+		// {30, 31},
+		// {45, 54},
+		// {72, 47},
+		// {30, 7},
+		// {46, 62},
+		// {36, 84},
+		// {13, 81},
+		// {68, 69},
+		{91, 64},
+		{82, 91},
+		{66, 1},
+		{16, 1},
+		{56, 85},
+		{18, 23},
+		{82, 47},
+		{69, 79},
+		{32, 11},
+		{97, 78},
+		{20, 83},
+		{27, 82},
+		{91, 97},
+		{21, 1},
+		{1, 48},
+		{27, 89},
+		{18, 27},
+		{28, 41},
+		{25, 9},
+		{58, 26},
+		{8, 57},
+		{46, 49},
+		{10, 63},
+		{26, 7},
+		{34, 66},
+		{61, 20},
+		{32, 73},
+		{87, 71},
+		{35, 97},
+		{84, 28},
+	}
+	if *n != 10 && *tour == "" && !*randomMap {
+		fmt.Println("Setting -randomize_map=true when n != 10 and no initial -tour provided")
+		*randomMap = true
 	}
 	tourMap := make(map[int]*tourPos, *n)
 	for i, p := range pos {
@@ -170,36 +245,44 @@ func main() {
 		fmt.Printf("%d,%d\n", p.X, p.Y)
 	}
 	fmt.Println("---")
-	tourSearch := newTourSearch(tourMap, r)
+	tourSearch := newTourSearch(tourMap, r, *tour)
 
-	s := mcts.Search[float64]{
+	s := &mcts.Search[float64]{
 		Rand:            r,
 		Seed:            *seed,
 		SearchInterface: tourSearch,
-		NumEpisodes:     100,
+		ExploreFactor:   600,
+		NumEpisodes:     1000,
 	}
-	for lastPrint := (time.Time{}); ; {
-		if s.Search(); time.Since(lastPrint) >= time.Second {
-			// Reconstruct and print the best tour.
-			// Results can be pasted into the tool.
-			// https://www.lancaster.ac.uk/fas/psych/software/TSP/TSP.html.
-			pv := searchops.PV(s.Tree)
-			tour := make([]int, len(tourSearch.root))
-			copy(tour, tourSearch.root)
-			for _, e := range pv.TrimRoot() {
-				a := e.Action.(tourAction)
-				tour[a.i], tour[a.j] = tour[a.j], tour[a.i]
-			}
-			fmt.Printf("[%f] ", pv.Last().Score.Apply()/float64(pv.Last().NumRollouts))
-			for i, e := range tour {
-				fmt.Printf("%d", e+1)
-				if i+1 < len(tour) {
-					fmt.Print(" ")
-				}
-			}
-			fmt.Printf(" (%f)\n", pv[0].NumRollouts)
 
-			lastPrint = time.Now()
+	const epochs = 10
+	start := time.Now()
+	for i := 0; i < epochs; i++ {
+		s.Search()
+	}
+	fmt.Println("Search took", time.Since(start), "using", len(s.Table), "table entries and", s.NumEpisodes*epochs, "iterations")
+
+	// Reconstruct and print the best tour.
+	// Results can be pasted into the tool.
+	// https://www.lancaster.ac.uk/fas/psych/software/TSP/TSP.html.
+	pv := searchops.FilterV(s.RootEntry,
+		searchops.MaxScoreFilter[float64](),
+		searchops.MaxDepthFilter[float64](2**n),
+		searchops.FirstFilter[float64]())
+	{
+		tour := make([]int, len(tourSearch.root))
+		copy(tour, tourSearch.root)
+		for _, e := range pv {
+			a := e.Action.(tourAction)
+			tour[a.i], tour[a.j] = tour[a.j], tour[a.i]
+		}
+		fmt.Printf("[%f] ", pv[len(pv)-1].Score.Apply()/float64(pv[len(pv)-1].NumRollouts))
+		for i, e := range tour {
+			fmt.Printf("%d", e+1)
+			if i+1 < len(tour) {
+				fmt.Print(" ")
+			}
 		}
 	}
+	fmt.Printf(" (%f; %f; N=%d)\n", pv[0].NumRollouts, pv[len(pv)-1].NumRollouts, len(s.Table))
 }

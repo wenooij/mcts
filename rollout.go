@@ -1,11 +1,7 @@
 package mcts
 
-import (
-	"github.com/wenooij/heapordered"
-)
-
 // rollout runs simulated rollouts from the given node and returns the results.
-func rollout[T Counter](s *Search[T], n *heapordered.Tree[Node[T]]) (counters T, numRollouts float64) {
+func rollout[T Counter](s *Search[T], n *TableEntry[T]) (counters T, numRollouts float64) {
 	if s.RolloutInterface != nil {
 		// Call the custom Rollout implementation if available.
 		return s.Rollout()

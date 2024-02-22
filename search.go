@@ -6,8 +6,6 @@ import (
 	"math/rand"
 	"time"
 	"unsafe"
-
-	"github.com/wenooij/heapordered"
 )
 
 // DefaultExploreFactor based on the theory assuming scores normalized to the interval [-1, +1].
@@ -23,13 +21,18 @@ const DefaultExploreFactor = math.Sqrt2
 // Many of the hyperparameters have drastic impacts on Search performance and need
 // to be experimentally tuned first. See FitParams in the model subpackage for more info.
 type Search[T Counter] struct {
-	*heapordered.Tree[Node[T]]
-
 	// SearchInterface implements the search environment.
 	SearchInterface[T]
 
 	// RolloutInterface provides the optional custom rollout implementation.
 	RolloutInterface[T]
+
+	// Table is the collection of Hashed Nodes and children.
+	Table map[uint64]*TableEntry[T]
+
+	RootEntry *TableEntry[T]
+
+	hashTrajectory []*Edge[T]
 
 	// NumEpisodes ends the Search after the given fixed number
 	// of episodes. Default is 100.
@@ -117,27 +120,36 @@ func (s *Search[T]) patchDefaults() {
 // Init create a new root for the search if it doesn't exist yet.
 // Init additionally patches default parameter values.
 func (s *Search[T]) Init() bool {
-	if s.Tree != nil {
+	if s.Table != nil {
 		return false
 	}
+	s.Table = make(map[uint64]*TableEntry[T], 64)
 	if s.SearchInterface == nil {
 		panic("Search.Init: Search.SearchInterface is nil. A search implementation is required before calling Search or Init.")
 	}
+	// Find the root hash node.
+	if s.RootEntry == nil {
+		s.Root()
+		h := s.Hash()
+		e, ok := s.Table[h]
+		if !ok {
+			// Initialize root.
+			e = &TableEntry[T]{}
+			s.Table[h] = e
+		}
+		s.RootEntry = e
+	}
 	s.patchDefaults()
-	s.Tree = newTree(s)
-	initializeScore(s, s.Tree)
 	return true
 }
 
 // Reset deletes the search continuation and RNG so the next call to Search starts from scratch.
 func (s *Search[T]) Reset() {
-	s.Tree = nil
+	s.Table = make(map[uint64]*TableEntry[T], 64)
 	s.Rand = nil
 }
 
-// Search runs the search until the Done channel is signalled.
-//
-// To run a deterministic number of runs, set FixedEpisodes.
+// Search runs the search NumEpisodes times.
 func (s *Search[T]) Search() {
 	s.Init()
 	for i := 0; i < s.NumEpisodes; i++ {
@@ -146,11 +158,12 @@ func (s *Search[T]) Search() {
 }
 
 func (s *Search[T]) searchEpisode() {
-	n := s.Tree
+	n := s.RootEntry
+	s.hashTrajectory = s.hashTrajectory[:0]
 	s.SearchInterface.Root() // Reset to root.
 	// Select the best leaf node by MAB policy.
 	var doExpand bool
-	for child := (*heapordered.Tree[Node[T]])(nil); ; n = child {
+	for child := (*Edge[T])(nil); ; n = child.Dst {
 		if child, doExpand = selectChild(s, n); child == nil {
 			break
 		}
@@ -158,11 +171,11 @@ func (s *Search[T]) searchEpisode() {
 	// Expand a new frontier node.
 	if doExpand {
 		if frontier := expand(s, n); frontier != nil {
-			n = frontier
+			n = frontier.Dst
 		}
 	}
 	// Simulate and backprop score.
 	if counters, numRollouts := rollout(s, n); numRollouts != 0 {
-		backprop(n, s.AddCounters, counters, numRollouts, s.ExploreFactor)
+		backprop(s.hashTrajectory, s.AddCounters, counters, numRollouts, s.ExploreFactor)
 	}
 }

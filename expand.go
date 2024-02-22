@@ -1,13 +1,12 @@
 package mcts
 
 import (
-	"github.com/wenooij/heapordered"
+	"math"
+	"slices"
 )
 
-// expand calls Expand in the search interface to get more moves.
-//
-// the fringe argument is set to true during the rollout phase.
-func expand[T Counter](s *Search[T], n *heapordered.Tree[Node[T]]) (child *heapordered.Tree[Node[T]]) {
+// expand calls SearchInterface.Expand to add more Action edges to the given Node.
+func expand[T Counter](s *Search[T], n *TableEntry[T]) (child *Edge[T]) {
 	actions := s.Expand(0)
 	if len(actions) == 0 {
 		return nil
@@ -15,23 +14,23 @@ func expand[T Counter](s *Search[T], n *heapordered.Tree[Node[T]]) (child *heapo
 	// Avoid bias from generation order.
 	s.Rand.Shuffle(len(actions), func(i, j int) { actions[i], actions[j] = actions[j], actions[i] })
 
-	n.Grow(len(actions))
+	*n = slices.Grow(*n, len(actions))
 
 	var totalWeight float64
 	for _, a := range actions {
-		child, _ := createChild(s, n, a)
+		// Dst will be filled in on the next Select.
+		edge := &Edge[T]{Src: n, Dst: nil, Priority: math.Inf(-1), Node: makeNode[T](a)}
+		*n = append(*n, edge)
 		// Sum predictor weights to later normalize.
-		totalWeight += child.E.PriorWeight
+		totalWeight += edge.PriorWeight
 	}
 	// Normalize predictor weight.
 	if totalWeight == 0 {
 		panic("expand: got totalWeight = 0")
 	}
 	// Normalize the weights.
-	for i := 0; i < n.Len(); i++ {
-		child := n.At(i)
-		e := &child.E
-		e.PriorWeight /= totalWeight
+	for i := range *n {
+		(*n)[i].PriorWeight /= totalWeight
 	}
 	// Select a child element to expand.
 	child, _ = selectChild(s, n)

@@ -2,11 +2,17 @@ package mcts
 
 import (
 	"fmt"
-	"math"
 	"strings"
-
-	"github.com/wenooij/heapordered"
 )
+
+// TableEntry represents an adjacency list of Edges available from this node.
+type TableEntry[T Counter] []*Edge[T]
+
+type Edge[T Counter] struct {
+	Src, Dst *TableEntry[T]
+	Priority float64
+	Node[T]
+}
 
 type Node[T Counter] struct {
 	Action      Action
@@ -30,19 +36,6 @@ func makeNode[T Counter](action FrontierAction) Node[T] {
 		PriorWeight: weight,
 		Action:      action.Action,
 	}
-}
-
-func newTree[T Counter](s *Search[T]) *heapordered.Tree[Node[T]] {
-	step := FrontierAction{}
-	root := makeNode[T](step)
-	return heapordered.NewTree(root, math.Inf(-1))
-}
-
-func createChild[T Counter](s *Search[T], parent *heapordered.Tree[Node[T]], action FrontierAction) (child *heapordered.Tree[Node[T]], created bool) {
-	node := makeNode[T](action)
-	child = heapordered.NewTree(node, math.Inf(-1))
-	parent.NewChildTree(child)
-	return child, true
 }
 
 func (e Node[T]) appendString(sb *strings.Builder) {

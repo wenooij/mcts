@@ -35,6 +35,7 @@ func maximizeScalar(x float64) float64 { return x }
 
 func (s Search) Root()                    {}
 func (s *Search) Select(mcts.Action) bool { s.depth++; return true }
+func (s *Search) Hash() uint64            { return s.Rand.Uint64() }
 func (s Search) Score() mcts.Score[float64] {
-	return mcts.Score[float64]{Counter: rand.NormFloat64(), Objective: maximizeScalar}
+	return mcts.Score[float64]{Counter: s.Rand.NormFloat64(), Objective: maximizeScalar}
 }

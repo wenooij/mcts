@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"hash/maphash"
 	"math/rand"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 	"github.com/wenooij/mcts/model"
 	"github.com/wenooij/mcts/searchops"
 )
+
+type nimPile int
 
 type nimAction struct {
 	pile int
@@ -102,20 +105,30 @@ func (s *nimState) Expand(int) []mcts.FrontierAction {
 	return actions
 }
 
-type nimPile int
+var seed = maphash.MakeSeed()
+
+func (s *nimState) Hash() uint64 {
+	var h maphash.Hash
+	h.SetSeed(seed)
+	h.WriteByte(byte(s.depth & 1))
+	for _, p := range s.piles {
+		h.WriteByte(byte(p))
+	}
+	return h.Sum64()
+}
 
 func main() {
 	r := rand.New(rand.NewSource(1337))
-	n := &nimState{N: 4, r: r}
+	n := &nimState{N: 4, r: r, objectives: model.MaximizeTwoPlayers[int]()}
 	n.Root()
 
-	s := mcts.Search[model.TwoPlayerScalars[int]]{
+	s := &mcts.Search[model.TwoPlayerScalars[int]]{
 		SearchInterface: n,
 		AddCounters:     model.AddTwoPlayerScalars[int],
 	}
 	for lastTime := (time.Time{}); ; {
 		if s.Search(); time.Since(lastTime) > time.Second {
-			fmt.Println(searchops.PV(s.Tree))
+			fmt.Println(searchops.PV(s))
 			lastTime = time.Now()
 		}
 	}

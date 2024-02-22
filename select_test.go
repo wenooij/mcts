@@ -3,8 +3,6 @@ package mcts
 import (
 	"math/rand"
 	"testing"
-
-	"github.com/wenooij/heapordered"
 )
 
 func TestSelectVisitsRootActions(t *testing.T) {
@@ -18,16 +16,17 @@ func TestSelectVisitsRootActions(t *testing.T) {
 	}
 	s.Search()
 
-	rootChildren := make([]*heapordered.Tree[Node[float64]], 0, s.Tree.Len())
-	for i := 0; i < s.Tree.Len(); i++ {
-		rootChildren = append(rootChildren, s.Tree.At(i))
+	root := s.RootEntry
+	rootChildren := make([]*Edge[float64], 0, len(*root))
+	for _, e := range *root {
+		rootChildren = append(rootChildren, e)
 	}
 	if gotActions, wantActions := len(rootChildren), numRootActions; gotActions != wantActions {
 		t.Errorf("TestSelectVisitsRootActions(): got children = %d, want %d", gotActions, wantActions)
 	}
 	for _, child := range rootChildren {
-		if gotRollouts, wantRollouts := child.E.NumRollouts, float64(1); gotRollouts != wantRollouts {
-			t.Errorf("TestSelectVisitsRootActions(%s): got rollouts = %f, want %f", child.E.Action, gotRollouts, wantRollouts)
+		if gotRollouts, wantRollouts := child.NumRollouts, float64(1); gotRollouts != wantRollouts {
+			t.Errorf("TestSelectVisitsRootActions(%s): got rollouts = %f, want %f", child.Action, gotRollouts, wantRollouts)
 		}
 	}
 }

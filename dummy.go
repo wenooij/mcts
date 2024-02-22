@@ -30,6 +30,7 @@ func (s dummySearch) Expand(n int) []FrontierAction {
 
 func (s *dummySearch) Root()              { s.depth = 0 }
 func (s *dummySearch) Select(Action) bool { s.depth++; return true }
+func (s *dummySearch) Hash() uint64       { return s.Rand.Uint64() }
 func (s dummySearch) Score() Score[float64] {
 	return Score[float64]{
 		Counter:   s.Rand.NormFloat64(),

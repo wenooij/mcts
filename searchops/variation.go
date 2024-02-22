@@ -1,27 +1,75 @@
 package searchops
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
+	"strings"
 
-	"github.com/wenooij/heapordered"
 	"github.com/wenooij/mcts"
 )
+
+// Variation is a sequence of actions with Search statistics.
+//
+// The first element in the Variation may be a root node.
+// It will have a nil Action as well among other differences.
+// Use NodeType.Root to check or Variation.TrimRoot to trim it.
+type Variation[T mcts.Counter] []*mcts.Edge[T]
+
+// First returns the first edge other than the root.
+//
+// First returns nil if the Variation is empty.
+func (v Variation[T]) First() *mcts.Edge[T] {
+	if len(v) == 0 {
+		return nil
+	}
+	return v[0]
+}
+
+// Last returns the Last edge for this variation.
+//
+// Last returns nil if the variation is empty.
+func (v Variation[T]) Last() *mcts.Edge[T] {
+	if len(v) == 0 {
+		return nil
+	}
+	return v[len(v)-1]
+}
+
+func (v Variation[T]) String() (s string) {
+	if len(v) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	score := math.NaN()
+	if v[0].Score.Objective != nil {
+		score = v[0].Score.Apply() / v[0].NumRollouts
+	}
+	fmt.Fprintf(&sb, "[%f]", score)
+	for _, e := range v {
+		fmt.Fprintf(&sb, " %s", e.Action.String())
+	}
+	fmt.Fprintf(&sb, " (%d)", int64(v[0].NumRollouts))
+	return sb.String()
+}
 
 // FilterV creates a variation by calling filters as neccessary at every step.
 //
 // Filters are chained together until only one entry remains per step.
 // To guarantee a line is selected, add AnyFilter as the last element in the chain.
-func FilterV[T mcts.Counter](root *heapordered.Tree[mcts.Node[T]], filters ...TreeFilter[T]) mcts.Variation[T] {
-	var res mcts.Variation[T]
-	res = append(res, root.E)
-	for root != nil {
-		curr := Filter(root, filters...)
+func FilterV[T mcts.Counter](root *mcts.TableEntry[T], filters ...EdgeFilter[T]) Variation[T] {
+	var res Variation[T]
+	edges := *root
+	for len(edges) > 0 {
+		curr := FilterEdges(edges, filters...)
 		if curr == nil {
 			break
 		}
-		res = append(res, curr.E)
-		root = curr
+		res = append(res, curr)
+		if curr.Dst == nil {
+			break
+		}
+		edges = *curr.Dst
 	}
 	return res
 }
@@ -32,26 +80,29 @@ func FilterV[T mcts.Counter](root *heapordered.Tree[mcts.Node[T]], filters ...Tr
 // and is usually the best one.
 //
 // Use Stat to test arbitrary sequences.
-func PV[T mcts.Counter](root *heapordered.Tree[mcts.Node[T]]) mcts.Variation[T] {
-	return FilterV[T](root, MaxRolloutsFilter[T](), FirstFilter[T]())
+func PV[T mcts.Counter](s *mcts.Search[T], extraFilters ...EdgeFilter[T]) Variation[T] {
+	var filters []EdgeFilter[T]
+	filters = append(filters, MaxRolloutsHashTreeFilter[T]())
+	filters = append(filters, extraFilters...)
+	filters = append(filters, FirstFilter[T]())
+	return FilterV[T](s.RootEntry, filters...)
 }
 
 // AnyV returns a random variation with runs for this Search.
 //
 // AnyV is useful for statistical sampling of the Search tree.
-func AnyV[T mcts.Counter](root *heapordered.Tree[mcts.Node[T]], r *rand.Rand) mcts.Variation[T] {
+func AnyV[T mcts.Counter](root *mcts.TableEntry[T], r *rand.Rand) Variation[T] {
 	return FilterV(root, AnyFilter[T](r))
 }
 
 // Stat returns a sequence of Search stats for the given variation according to this Search.
 //
 // The returned Variation stops if the next action is not present in the Search tree.
-func Stat[T mcts.Counter](root *heapordered.Tree[mcts.Node[T]], vs ...mcts.Action) mcts.Variation[T] {
+func Stat[T mcts.Counter](root *mcts.TableEntry[T], vs ...mcts.Action) Variation[T] {
 	if root == nil {
 		return nil
 	}
-	res := make(mcts.Variation[T], 0, 1+len(vs))
-	res = append(res, root.E)
+	res := make(Variation[T], 0, 1+len(vs))
 	for _, s := range vs {
 		child := Child(root, s)
 		if child == nil {
@@ -59,8 +110,8 @@ func Stat[T mcts.Counter](root *heapordered.Tree[mcts.Node[T]], vs ...mcts.Actio
 			break
 		}
 		// Add the StatEntry and continue down the line.
-		res = append(res, child.E)
-		root = child
+		res = append(res, child)
+		root = child.Dst
 	}
 	return res
 }
@@ -71,21 +122,27 @@ func Stat[T mcts.Counter](root *heapordered.Tree[mcts.Node[T]], vs ...mcts.Actio
 // Node priorities are recomputed using UCT.
 //
 // The Search is initialized if it had not already done so.
-func InsertV[T mcts.Counter](root *heapordered.Tree[mcts.Node[T]], v mcts.Variation[T]) {
-	// FIXME(): Insert stat at Root.
-	for _, stat := range v.TrimRoot() {
+// InsertV will call root and Select as a part of inserting the variation.
+func InsertV[T mcts.Counter](s *mcts.Search[T], v Variation[T]) {
+	root := s.RootEntry
+	s.Root()
+	defer s.Root()
+	for _, stat := range v {
 		child := Child(root, stat.Action)
-		var e mcts.Node[T]
 		if child == nil {
-			e.Action = stat.Action
-			e.PriorWeight = stat.PriorWeight
-			e.Score = stat.Score
-			e.NumRollouts = stat.NumRollouts
-			root = root.NewChild(e, math.Inf(-1))
+			panic("InsertV: insertion of TableEntry not yet implemented")
 		} else {
-			// FIXME: Add stat value to node.
-			child.Init()
-			root = child
+			panic("InsertV: merge of TableEntry not yet implemented")
+		}
+	}
+}
+
+func MergeSearch[T mcts.Counter](s *mcts.Search[T], table map[uint64]*mcts.TableEntry[T]) {
+	for k, v := range table {
+		if _, ok := s.Table[k]; ok {
+			panic("MergeSearch: merge of TableEntry not yet implemented")
+		} else {
+			s.Table[k] = v
 		}
 	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"hash/maphash"
 	"time"
 
 	"github.com/wenooij/mcts"
@@ -80,17 +81,30 @@ const initDepth = 0
 
 func (s *connect2) Root() {
 	s.depth = initDepth
-	copy(s.state[:], []stone{0, 0, 0, 0})
+	clear(s.state[:])
+}
+
+var seed = maphash.MakeSeed()
+
+func (s *connect2) Hash() uint64 {
+	var h maphash.Hash
+	h.SetSeed(seed)
+	h.WriteByte(byte(s.depth & 1))
+	for _, b := range s.state {
+		h.WriteByte(byte(b))
+	}
+	return h.Sum64()
 }
 
 func main() {
+	cs := &connect2{objectives: model.MaximizeTwoPlayers[int]()}
 	s := &mcts.Search[model.TwoPlayerScalars[int]]{
-		SearchInterface: &connect2{},
+		SearchInterface: cs,
 		AddCounters:     model.AddTwoPlayerScalars[int],
 	}
 	for lastTime := (time.Time{}); ; {
 		if s.Search(); time.Since(lastTime) > time.Second {
-			fmt.Println(searchops.PV(s.Tree))
+			fmt.Println(searchops.PV(s))
 			lastTime = time.Now()
 		}
 	}

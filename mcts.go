@@ -113,6 +113,9 @@ type SearchInterface[T Counter] interface {
 	//
 	// See github.com/wenooij/mcts/model for reusable scalar score implementations.
 	Score() Score[T]
+
+	// Hash returns a 64 bit hash of the current state.
+	Hash() uint64
 }
 
 type RolloutInterface[T Counter] interface {

@@ -6,6 +6,7 @@ package main
 import (
 	_ "embed"
 	"fmt"
+	"hash/maphash"
 	"math/rand"
 	"time"
 
@@ -119,6 +120,19 @@ func (g *keyboardSearch) Rollout() (mcts.Score[int], float64) {
 	return g.Score(), 1
 }
 
+var seed = maphash.MakeSeed()
+
+func (g *keyboardSearch) Hash() uint64 {
+	var h maphash.Hash
+	h.SetSeed(seed)
+	for _, r := range allKeys {
+		pt := g.node.layout.Keys[r]
+		h.WriteByte(pt.X)
+		h.WriteByte(pt.Y)
+	}
+	return h.Sum64()
+}
+
 func main() {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	ks := newKeyboardSearch(r)
@@ -129,7 +143,7 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	s := mcts.Search[int]{
+	s := &mcts.Search[int]{
 		ExploreFactor:   40,
 		SearchInterface: ks,
 	}
@@ -143,14 +157,12 @@ func main() {
 		}
 	}
 
-	pv := searchops.PV(s.Tree)
+	pv := searchops.PV(s)
 	fmt.Println(pv)
-
-	layout := NewRandomLayout(r)
-	for _, e := range pv.TrimRoot() {
+	layout := ks.root.layout.Clone()
+	for _, e := range pv {
 		a := e.Action.(keySwapAction)
 		layout.Swap(a.p1, a.p2)
 	}
-
 	fmt.Println(layout)
 }

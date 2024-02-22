@@ -3,55 +3,43 @@ package searchops
 import (
 	"math/rand"
 
-	"github.com/wenooij/heapordered"
 	"github.com/wenooij/mcts"
 )
 
 type (
-	TreePredicate[T mcts.Counter] func(*heapordered.Tree[mcts.Node[T]]) bool
-	TreeFilter[T mcts.Counter]    func([]*heapordered.Tree[mcts.Node[T]]) []*heapordered.Tree[mcts.Node[T]]
+	EdgePredicate[T mcts.Counter] func(*mcts.Edge[T]) bool
+	EdgeFilter[T mcts.Counter]    func([]*mcts.Edge[T]) []*mcts.Edge[T]
 )
 
 // FilterPredicate returns a filter which selects subtrees entries matching f.
-func FilterPredicate[T mcts.Counter](f TreePredicate[T]) TreeFilter[T] {
-	return func(input []*heapordered.Tree[mcts.Node[T]]) []*heapordered.Tree[mcts.Node[T]] {
-		var res []*heapordered.Tree[mcts.Node[T]]
-		for _, t := range input {
-			if f(t) {
-				res = append(res, t)
-			}
+func (f EdgePredicate[T]) Filter(input []*mcts.Edge[T]) []*mcts.Edge[T] {
+	var res []*mcts.Edge[T]
+	for _, t := range input {
+		if f(t) {
+			res = append(res, t)
 		}
-		return res
 	}
+	return res
 }
 
-// NodePredicateFilter returns a filter which selects Nodes matching f.
-func FilterNodePredicate[T mcts.Counter](f func(mcts.Node[T]) bool) TreeFilter[T] {
-	return FilterPredicate(func(t *heapordered.Tree[mcts.Node[T]]) bool { return f(t.E) })
-}
-
-func Filter[T mcts.Counter](tree *heapordered.Tree[mcts.Node[T]], filters ...TreeFilter[T]) *heapordered.Tree[mcts.Node[T]] {
+func FilterEdges[T mcts.Counter](candidates []*mcts.Edge[T], filters ...EdgeFilter[T]) *mcts.Edge[T] {
 	if len(filters) == 0 {
 		return nil
 	}
-	candidates := make([]*heapordered.Tree[mcts.Node[T]], tree.Len())
-	for i := 0; i < tree.Len(); i++ {
-		candidates[i] = tree.At(i)
-	}
 	for _, f := range filters {
-		switch candidates = f(candidates); len(candidates) {
-		case 0:
+		if candidates = f(candidates); len(candidates) == 0 {
 			return nil
-		case 1:
-			return candidates[0]
 		}
+	}
+	if len(candidates) == 1 {
+		return candidates[0]
 	}
 	// Filters were not able to reduce to a single entry.
 	return nil
 }
 
 // MaxFilter returns a filter which selects the entries maximumizing f.
-func MaxFilter[T mcts.Counter](f TreeMapper[T, float64]) TreeFilter[T] {
+func MaxFilter[T mcts.Counter](f EdgeMapper[T, float64]) EdgeFilter[T] {
 	return maxCmpFilter[T](f, func(a, b float64) int {
 		if a == b {
 			return 0
@@ -64,7 +52,7 @@ func MaxFilter[T mcts.Counter](f TreeMapper[T, float64]) TreeFilter[T] {
 }
 
 // MinFilter returns a filter which selects the entries maximumizing f.
-func MinFilter[T mcts.Counter](f TreeMapper[T, float64]) TreeFilter[T] {
+func MinFilter[T mcts.Counter](f EdgeMapper[T, float64]) EdgeFilter[T] {
 	return maxCmpFilter[T](f, func(a, b float64) int {
 		if a == b {
 			return 0
@@ -76,13 +64,13 @@ func MinFilter[T mcts.Counter](f TreeMapper[T, float64]) TreeFilter[T] {
 	})
 }
 
-func maxCmpFilter[T mcts.Counter](f TreeMapper[T, float64], cmp func(a, b float64) int) TreeFilter[T] {
-	return func(input []*heapordered.Tree[mcts.Node[T]]) []*heapordered.Tree[mcts.Node[T]] {
+func maxCmpFilter[T mcts.Counter](f EdgeMapper[T, float64], cmp func(a, b float64) int) EdgeFilter[T] {
+	return func(input []*mcts.Edge[T]) []*mcts.Edge[T] {
 		if len(input) == 0 {
 			return nil
 		}
 		var (
-			maxEntries = []*heapordered.Tree[mcts.Node[T]]{input[0]}
+			maxEntries = []*mcts.Edge[T]{input[0]}
 			maxValue   = f(input[0])
 		)
 		for _, e := range input[1:] {
@@ -100,31 +88,31 @@ func maxCmpFilter[T mcts.Counter](f TreeMapper[T, float64], cmp func(a, b float6
 }
 
 // MaxRolloutsFilter returns a filter which selects the entries with maximum rollouts.
-func MaxRolloutsFilter[T mcts.Counter]() TreeFilter[T] {
-	return MaxFilter(func(t *heapordered.Tree[mcts.Node[T]]) float64 { return float64(t.E.NumRollouts) })
+func MaxRolloutsHashTreeFilter[T mcts.Counter]() EdgeFilter[T] {
+	return MaxFilter(func(e *mcts.Edge[T]) float64 { return e.NumRollouts })
 }
 
 // MaxScoreFilter returns a filter which selects the entries with the best normalized score.
-func MaxScoreFilter[T mcts.Counter]() TreeFilter[T] {
-	return MaxFilter(func(t *heapordered.Tree[mcts.Node[T]]) float64 { return t.E.Score.Apply() / float64(t.E.NumRollouts) })
+func MaxScoreFilter[T mcts.Counter]() EdgeFilter[T] {
+	return MaxFilter(func(e *mcts.Edge[T]) float64 { return e.Score.Apply() / float64(e.NumRollouts) })
 }
 
 // MaxRawScoreFilter picks the node with the best raw score.
-func MaxRawScoreFilter[T mcts.Counter]() TreeFilter[T] {
-	return MaxFilter(func(t *heapordered.Tree[mcts.Node[T]]) float64 { return t.E.Score.Apply() })
+func MaxRawScoreFilter[T mcts.Counter]() EdgeFilter[T] {
+	return MaxFilter(func(e *mcts.Edge[T]) float64 { return e.Score.Apply() })
 }
 
 // MinPriorityFilter picks the node with the highest raw score.
-func HighestPriorityFilter[T mcts.Counter]() TreeFilter[T] {
-	return MinFilter(func(t *heapordered.Tree[mcts.Node[T]]) float64 { return t.Priority })
+func HighestPriorityFilter[T mcts.Counter]() EdgeFilter[T] {
+	return MinFilter(func(e *mcts.Edge[T]) float64 { return e.Priority })
 }
 
 // MaxDepthFilter returns a filter which selects nodes below a maximum depth.
 //
 // Note that MaxDepthFilter returns a stateful Filter which cannot be reused.
-func MaxDepthFilter[T mcts.Counter](maxDepth int) TreeFilter[T] {
+func MaxDepthFilter[T mcts.Counter](maxDepth int) EdgeFilter[T] {
 	depth := 0
-	return func(input []*heapordered.Tree[mcts.Node[T]]) []*heapordered.Tree[mcts.Node[T]] {
+	return func(input []*mcts.Edge[T]) []*mcts.Edge[T] {
 		defer func() { depth++ }()
 		if maxDepth <= depth {
 			return nil
@@ -134,8 +122,8 @@ func MaxDepthFilter[T mcts.Counter](maxDepth int) TreeFilter[T] {
 }
 
 // AnyFilter returns a filter which selects a random entry.
-func AnyFilter[T mcts.Counter](r *rand.Rand) TreeFilter[T] {
-	return func(input []*heapordered.Tree[mcts.Node[T]]) []*heapordered.Tree[mcts.Node[T]] {
+func AnyFilter[T mcts.Counter](r *rand.Rand) EdgeFilter[T] {
+	return func(input []*mcts.Edge[T]) []*mcts.Edge[T] {
 		if len(input) == 0 {
 			return nil
 		}
@@ -145,11 +133,31 @@ func AnyFilter[T mcts.Counter](r *rand.Rand) TreeFilter[T] {
 }
 
 // FirstFilter returns a filter which selects the first subtree.
-func FirstFilter[T mcts.Counter]() TreeFilter[T] {
-	return func(input []*heapordered.Tree[mcts.Node[T]]) []*heapordered.Tree[mcts.Node[T]] {
+func FirstFilter[T mcts.Counter]() EdgeFilter[T] {
+	return func(input []*mcts.Edge[T]) []*mcts.Edge[T] {
 		if len(input) == 0 {
 			return nil
 		}
 		return input[0:1]
+	}
+}
+
+// VisitedFilter returns an EdgeFilter which filters out visited entries.
+func VisitedFilter[T mcts.Counter](s *mcts.Search[T]) EdgeFilter[T] {
+	visited := make(map[*mcts.TableEntry[T]]struct{})
+	root := s.RootEntry
+	visited[root] = struct{}{}
+	return func(es []*mcts.Edge[T]) []*mcts.Edge[T] {
+		var res []*mcts.Edge[T]
+		for _, e := range es {
+			if _, ok := visited[e.Dst]; !ok {
+				res = append(res, e)
+			}
+		}
+		if len(res) == 1 {
+			visited[res[0].Dst] = struct{}{}
+			return res
+		}
+		return res
 	}
 }

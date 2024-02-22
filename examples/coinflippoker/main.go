@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"hash/maphash"
 	"math/rand"
 	"time"
 
@@ -104,6 +105,18 @@ func (g Game) Score() mcts.Score[model.TwoPlayerScalars[int]] {
 	return score
 }
 
+var seed = maphash.MakeSeed()
+
+func (g *Game) Hash() uint64 {
+	var h maphash.Hash
+	h.SetSeed(seed)
+	h.WriteByte(byte(g.depth & 1))
+	h.WriteByte(byte(g.pass))
+	h.WriteByte(byte(g.playerSums[0]))
+	h.WriteByte(byte(g.playerSums[1]))
+	return h.Sum64()
+}
+
 func main() {
 	const limit = 3
 	r := rand.New(rand.NewSource(1337))
@@ -116,8 +129,8 @@ func main() {
 	for lastPrint := (time.Time{}); ; {
 		s.Search()
 		if time.Since(lastPrint) > time.Second {
-			fmt.Println(searchops.FilterV[model.TwoPlayerScalars[int]](s.Tree,
-				searchops.FilterNodePredicate(func(n mcts.Node[model.TwoPlayerScalars[int]]) bool { return n.NumRollouts > 0 }),
+			fmt.Println(searchops.FilterV[model.TwoPlayerScalars[int]](s.RootEntry,
+				searchops.EdgePredicate[model.TwoPlayerScalars[int]](func(n *mcts.Edge[model.TwoPlayerScalars[int]]) bool { return n.NumRollouts > 0 }).Filter,
 				searchops.HighestPriorityFilter[model.TwoPlayerScalars[int]](),
 				searchops.AnyFilter[model.TwoPlayerScalars[int]](r)))
 			lastPrint = time.Now()

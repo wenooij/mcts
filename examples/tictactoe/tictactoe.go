@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"hash/maphash"
 	"math/rand"
 	"slices"
 	"time"
@@ -11,7 +12,7 @@ import (
 	"github.com/wenooij/mcts/searchops"
 )
 
-type mark byte
+type mark = byte
 
 const (
 	empty mark = iota
@@ -126,19 +127,24 @@ func (s *SearchPlugin) Score() mcts.Score[model.TwoPlayerScalars[int64]] {
 	return scores
 }
 
+var seed = maphash.MakeSeed()
+
+func (s *SearchPlugin) Hash() uint64 { return maphash.Bytes(seed, s.node.state[:]) }
+
 func main() {
 	si := newSearchPlugin()
 
 	s := mcts.Search[model.TwoPlayerScalars[int64]]{
 		SearchInterface: si,
 		AddCounters:     model.AddTwoPlayerScalars[int64],
-		ExploreFactor:   mcts.DefaultExploreFactor,
 	}
 
-	for lastPrint := time.Now(); ; {
-		if s.Search(); time.Since(lastPrint) >= time.Second {
-			fmt.Println(searchops.PV(s.Tree))
-			lastPrint = time.Now()
-		}
+	const epochs = 10000
+	start := time.Now()
+	for i := 0; i < epochs; i++ {
+		s.Search()
 	}
+	fmt.Println("Search took", time.Since(start), "using", len(s.Table), "table entries and", s.NumEpisodes*epochs, "iterations")
+	pv := searchops.PV(&s, searchops.MaxDepthFilter[model.TwoPlayerScalars[int64]](10))
+	fmt.Println(pv)
 }

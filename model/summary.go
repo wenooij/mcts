@@ -6,7 +6,6 @@ import (
 	"math"
 	"slices"
 
-	"github.com/wenooij/heapordered"
 	"github.com/wenooij/mcts"
 )
 
@@ -77,16 +76,15 @@ func Summarize[T mcts.Counter](s *mcts.Search[T]) SummaryStats {
 	)
 	for i := 0; i < numAnyVSamples; i++ {
 		// Sample score from random variations using reservoir sampling.
-		var anyV []*heapordered.Tree[mcts.Node[T]]
-		for t := s.Tree; t != nil; {
-			n := t.Len()
-			child := t.At(s.Rand.Intn(n))
+		var anyV []*mcts.Edge[T]
+		root := s.RootEntry
+		for n := root; n != nil; {
+			child := (*n)[s.Rand.Intn(len(*n))]
 			anyV = append(anyV, child)
-			t = child
+			n = child.Dst
 		}
-
 		for _, e := range anyV {
-			score := e.E.Score.Apply()
+			score := e.Score.Apply()
 			if math.IsInf(score, 0) {
 				// Inf scores cannot contribute to statistics.
 				continue

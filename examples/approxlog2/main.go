@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"hash/maphash"
 	"math"
 	"math/rand"
 	"time"
 
+	"github.com/pkg/profile"
 	"github.com/wenooij/mcts"
 	"github.com/wenooij/mcts/model"
 	"github.com/wenooij/mcts/searchops"
@@ -98,6 +100,25 @@ func (s *search) Select(a mcts.Action) bool {
 	return true
 }
 
+var seed = maphash.MakeSeed()
+
+func (s *search) Hash() uint64 {
+	var h maphash.Hash
+	h.SetSeed(seed)
+	for _, x := range []uint64{
+		math.Float64bits(s.c0.lo),
+		math.Float64bits(s.c0.hi),
+		math.Float64bits(s.c1.lo),
+		math.Float64bits(s.c1.hi),
+	} {
+		for i := 0; i < 8; i++ {
+			h.WriteByte(byte(x))
+			x >>= 8
+		}
+	}
+	return h.Sum64()
+}
+
 var logSuite = []float32{
 	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
 	17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
@@ -149,8 +170,10 @@ func (s *search) Score() mcts.Score[float32] {
 }
 
 func main() {
+	defer profile.Start().Stop()
+
 	as := &search{r: rand.New(rand.NewSource(time.Now().UnixNano()))}
-	s := mcts.Search[float32]{
+	s := &mcts.Search[float32]{
 		SearchInterface: as,
 		NumEpisodes:     10000,
 	}
@@ -160,8 +183,8 @@ func main() {
 		if time.Since(lastPrint) > time.Second {
 			sCopy := new(search)
 			sCopy.Root()
-			pv := searchops.PV(s.Tree)
-			for _, e := range pv.TrimRoot() {
+			pv := searchops.PV(s)
+			for _, e := range pv {
 				sCopy.Select(e.Action)
 			}
 			last := pv.Last()

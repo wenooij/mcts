@@ -29,7 +29,7 @@ func main() {
 		done <- struct{}{}
 	}()
 
-	s := mcts.Search[float64]{
+	s := &mcts.Search[float64]{
 		Rand:            r,
 		Seed:            *seed,
 		SearchInterface: &dummy.Search{BranchFactor: int(*B), MaxDepth: int(*D), Rand: r},
@@ -39,8 +39,8 @@ func main() {
 		s.Search()
 		select {
 		case <-done:
-			pv := searchops.FilterV[float64](s.Tree,
-				searchops.FilterNodePredicate[float64](func(n mcts.Node[float64]) bool { return n.NumRollouts >= 1_000 }),
+			pv := searchops.FilterV[float64](s.RootEntry,
+				searchops.EdgePredicate[float64](func(n *mcts.Edge[float64]) bool { return n.NumRollouts >= 1_000 }).Filter,
 				searchops.AnyFilter[float64](r))
 			fmt.Println(pv)
 			fmt.Println("---")
