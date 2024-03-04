@@ -1,4 +1,2 @@
 .vscode
-go.work
-go.work.sum
 mcts.test
