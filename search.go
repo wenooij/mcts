@@ -164,18 +164,16 @@ func (s *Search[T]) searchEpisode() {
 	// Select the best leaf node by MAB policy.
 	var doExpand bool
 	for child := (*Edge[T])(nil); ; n = child.Dst {
-		if child, doExpand = selectChild(s, n); child == nil {
+		if child, doExpand = selectChild(s.SearchInterface, s.Table, &s.hashTrajectory, n); child == nil {
 			break
 		}
 	}
 	// Expand a new frontier node.
 	if doExpand {
-		if frontier := expand(s, n); frontier != nil {
-			n = frontier.Dst
-		}
+		expand(s.SearchInterface, s.Table, &s.hashTrajectory, n, s.Rand)
 	}
 	// Simulate and backprop score.
-	if counters, numRollouts := rollout(s, n); numRollouts != 0 {
+	if counters, numRollouts := rollout(s.SearchInterface, s.RolloutInterface, s.Rand); numRollouts != 0 {
 		backprop(s.hashTrajectory, s.AddCounters, counters, numRollouts, s.ExploreFactor)
 	}
 }

@@ -1,10 +1,12 @@
 package mcts
 
+import "math/rand"
+
 // rollout runs simulated rollouts from the given node and returns the results.
-func rollout[T Counter](s *Search[T], n *TableEntry[T]) (counters T, numRollouts float64) {
-	if s.RolloutInterface != nil {
+func rollout[T Counter](s SearchInterface[T], ri RolloutInterface[T], r *rand.Rand) (counters T, numRollouts float64) {
+	if ri != nil {
 		// Call the custom Rollout implementation if available.
-		return s.Rollout()
+		return ri.Rollout()
 	}
 	// Rollout using the default policy (using Expand).
 	for {
@@ -16,7 +18,7 @@ func rollout[T Counter](s *Search[T], n *TableEntry[T]) (counters T, numRollouts
 		case 1:
 			ok = s.Select(actions[0].Action)
 		default:
-			ok = s.Select(actions[s.Rand.Intn(len(actions))].Action)
+			ok = s.Select(actions[r.Intn(len(actions))].Action)
 		}
 		if !ok {
 			// Return the score for the terminal position.

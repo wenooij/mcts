@@ -1,7 +1,7 @@
 package mcts
 
 // selectChild selects the highest priority child from the min heap.
-func selectChild[T Counter](s *Search[T], n *TableEntry[T]) (child *Edge[T], expand bool) {
+func selectChild[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T], trajectory *[]*Edge[T], n *TableEntry[T]) (child *Edge[T], expand bool) {
 	if len(*n) == 0 {
 		return nil, true
 	}
@@ -22,14 +22,14 @@ func selectChild[T Counter](s *Search[T], n *TableEntry[T]) (child *Edge[T], exp
 		// expects to be called only after Select.
 		h := s.Hash()
 		// Dst will already be in Table if dst is a transposition.
-		dst, ok := s.Table[h]
+		dst, ok := table[h]
 		if !ok {
 			dst = &TableEntry[T]{}
-			s.Table[h] = dst
+			table[h] = dst
 		}
 		child.Dst = dst
 	}
-	s.hashTrajectory = append(s.hashTrajectory, child)
+	*trajectory = append(*trajectory, child)
 	initializeScore(s, child)
 	return child, false
 }
@@ -37,7 +37,7 @@ func selectChild[T Counter](s *Search[T], n *TableEntry[T]) (child *Edge[T], exp
 // initializeScore is called when selecting a node for the first time.
 //
 // precondition: n must be the current node (s.Select(n.Action) has been called, or we are at the root).
-func initializeScore[T Counter](s *Search[T], e *Edge[T]) {
+func initializeScore[T Counter](s SearchInterface[T], e *Edge[T]) {
 	if e.Score.Objective == nil {
 		// E will be heapified on the first call to backprop.
 		e.Score = s.Score()

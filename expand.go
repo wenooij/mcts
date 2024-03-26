@@ -2,17 +2,18 @@ package mcts
 
 import (
 	"math"
+	"math/rand"
 	"slices"
 )
 
 // expand calls SearchInterface.Expand to add more Action edges to the given Node.
-func expand[T Counter](s *Search[T], n *TableEntry[T]) (child *Edge[T]) {
+func expand[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T], trajectory *[]*Edge[T], n *TableEntry[T], r *rand.Rand) (child *Edge[T]) {
 	actions := s.Expand(0)
 	if len(actions) == 0 {
 		return nil
 	}
 	// Avoid bias from generation order.
-	s.Rand.Shuffle(len(actions), func(i, j int) { actions[i], actions[j] = actions[j], actions[i] })
+	r.Shuffle(len(actions), func(i, j int) { actions[i], actions[j] = actions[j], actions[i] })
 
 	*n = slices.Grow(*n, len(actions))
 
@@ -33,6 +34,6 @@ func expand[T Counter](s *Search[T], n *TableEntry[T]) (child *Edge[T]) {
 		(*n)[i].PriorWeight /= totalWeight
 	}
 	// Select a child element to expand.
-	child, _ = selectChild(s, n)
+	child, _ = selectChild(s, table, trajectory, n)
 	return child
 }
