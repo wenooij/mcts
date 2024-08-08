@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"plugin"
 	"time"
 	"unsafe"
 )
@@ -23,9 +24,6 @@ const DefaultExploreFactor = math.Sqrt2
 type Search[T Counter] struct {
 	// SearchInterface implements the search environment.
 	SearchInterface[T]
-
-	// RolloutInterface provides the optional custom rollout implementation.
-	RolloutInterface[T]
 
 	// Table is the collection of Hashed Nodes and children.
 	Table map[uint64]*TableEntry[T]
@@ -81,11 +79,6 @@ func (s *Search[T]) patchDefaults() {
 		}
 		s.Rand = rand.New(rand.NewSource(s.Seed))
 	}
-	if s.RolloutInterface == nil {
-		if rolloutInterface, ok := s.SearchInterface.(RolloutInterface[T]); ok {
-			s.RolloutInterface = rolloutInterface
-		}
-	}
 	if s.AddCounters == nil {
 		var t T
 		switch any(t).(type) {
@@ -117,6 +110,23 @@ func (s *Search[T]) patchDefaults() {
 	}
 }
 
+func (s *Search[T]) LoadPlugin(path string) error {
+	p, err := plugin.Open(path)
+	if err != nil {
+		return err
+	}
+	sym, err := p.Lookup("SearchInterface")
+	if err != nil {
+		return err
+	}
+	impl, ok := sym.(SearchInterface[T])
+	if !ok {
+		return fmt.Errorf("unexpected exported type for SearchInterface")
+	}
+	s.SearchInterface = impl
+	return nil
+}
+
 // Init create a new root for the search if it doesn't exist yet.
 // Init additionally patches default parameter values.
 func (s *Search[T]) Init() bool {
@@ -124,8 +134,8 @@ func (s *Search[T]) Init() bool {
 		return false
 	}
 	s.Table = make(map[uint64]*TableEntry[T], 64)
-	if s.SearchInterface == nil {
-		panic("Search.Init: Search.SearchInterface is nil. A search implementation is required before calling Search or Init.")
+	if s.SearchInterface.Root == nil {
+		panic("Search.Init: Search.SearchInterface.Root is nil. A search implementation is required before calling Search or Init.")
 	}
 	// Find the root hash node.
 	if s.RootEntry == nil {

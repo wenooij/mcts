@@ -217,7 +217,7 @@ func main() {
 	binPacker.Root()
 
 	s := &mcts.Search[int]{
-		SearchInterface: binPacker,
+		SearchInterface: model.MakeSearchInterface[int](binPacker),
 		ExploreFactor:   *exploreFactor,
 		NumEpisodes:     100,
 	}

@@ -250,7 +250,7 @@ func main() {
 	s := &mcts.Search[float64]{
 		Rand:            r,
 		Seed:            *seed,
-		SearchInterface: tourSearch,
+		SearchInterface: model.MakeSearchInterface[float64](tourSearch),
 		ExploreFactor:   600,
 		NumEpisodes:     1000,
 	}

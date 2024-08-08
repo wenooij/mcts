@@ -123,7 +123,7 @@ func main() {
 	n.Root()
 
 	s := &mcts.Search[model.TwoPlayerScalars[int]]{
-		SearchInterface: n,
+		SearchInterface: model.MakeSearchInterface[model.TwoPlayerScalars[int]](n),
 		AddCounters:     model.AddTwoPlayerScalars[int],
 	}
 	for lastTime := (time.Time{}); ; {

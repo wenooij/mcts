@@ -122,7 +122,7 @@ func main() {
 	r := rand.New(rand.NewSource(1337))
 	g := newGame(r, limit)
 	s := mcts.Search[model.TwoPlayerScalars[int]]{
-		SearchInterface: g,
+		SearchInterface: model.MakeSearchInterface[model.TwoPlayerScalars[int]](g),
 		AddCounters:     model.AddTwoPlayerScalars[int],
 		Rand:            r,
 	}

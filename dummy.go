@@ -37,3 +37,12 @@ func (s dummySearch) Score() Score[float64] {
 		Objective: func(x float64) float64 { return x },
 	}
 }
+func (s *dummySearch) Interface() SearchInterface[float64] {
+	return SearchInterface[float64]{
+		Root:   s.Root,
+		Select: s.Select,
+		Expand: s.Expand,
+		Score:  s.Score,
+		Hash:   s.Hash,
+	}
+}

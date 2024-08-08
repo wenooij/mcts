@@ -8,7 +8,7 @@ import (
 func TestBackpropFeatures(t *testing.T) {
 	r := rand.New(rand.NewSource(1337))
 	s := &Search[float64]{
-		SearchInterface: &dummySearch{BranchFactor: 1, MaxDepth: 3, Rand: r},
+		SearchInterface: (&dummySearch{BranchFactor: 1, MaxDepth: 3, Rand: r}).Interface(),
 		Rand:            r,
 		NumEpisodes:     3,
 	}

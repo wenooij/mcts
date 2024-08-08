@@ -10,7 +10,7 @@ func TestSelectVisitsRootActions(t *testing.T) {
 
 	r := rand.New(rand.NewSource(1337))
 	s := Search[float64]{
-		SearchInterface: &dummySearch{BranchFactor: numRootActions, MaxDepth: 1, Rand: r},
+		SearchInterface: (&dummySearch{BranchFactor: numRootActions, MaxDepth: 1, Rand: r}).Interface(),
 		Rand:            r,
 		NumEpisodes:     numRootActions,
 	}

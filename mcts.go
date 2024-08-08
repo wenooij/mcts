@@ -66,12 +66,12 @@ type FrontierAction struct {
 // may actually hinder the explorative performance of MCTS.
 // Note that Expand can be made less expensive by reusing the same slice.
 // The slice will not be retained by the implementation in this package.
-type SearchInterface[T Counter] interface {
+type SearchInterface[T Counter] struct {
 	// Root resets the current search to root.
 	//
 	// Root is called multiple times in Search before the selection phase
 	// and after Search completes.
-	Root()
+	Root func()
 
 	// Select applies the given Action.
 	//
@@ -86,7 +86,7 @@ type SearchInterface[T Counter] interface {
 	// If Select returns false, a rollout is attempted from the given node instead and Expand
 	// is skipped. If part of a Rollout already, the Score is immediately propagated from the
 	// current node.
-	Select(Action) bool
+	Select func(Action) bool
 
 	// Expand returns at most n available actions.
 	// When n <= 0, all available actions are returned.
@@ -96,7 +96,7 @@ type SearchInterface[T Counter] interface {
 	//
 	// Expand will be called during rollout with n = 1 if Search does not implement RolloutInterface.
 	// Expand must always eventually return a terminal if using the default rollout strategy.
-	Expand(n int) []FrontierAction
+	Expand func(n int) []FrontierAction
 
 	// Score is a record for scorekeeping in search.
 	//
@@ -112,13 +112,16 @@ type SearchInterface[T Counter] interface {
 	// Adjust ExploreFactor proportionally if using values outside the interval.
 	//
 	// See github.com/wenooij/mcts/model for reusable scalar score implementations.
-	Score() Score[T]
+	Score func() Score[T]
 
 	// Hash returns a 64 bit hash of the current state.
-	Hash() uint64
+	Hash func() uint64
+
+	// Optional Rollout implementation.
+	RolloutInterface[T]
 }
 
-type RolloutInterface[T Counter] interface {
+type RolloutInterface[T Counter] struct {
 	// Rollout is an optional interface method which performs random rollouts from the current node
 	// and returns a raw score sum and number of rollouts performed.
 	//
@@ -136,5 +139,5 @@ type RolloutInterface[T Counter] interface {
 	// per epoch is helpful.
 	//
 	// Backpropagation is skipped when numRollouts is 0.
-	Rollout() (counters T, numRollouts float64)
+	Rollout func() (counters T, numRollouts float64)
 }

@@ -145,7 +145,7 @@ func main() {
 
 	s := &mcts.Search[int]{
 		ExploreFactor:   40,
-		SearchInterface: ks,
+		SearchInterface: model.MakeSearchInterface[int](ks),
 	}
 	s.Root()
 	for run := true; run; {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/wenooij/mcts"
+	"github.com/wenooij/mcts/model"
 	"github.com/wenooij/mcts/model/dummy"
 	"github.com/wenooij/mcts/searchops"
 )
@@ -29,10 +30,11 @@ func main() {
 		done <- struct{}{}
 	}()
 
+	dummy := &dummy.Search{BranchFactor: int(*B), MaxDepth: int(*D), Rand: r}
 	s := &mcts.Search[float64]{
 		Rand:            r,
 		Seed:            *seed,
-		SearchInterface: &dummy.Search{BranchFactor: int(*B), MaxDepth: int(*D), Rand: r},
+		SearchInterface: model.MakeSearchInterface[float64](dummy),
 		ExploreFactor:   0.5,
 	}
 	for {

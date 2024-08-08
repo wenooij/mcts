@@ -6,11 +6,11 @@ import (
 )
 
 func BenchmarkSearch10(b *testing.B) {
-	s := Search[float64]{SearchInterface: &dummySearch{
+	s := Search[float64]{SearchInterface: (&dummySearch{
 		MaxDepth:     100,
 		BranchFactor: 10,
-		Rand:         rand.New(rand.NewSource(1337))},
-	}
+		Rand:         rand.New(rand.NewSource(1337)),
+	}).Interface()}
 	b.ReportAllocs()
 	s.Init()
 	b.ResetTimer()
@@ -20,11 +20,11 @@ func BenchmarkSearch10(b *testing.B) {
 }
 
 func BenchmarkSearch100(b *testing.B) {
-	s := Search[float64]{SearchInterface: &dummySearch{
+	s := Search[float64]{SearchInterface: (&dummySearch{
 		MaxDepth:     100,
 		BranchFactor: 100,
-		Rand:         rand.New(rand.NewSource(1337))},
-	}
+		Rand:         rand.New(rand.NewSource(1337)),
+	}).Interface()}
 	b.ReportAllocs()
 	s.Init()
 	b.ResetTimer()
@@ -34,11 +34,11 @@ func BenchmarkSearch100(b *testing.B) {
 }
 
 func BenchmarkSearch1000(b *testing.B) {
-	s := Search[float64]{SearchInterface: &dummySearch{
+	s := Search[float64]{SearchInterface: (&dummySearch{
 		MaxDepth:     100,
 		BranchFactor: 1000,
-		Rand:         rand.New(rand.NewSource(1337))},
-	}
+		Rand:         rand.New(rand.NewSource(1337)),
+	}).Interface()}
 	b.ReportAllocs()
 	s.Init()
 	b.ResetTimer()

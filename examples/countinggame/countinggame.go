@@ -80,7 +80,7 @@ func main() {
 
 	g := &countingGame{Max: gameMax}
 	s := &mcts.Search[int]{
-		SearchInterface: g,
+		SearchInterface: model.MakeSearchInterface[int](g),
 		NumEpisodes:     100,
 	}
 

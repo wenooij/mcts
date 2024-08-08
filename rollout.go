@@ -4,7 +4,7 @@ import "math/rand"
 
 // rollout runs simulated rollouts from the given node and returns the results.
 func rollout[T Counter](s SearchInterface[T], ri RolloutInterface[T], r *rand.Rand) (counters T, numRollouts float64) {
-	if ri != nil {
+	if ri.Rollout != nil {
 		// Call the custom Rollout implementation if available.
 		return ri.Rollout()
 	}

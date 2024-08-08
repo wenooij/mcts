@@ -99,7 +99,7 @@ func (s *connect2) Hash() uint64 {
 func main() {
 	cs := &connect2{objectives: model.MaximizeTwoPlayers[int]()}
 	s := &mcts.Search[model.TwoPlayerScalars[int]]{
-		SearchInterface: cs,
+		SearchInterface: model.MakeSearchInterface[model.TwoPlayerScalars[int]](cs),
 		AddCounters:     model.AddTwoPlayerScalars[int],
 	}
 	for lastTime := (time.Time{}); ; {

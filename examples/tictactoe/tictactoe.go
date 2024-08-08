@@ -135,7 +135,7 @@ func main() {
 	si := newSearchPlugin()
 
 	s := mcts.Search[model.TwoPlayerScalars[int64]]{
-		SearchInterface: si,
+		SearchInterface: model.MakeSearchInterface[model.TwoPlayerScalars[int64]](si),
 		AddCounters:     model.AddTwoPlayerScalars[int64],
 	}
 
