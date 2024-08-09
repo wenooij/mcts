@@ -34,7 +34,7 @@ func main() {
 	s := &mcts.Search[float64]{
 		Rand:            r,
 		Seed:            *seed,
-		SearchInterface: model.MakeSearchInterface[float64](dummy),
+		SearchInterface: model.MakeSearchInterface(dummy, mcts.CounterInterface[float64]{}),
 		ExploreFactor:   0.5,
 	}
 	for {

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/wenooij/mcts"
 	"golang.org/x/exp/constraints"
 )
 
@@ -8,15 +9,15 @@ type Scalar interface {
 	constraints.Float | ~int | ~int64
 }
 
-func Add[T Scalar](c1, c2 T) T       { return c1 + c2 }
+func ScalarInterface[T Scalar]() mcts.CounterInterface[T] {
+	return mcts.CounterInterface[T]{Add: nil /* Add will be set automatically. */}
+}
+
 func Maximize[T Scalar](c T) float64 { return float64(c) }
 func Minimize[T Scalar](c T) float64 { return float64(-c) }
 
-type TwoPlayerScalars[T Scalar] [2]T
-
-func AddTwoPlayerScalars[T Scalar](c1 *TwoPlayerScalars[T], c2 TwoPlayerScalars[T]) {
-	c1[0] += c2[0]
-	c1[1] += c2[1]
+func TwoPlayerScalarsInterface[T Scalar]() mcts.CounterInterface[[2]T] {
+	return mcts.CounterInterface[[2]T]{Add: nil /* Add will be set automatically. */}
 }
 
 func TwoPlayerIndexByDepth(depth int) int {
@@ -26,11 +27,11 @@ func TwoPlayerIndexByDepth(depth int) int {
 	return 1
 }
 
-func MaximizePlayer1[T Scalar](c TwoPlayerScalars[T]) float64 { return float64(c[0] - c[1]) }
-func MaximizePlayer2[T Scalar](c TwoPlayerScalars[T]) float64 { return float64(c[1] - c[0]) }
+func MaximizePlayer1[T Scalar](c [2]T) float64 { return float64(c[0] - c[1]) }
+func MaximizePlayer2[T Scalar](c [2]T) float64 { return float64(c[1] - c[0]) }
 
-func MaximizeTwoPlayers[T Scalar]() [2]func(TwoPlayerScalars[T]) float64 {
-	return [2]func(TwoPlayerScalars[T]) float64{MaximizePlayer1[T], MaximizePlayer2[T]}
+func MaximizeTwoPlayers[T Scalar]() [2]func([2]T) float64 {
+	return [2]func([2]T) float64{MaximizePlayer1[T], MaximizePlayer2[T]}
 }
 
 func MaximizeNPlayers[T Scalar](n int) []func([]T) float64 {
@@ -41,11 +42,11 @@ func MaximizeNPlayers[T Scalar](n int) []func([]T) float64 {
 	return maximize
 }
 
-func MinimizePlayer1[T Scalar](c TwoPlayerScalars[T]) float64 { return -MaximizePlayer1[T](c) }
-func MinimizePlayer2[T Scalar](c TwoPlayerScalars[T]) float64 { return -MaximizePlayer2[T](c) }
+func MinimizePlayer1[T Scalar](c [2]T) float64 { return -MaximizePlayer1[T](c) }
+func MinimizePlayer2[T Scalar](c [2]T) float64 { return -MaximizePlayer2[T](c) }
 
-func MinimizeTwoPlayers[T Scalar]() [2]func(TwoPlayerScalars[T]) float64 {
-	return [2]func(TwoPlayerScalars[T]) float64{MinimizePlayer1[T], MinimizePlayer2[T]}
+func MinimizeTwoPlayers[T Scalar]() [2]func([2]T) float64 {
+	return [2]func([2]T) float64{MinimizePlayer1[T], MinimizePlayer2[T]}
 }
 
 func MinimizeNPlayers[T Scalar](n int) []func([]T) float64 {

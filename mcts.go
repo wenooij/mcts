@@ -119,6 +119,9 @@ type SearchInterface[T Counter] struct {
 
 	// Optional Rollout implementation.
 	RolloutInterface[T]
+
+	// Optional counter implementation.
+	CounterInterface[T]
 }
 
 type RolloutInterface[T Counter] struct {

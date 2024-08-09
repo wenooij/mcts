@@ -23,7 +23,7 @@ const (
 type SearchPlugin struct {
 	node       *tictactoeNode
 	actions    []mcts.FrontierAction
-	objectives [2]func(model.TwoPlayerScalars[int64]) float64
+	objectives [2]func([2]int64) float64
 	r          *rand.Rand
 }
 
@@ -111,10 +111,10 @@ func (s *SearchPlugin) Select(a mcts.Action) bool {
 	return true
 }
 
-func (s *SearchPlugin) Score() mcts.Score[model.TwoPlayerScalars[int64]] {
+func (s *SearchPlugin) Score() mcts.Score[[2]int64] {
 	// Depth penalty term rewards the earliest win.
-	scores := mcts.Score[model.TwoPlayerScalars[int64]]{
-		Counter:   model.TwoPlayerScalars[int64]{0, 0},
+	scores := mcts.Score[[2]int64]{
+		Counter:   [2]int64{},
 		Objective: s.objectives[model.TwoPlayerIndexByDepth(s.node.depth)],
 	}
 	// Applying a depth penalty enables MCTS to find the easrliest win, in theory.
@@ -134,9 +134,8 @@ func (s *SearchPlugin) Hash() uint64 { return maphash.Bytes(seed, s.node.state[:
 func main() {
 	si := newSearchPlugin()
 
-	s := mcts.Search[model.TwoPlayerScalars[int64]]{
-		SearchInterface: model.MakeSearchInterface[model.TwoPlayerScalars[int64]](si),
-		AddCounters:     model.AddTwoPlayerScalars[int64],
+	s := mcts.Search[[2]int64]{
+		SearchInterface: model.MakeSearchInterface(si, model.TwoPlayerScalarsInterface[int64]()),
 	}
 
 	const epochs = 10000
@@ -145,6 +144,6 @@ func main() {
 		s.Search()
 	}
 	fmt.Println("Search took", time.Since(start), "using", len(s.Table), "table entries and", s.NumEpisodes*epochs, "iterations")
-	pv := searchops.PV(&s, searchops.MaxDepthFilter[model.TwoPlayerScalars[int64]](10))
+	pv := searchops.PV(&s, searchops.MaxDepthFilter[[2]int64](10))
 	fmt.Println(pv)
 }

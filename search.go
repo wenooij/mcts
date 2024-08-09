@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"plugin"
 	"time"
-	"unsafe"
 )
 
 // DefaultExploreFactor based on the theory assuming scores normalized to the interval [-1, +1].
@@ -24,6 +23,9 @@ const DefaultExploreFactor = math.Sqrt2
 type Search[T Counter] struct {
 	// SearchInterface implements the search environment.
 	SearchInterface[T]
+
+	// Optional counter implementation.
+	CounterInterface[T]
 
 	// Table is the collection of Hashed Nodes and children.
 	Table map[uint64]*TableEntry[T]
@@ -43,15 +45,6 @@ type Search[T Counter] struct {
 	// Rand provides randomness to the search.
 	// If unset, it is automatically seeded based on the value from Seed.
 	Rand *rand.Rand
-
-	// AddCounters is provided to supply a generic function to add the results of
-	// the backpropagated scores from search.
-	//
-	// For common values of T this will be populated automatically otherwise you
-	// will need to supply a function yourself. The common values of T are:
-	// float32, float64, [2]float64, []float64, int, and int64.
-	// AddCounters for counters in the model package need to be supplied manually.
-	AddCounters func(*T, T)
 
 	// ExploreFactor is a tuneable parameter which weights the explore side of the
 	// MAB policy.
@@ -79,34 +72,8 @@ func (s *Search[T]) patchDefaults() {
 		}
 		s.Rand = rand.New(rand.NewSource(s.Seed))
 	}
-	if s.AddCounters == nil {
-		var t T
-		switch any(t).(type) {
-		case float32:
-			f := func(x1 *float32, x2 float32) { *x1 += x2 }
-			s.AddCounters = *(*func(*T, T))(unsafe.Pointer(&f))
-		case float64:
-			f := func(x1 *float64, x2 float64) { *x1 += x2 }
-			s.AddCounters = *(*func(*T, T))(unsafe.Pointer(&f))
-		case [2]float64:
-			f := func(c1 *[2]float64, c2 [2]float64) { c1[0] += c2[0]; c1[1] += c2[1] }
-			s.AddCounters = *(*func(*T, T))(unsafe.Pointer(&f))
-		case []float64:
-			f := func(c1 *[]float64, c2 []float64) {
-				for i, v := range c2 {
-					(*c1)[i] += v
-				}
-			}
-			s.AddCounters = *(*func(*T, T))(unsafe.Pointer(&f))
-		case int:
-			f := func(x1 *int, x2 int) { *x1 += x2 }
-			s.AddCounters = *(*func(*T, T))(unsafe.Pointer(&f))
-		case int64:
-			f := func(x1 *int64, x2 int64) { *x1 += x2 }
-			s.AddCounters = *(*func(*T, T))(unsafe.Pointer(&f))
-		default:
-			panic(fmt.Errorf("Search.Init: could not automatically determine a value for AddCounters for type %T: must supply a custom function", t))
-		}
+	if s.CounterInterface.Add == nil {
+		s.CounterInterface.Add = builtinAdd[T]()
 	}
 }
 
@@ -184,6 +151,6 @@ func (s *Search[T]) searchEpisode() {
 	}
 	// Simulate and backprop score.
 	if counters, numRollouts := rollout(s.SearchInterface, s.RolloutInterface, s.Rand); numRollouts != 0 {
-		backprop(s.hashTrajectory, s.AddCounters, counters, numRollouts, s.ExploreFactor)
+		backprop(s.hashTrajectory, s.CounterInterface, counters, numRollouts, s.ExploreFactor)
 	}
 }

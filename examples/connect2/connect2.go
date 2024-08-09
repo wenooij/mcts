@@ -25,7 +25,7 @@ func (a action) String() string { return string('0' + a) }
 type connect2 struct {
 	state      [4]stone
 	depth      int
-	objectives [2]func(model.TwoPlayerScalars[int]) float64
+	objectives [2]func([2]int) float64
 }
 
 func (s connect2) winner() stone {
@@ -63,9 +63,9 @@ func (s *connect2) Expand(int) []mcts.FrontierAction {
 	return actions
 }
 
-func (s *connect2) Score() mcts.Score[model.TwoPlayerScalars[int]] {
-	scores := mcts.Score[model.TwoPlayerScalars[int]]{
-		Counter:   model.TwoPlayerScalars[int]{},
+func (s *connect2) Score() mcts.Score[[2]int] {
+	scores := mcts.Score[[2]int]{
+		Counter:   [2]int{},
 		Objective: s.objectives[model.TwoPlayerIndexByDepth(s.depth)],
 	}
 	switch s.winner() {
@@ -98,9 +98,8 @@ func (s *connect2) Hash() uint64 {
 
 func main() {
 	cs := &connect2{objectives: model.MaximizeTwoPlayers[int]()}
-	s := &mcts.Search[model.TwoPlayerScalars[int]]{
-		SearchInterface: model.MakeSearchInterface[model.TwoPlayerScalars[int]](cs),
-		AddCounters:     model.AddTwoPlayerScalars[int],
+	s := &mcts.Search[[2]int]{
+		SearchInterface: model.MakeSearchInterface(cs, model.TwoPlayerScalarsInterface[int]()),
 	}
 	for lastTime := (time.Time{}); ; {
 		if s.Search(); time.Since(lastTime) > time.Second {

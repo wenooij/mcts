@@ -174,7 +174,7 @@ func main() {
 
 	as := &search{r: rand.New(rand.NewSource(time.Now().UnixNano()))}
 	s := &mcts.Search[float32]{
-		SearchInterface: model.MakeSearchInterface[float32](as),
+		SearchInterface: model.MakeSearchInterface(as, mcts.CounterInterface[float32]{}),
 		NumEpisodes:     10000,
 	}
 

@@ -20,11 +20,11 @@ type CoinFlip struct{}
 func (CoinFlip) String() string { return "<coin-flip>" }
 
 type Game struct {
-	depth      int                         // depth determining player to move.
-	limit      int                         // absolute limit of coin flip sums.
-	pass       int                         // pass count. 1: Last turn of play. 2: game is over.
-	playerSums model.TwoPlayerScalars[int] // player coin flip sums.
-	objectives [2]func(model.TwoPlayerScalars[int]) float64
+	depth      int    // depth determining player to move.
+	limit      int    // absolute limit of coin flip sums.
+	pass       int    // pass count. 1: Last turn of play. 2: game is over.
+	playerSums [2]int // player coin flip sums.
+	objectives [2]func([2]int) float64
 	r          *rand.Rand
 }
 
@@ -80,9 +80,9 @@ func (g *Game) Flip(player int) {
 	}
 }
 
-func (g Game) Score() mcts.Score[model.TwoPlayerScalars[int]] {
-	score := mcts.Score[model.TwoPlayerScalars[int]]{
-		Counter:   model.TwoPlayerScalars[int]{},
+func (g Game) Score() mcts.Score[[2]int] {
+	score := mcts.Score[[2]int]{
+		Counter:   [2]int{},
 		Objective: g.objectives[model.TwoPlayerIndexByDepth(g.depth)],
 	}
 	// Test loss conditions.
@@ -121,18 +121,17 @@ func main() {
 	const limit = 3
 	r := rand.New(rand.NewSource(1337))
 	g := newGame(r, limit)
-	s := mcts.Search[model.TwoPlayerScalars[int]]{
-		SearchInterface: model.MakeSearchInterface[model.TwoPlayerScalars[int]](g),
-		AddCounters:     model.AddTwoPlayerScalars[int],
+	s := mcts.Search[[2]int]{
+		SearchInterface: model.MakeSearchInterface(g, model.TwoPlayerScalarsInterface[int]()),
 		Rand:            r,
 	}
 	for lastPrint := (time.Time{}); ; {
 		s.Search()
 		if time.Since(lastPrint) > time.Second {
-			fmt.Println(searchops.FilterV[model.TwoPlayerScalars[int]](s.RootEntry,
-				searchops.EdgePredicate[model.TwoPlayerScalars[int]](func(n *mcts.Edge[model.TwoPlayerScalars[int]]) bool { return n.NumRollouts > 0 }).Filter,
-				searchops.HighestPriorityFilter[model.TwoPlayerScalars[int]](),
-				searchops.AnyFilter[model.TwoPlayerScalars[int]](r)))
+			fmt.Println(searchops.FilterV[[2]int](s.RootEntry,
+				searchops.EdgePredicate[[2]int](func(n *mcts.Edge[[2]int]) bool { return n.NumRollouts > 0 }).Filter,
+				searchops.HighestPriorityFilter[[2]int](),
+				searchops.AnyFilter[[2]int](r)))
 			lastPrint = time.Now()
 		}
 	}

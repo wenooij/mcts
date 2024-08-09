@@ -2,10 +2,10 @@ package mcts
 
 import "math"
 
-func backprop[T Counter](trajectory []*Edge[T], add func(*T, T), counters T, numRollouts, exploreFactor float64) {
+func backprop[T Counter](trajectory []*Edge[T], counter CounterInterface[T], counters T, numRollouts, exploreFactor float64) {
 	for i := len(trajectory) - 1; i >= 0; i-- {
 		e := trajectory[i]
-		add(&e.Score.Counter, counters)
+		counter.Add(&e.Score.Counter, counters)
 		e.NumRollouts += numRollouts
 		if i > 0 {
 			prev := trajectory[i-1]

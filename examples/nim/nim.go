@@ -30,7 +30,7 @@ type nimState struct {
 	r          *rand.Rand
 	piles      []nimPile
 	depth      int
-	objectives [2]func(model.TwoPlayerScalars[int]) float64
+	objectives [2]func([2]int) float64
 }
 
 func (n *nimState) Root() {
@@ -67,10 +67,10 @@ func (n *nimState) Choices() int {
 	return choices
 }
 
-func (n *nimState) Score() mcts.Score[model.TwoPlayerScalars[int]] {
+func (n *nimState) Score() mcts.Score[[2]int] {
 	player := n.Player()
-	scores := mcts.Score[model.TwoPlayerScalars[int]]{
-		Counter:   model.TwoPlayerScalars[int]{},
+	scores := mcts.Score[[2]int]{
+		Counter:   [2]int{},
 		Objective: n.objectives[model.TwoPlayerIndexByDepth(n.depth)],
 	}
 	switch n.Choices() {
@@ -122,9 +122,8 @@ func main() {
 	n := &nimState{N: 4, r: r, objectives: model.MaximizeTwoPlayers[int]()}
 	n.Root()
 
-	s := &mcts.Search[model.TwoPlayerScalars[int]]{
-		SearchInterface: model.MakeSearchInterface[model.TwoPlayerScalars[int]](n),
-		AddCounters:     model.AddTwoPlayerScalars[int],
+	s := &mcts.Search[[2]int]{
+		SearchInterface: model.MakeSearchInterface(n, model.TwoPlayerScalarsInterface[int]()),
 	}
 	for lastTime := (time.Time{}); ; {
 		if s.Search(); time.Since(lastTime) > time.Second {
