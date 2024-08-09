@@ -128,7 +128,7 @@ func main() {
 	for lastPrint := (time.Time{}); ; {
 		s.Search()
 		if time.Since(lastPrint) > time.Second {
-			fmt.Println(searchops.FilterV[[2]int](s.RootEntry,
+			fmt.Println(searchops.FilterV(s.RootEntry,
 				searchops.EdgePredicate[[2]int](func(n *mcts.Edge[[2]int]) bool { return n.NumRollouts > 0 }).Filter,
 				searchops.HighestPriorityFilter[[2]int](),
 				searchops.AnyFilter[[2]int](r)))

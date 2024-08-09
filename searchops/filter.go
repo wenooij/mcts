@@ -142,6 +142,18 @@ func FirstFilter[T mcts.Counter]() EdgeFilter[T] {
 	}
 }
 
+func HasObjective[T mcts.Counter]() EdgeFilter[T] {
+	return func(es []*mcts.Edge[T]) []*mcts.Edge[T] {
+		var res []*mcts.Edge[T]
+		for _, e := range es {
+			if e.Score.Objective != nil {
+				res = append(res, e)
+			}
+		}
+		return res
+	}
+}
+
 // VisitedFilter returns an EdgeFilter which filters out visited entries.
 func VisitedFilter[T mcts.Counter](s *mcts.Search[T]) EdgeFilter[T] {
 	visited := make(map[*mcts.TableEntry[T]]struct{})

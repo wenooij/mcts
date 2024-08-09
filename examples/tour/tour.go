@@ -186,48 +186,17 @@ func main() {
 	r := rand.New(rand.NewSource(*seed))
 	// Default tour for n=10.
 	// Replace this with your own.
-	// TODO(wes): Add a flag.
 	pos := []*tourPos{
-		// {54, 66},
-		// {34, 29},
-		// {30, 31},
-		// {45, 54},
-		// {72, 47},
-		// {30, 7},
-		// {46, 62},
-		// {36, 84},
-		// {13, 81},
-		// {68, 69},
-		{91, 64},
-		{82, 91},
-		{66, 1},
-		{16, 1},
-		{56, 85},
-		{18, 23},
-		{82, 47},
-		{69, 79},
-		{32, 11},
-		{97, 78},
-		{20, 83},
-		{27, 82},
-		{91, 97},
-		{21, 1},
-		{1, 48},
-		{27, 89},
-		{18, 27},
-		{28, 41},
-		{25, 9},
-		{58, 26},
-		{8, 57},
-		{46, 49},
-		{10, 63},
-		{26, 7},
-		{34, 66},
-		{61, 20},
-		{32, 73},
-		{87, 71},
-		{35, 97},
-		{84, 28},
+		{54, 66},
+		{34, 29},
+		{30, 31},
+		{45, 54},
+		{72, 47},
+		{30, 7},
+		{46, 62},
+		{36, 84},
+		{13, 81},
+		{68, 69},
 	}
 	if *n != 10 && *tour == "" && !*randomMap {
 		fmt.Println("Setting -randomize_map=true when n != 10 and no initial -tour provided")
@@ -266,6 +235,7 @@ func main() {
 	// Results can be pasted into the tool.
 	// https://www.lancaster.ac.uk/fas/psych/software/TSP/TSP.html.
 	pv := searchops.FilterV(s.RootEntry,
+		searchops.HasObjective[float64](),
 		searchops.MaxScoreFilter[float64](),
 		searchops.MaxDepthFilter[float64](2**n),
 		searchops.FirstFilter[float64]())

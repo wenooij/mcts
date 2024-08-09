@@ -41,7 +41,7 @@ func main() {
 		s.Search()
 		select {
 		case <-done:
-			pv := searchops.FilterV[float64](s.RootEntry,
+			pv := searchops.FilterV(s.RootEntry,
 				searchops.EdgePredicate[float64](func(n *mcts.Edge[float64]) bool { return n.NumRollouts >= 1_000 }).Filter,
 				searchops.AnyFilter[float64](r))
 			fmt.Println(pv)

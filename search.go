@@ -73,7 +73,7 @@ func (s *Search[T]) patchDefaults() {
 		s.Rand = rand.New(rand.NewSource(s.Seed))
 	}
 	if s.CounterInterface.Add == nil {
-		s.CounterInterface.Add = builtinAdd[T]()
+		patchBuiltinAdd[T](&s.CounterInterface)
 	}
 }
 
