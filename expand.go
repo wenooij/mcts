@@ -7,7 +7,7 @@ import (
 )
 
 // expand calls SearchInterface.Expand to add more Action edges to the given Node.
-func expand[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T], trajectory *[]*Edge[T], n *TableEntry[T], r *rand.Rand) (child *Edge[T]) {
+func expand[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T], hashTable map[*TableEntry[T]]uint64, trajectory *[]*Edge[T], n *TableEntry[T], r *rand.Rand) (child *Edge[T]) {
 	actions := s.Expand(0)
 	if len(actions) == 0 {
 		return nil
@@ -20,6 +20,7 @@ func expand[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T], tr
 	var totalWeight float64
 	for _, a := range actions {
 		// Dst will be filled in on the next Select.
+		// We call Hash after the next Select.
 		edge := &Edge[T]{Src: n, Dst: nil, Priority: math.Inf(-1), Node: makeNode[T](a)}
 		*n = append(*n, edge)
 		// Sum predictor weights to later normalize.
@@ -34,6 +35,6 @@ func expand[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T], tr
 		(*n)[i].PriorWeight /= totalWeight
 	}
 	// Select a child element to expand.
-	child, _ = selectChild(s, table, trajectory, n)
+	child, _ = selectChild(s, table, hashTable, trajectory, n)
 	return child
 }

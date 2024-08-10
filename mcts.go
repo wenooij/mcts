@@ -114,7 +114,14 @@ type SearchInterface[T Counter] struct {
 	// See github.com/wenooij/mcts/model for reusable scalar score implementations.
 	Score func() Score[T]
 
-	// Hash returns a 64 bit hash of the current state.
+	// Hash is an optional method returning a 64 bit hash of the current state.
+	//
+	// Hash will use a default implementation using the Action string.
+	//
+	// The default hash implementation does not support transpositions
+	// <https://www.chessprogramming.org/Transposition>.
+	// As a result transpositions will create different nodes for the same state
+	// leading to a higher effective branching factor.
 	Hash func() uint64
 
 	// Optional Rollout implementation.

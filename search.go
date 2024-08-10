@@ -1,7 +1,9 @@
 package mcts
 
 import (
+	"encoding/binary"
 	"fmt"
+	"hash/maphash"
 	"math"
 	"math/rand"
 	"plugin"
@@ -29,6 +31,10 @@ type Search[T Counter] struct {
 
 	// Table is the collection of Hashed Nodes and children.
 	Table map[uint64]*TableEntry[T]
+
+	// inverseTable is only used for the default Hash implementation.
+	inverseTable map[*TableEntry[T]]uint64
+	m            maphash.Hash
 
 	RootEntry *TableEntry[T]
 
@@ -72,6 +78,22 @@ func (s *Search[T]) patchDefaults() {
 		}
 		s.Rand = rand.New(rand.NewSource(s.Seed))
 	}
+	if s.SearchInterface.Hash == nil {
+		s.inverseTable = make(map[*TableEntry[T]]uint64, 64)
+		s.m.SetSeed(maphash.MakeSeed())
+		var b [8]byte
+		// Provide a default hash implementation which hashes the last state and the next move.
+		s.SearchInterface.Hash = func() uint64 {
+			s.m.Reset()
+			if len(s.hashTrajectory) == 0 {
+				return s.m.Sum64()
+			}
+			binary.BigEndian.PutUint64(b[:], s.inverseTable[s.hashTrajectory[len(s.hashTrajectory)-1].Src])
+			s.m.Write(b[:])
+			s.m.WriteString(s.hashTrajectory[len(s.hashTrajectory)-1].Node.Action.String())
+			return s.m.Sum64()
+		}
+	}
 	if s.CounterInterface.Add == nil {
 		patchBuiltinAdd[T](&s.CounterInterface)
 	}
@@ -104,6 +126,7 @@ func (s *Search[T]) Init() bool {
 	if s.SearchInterface.Root == nil {
 		panic("Search.Init: Search.SearchInterface.Root is nil. A search implementation is required before calling Search or Init.")
 	}
+	s.patchDefaults()
 	// Find the root hash node.
 	if s.RootEntry == nil {
 		s.Root()
@@ -113,10 +136,12 @@ func (s *Search[T]) Init() bool {
 			// Initialize root.
 			e = &TableEntry[T]{}
 			s.Table[h] = e
+			if s.inverseTable != nil {
+				s.inverseTable[e] = h
+			}
 		}
 		s.RootEntry = e
 	}
-	s.patchDefaults()
 	return true
 }
 
@@ -141,13 +166,13 @@ func (s *Search[T]) searchEpisode() {
 	// Select the best leaf node by MAB policy.
 	var doExpand bool
 	for child := (*Edge[T])(nil); ; n = child.Dst {
-		if child, doExpand = selectChild(s.SearchInterface, s.Table, &s.hashTrajectory, n); child == nil {
+		if child, doExpand = selectChild(s.SearchInterface, s.Table, s.inverseTable, &s.hashTrajectory, n); child == nil {
 			break
 		}
 	}
 	// Expand a new frontier node.
 	if doExpand {
-		expand(s.SearchInterface, s.Table, &s.hashTrajectory, n, s.Rand)
+		expand(s.SearchInterface, s.Table, s.inverseTable, &s.hashTrajectory, n, s.Rand)
 	}
 	// Simulate and backprop score.
 	if counters, numRollouts := rollout(s.SearchInterface, s.RolloutInterface, s.Rand); numRollouts != 0 {

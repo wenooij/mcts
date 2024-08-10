@@ -1,7 +1,7 @@
 package mcts
 
 // selectChild selects the highest priority child from the min heap.
-func selectChild[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T], trajectory *[]*Edge[T], n *TableEntry[T]) (child *Edge[T], expand bool) {
+func selectChild[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T], hashTable map[*TableEntry[T]]uint64, trajectory *[]*Edge[T], n *TableEntry[T]) (child *Edge[T], expand bool) {
 	if len(*n) == 0 {
 		return nil, true
 	}
@@ -16,9 +16,10 @@ func selectChild[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T
 		// backprop the score from n.
 		return nil, false
 	}
+	*trajectory = append(*trajectory, child)
 	if child.Dst == nil {
 		// Insert initial node.
-		// We couldn't do this in expand because Hash
+		// We couldn't do this in Expand because Hash
 		// expects to be called only after Select.
 		h := s.Hash()
 		// Dst will already be in Table if dst is a transposition.
@@ -26,10 +27,12 @@ func selectChild[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T
 		if !ok {
 			dst = &TableEntry[T]{}
 			table[h] = dst
+			if hashTable != nil {
+				hashTable[dst] = h
+			}
 		}
 		child.Dst = dst
 	}
-	*trajectory = append(*trajectory, child)
 	initializeScore(s, child)
 	return child, false
 }

@@ -3,6 +3,10 @@ package model
 import "github.com/wenooij/mcts"
 
 func MakeSearchInterface[T mcts.Counter](x any, counter mcts.CounterInterface[T]) mcts.SearchInterface[T] {
+	var hash func() uint64
+	if h, ok := x.(interface{ Hash() uint64 }); ok {
+		hash = h.Hash
+	}
 	return mcts.SearchInterface[T]{
 		Root:   x.(interface{ Root() }).Root,
 		Select: x.(interface{ Select(mcts.Action) bool }).Select,
@@ -10,7 +14,7 @@ func MakeSearchInterface[T mcts.Counter](x any, counter mcts.CounterInterface[T]
 			Expand(int) []mcts.FrontierAction
 		}).Expand,
 		Score:            x.(interface{ Score() mcts.Score[T] }).Score,
-		Hash:             x.(interface{ Hash() uint64 }).Hash,
+		Hash:             hash,
 		RolloutInterface: makeRolloutInterface[T](x),
 		CounterInterface: counter,
 	}
