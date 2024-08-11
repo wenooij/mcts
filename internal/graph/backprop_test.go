@@ -1,13 +1,15 @@
-package mcts
+package graph
 
 import (
 	"math/rand"
 	"testing"
+
+	"github.com/wenooij/mcts"
 )
 
 func TestBackpropFeatures(t *testing.T) {
 	r := rand.New(rand.NewSource(1337))
-	s := &Search[float64]{
+	s := &mcts.Search[float64]{
 		SearchInterface: (&dummySearch{BranchFactor: 1, MaxDepth: 3, Rand: r}).Interface(),
 		Rand:            r,
 		NumEpisodes:     3,
@@ -15,7 +17,7 @@ func TestBackpropFeatures(t *testing.T) {
 	s.Search()
 
 	// Create PV.
-	var pv []*Edge[float64]
+	var pv []*mcts.Edge[float64]
 	root := s.RootEntry
 	{
 		node := root

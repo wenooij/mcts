@@ -1,7 +1,9 @@
-package mcts
+package graph
+
+import "github.com/wenooij/mcts"
 
 // selectChild selects the highest priority child from the min heap.
-func selectChild[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T], hashTable map[*TableEntry[T]]uint64, trajectory *[]*Edge[T], n *TableEntry[T]) (child *Edge[T], expand bool) {
+func selectChild[T mcts.Counter](s mcts.SearchInterface[T], table map[uint64]*mcts.TableEntry[T], hashTable map[*mcts.TableEntry[T]]uint64, trajectory *[]*mcts.Edge[T], n *mcts.TableEntry[T]) (child *mcts.Edge[T], expand bool) {
 	if len(*n) == 0 {
 		return nil, true
 	}
@@ -25,7 +27,7 @@ func selectChild[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T
 		// Dst will already be in Table if dst is a transposition.
 		dst, ok := table[h]
 		if !ok {
-			dst = &TableEntry[T]{}
+			dst = &mcts.TableEntry[T]{}
 			table[h] = dst
 			if hashTable != nil {
 				hashTable[dst] = h
@@ -40,7 +42,7 @@ func selectChild[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T
 // initializeScore is called when selecting a node for the first time.
 //
 // precondition: n must be the current node (s.Select(n.Action) has been called, or we are at the root).
-func initializeScore[T Counter](s SearchInterface[T], e *Edge[T]) {
+func initializeScore[T mcts.Counter](s mcts.SearchInterface[T], e *mcts.Edge[T]) {
 	if e.Score.Objective == nil {
 		// E will be heapified on the first call to backprop.
 		e.Score = s.Score()

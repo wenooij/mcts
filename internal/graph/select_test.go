@@ -1,15 +1,17 @@
-package mcts
+package graph
 
 import (
 	"math/rand"
 	"testing"
+
+	"github.com/wenooij/mcts"
 )
 
 func TestSelectVisitsRootActions(t *testing.T) {
 	const numRootActions = 20
 
 	r := rand.New(rand.NewSource(1337))
-	s := Search[float64]{
+	s := mcts.Search[float64]{
 		SearchInterface: (&dummySearch{BranchFactor: numRootActions, MaxDepth: 1, Rand: r}).Interface(),
 		Rand:            r,
 		NumEpisodes:     numRootActions,
@@ -17,7 +19,7 @@ func TestSelectVisitsRootActions(t *testing.T) {
 	s.Search()
 
 	root := s.RootEntry
-	rootChildren := make([]*Edge[float64], 0, len(*root))
+	rootChildren := make([]*mcts.Edge[float64], 0, len(*root))
 	for _, e := range *root {
 		rootChildren = append(rootChildren, e)
 	}

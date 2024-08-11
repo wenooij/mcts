@@ -21,23 +21,6 @@ type Node[T Counter] struct {
 	PriorWeight float64
 }
 
-// makeNode creates a tree node element.
-func makeNode[T Counter](action FrontierAction) Node[T] {
-	weight := action.Weight
-	if weight < 0 {
-		panic("mcts.Node: Predictor weight < 0 for step: " + action.Action.String())
-	}
-	if weight == 0 {
-		weight = 1
-	}
-	return Node[T]{
-		// Max priority for new nodes.
-		// This will be recomputed after the first attempt.
-		PriorWeight: weight,
-		Action:      action.Action,
-	}
-}
-
 func (e Node[T]) appendString(sb *strings.Builder) {
 	fmt.Fprintf(sb, "[%f] %s (%d)", e.Score.Apply()/float64(e.NumRollouts), e.Action, int64(e.NumRollouts))
 }

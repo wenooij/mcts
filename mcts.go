@@ -1,6 +1,13 @@
 // Package mcts provides an implementation of general multi-agent Monte-Carlo tree search (MCTS).
 package mcts
 
+type Topo int
+
+const (
+	TopoDefault Topo = iota
+	TopoGraph
+)
+
 // Action represents an edge in the a game tree.
 //
 // String should return a standard representation of the Action.
@@ -123,6 +130,12 @@ type SearchInterface[T Counter] struct {
 	// As a result transpositions will create different nodes for the same state
 	// leading to a higher effective branching factor.
 	Hash func() uint64
+
+	// Topology to use, by default graph.
+	Topo Topo
+
+	// InternalInterface custom implementation or leave empty to use a builtin one.
+	InternalInterface[T]
 
 	// Optional Rollout implementation.
 	RolloutInterface[T]

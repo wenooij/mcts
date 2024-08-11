@@ -1,13 +1,15 @@
-package mcts
+package graph
 
 import (
 	"math"
 	"math/rand"
 	"slices"
+
+	"github.com/wenooij/mcts"
 )
 
 // expand calls SearchInterface.Expand to add more Action edges to the given Node.
-func expand[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T], hashTable map[*TableEntry[T]]uint64, trajectory *[]*Edge[T], n *TableEntry[T], r *rand.Rand) (child *Edge[T]) {
+func expand[T mcts.Counter](s mcts.SearchInterface[T], table map[uint64]*mcts.TableEntry[T], hashTable map[*mcts.TableEntry[T]]uint64, trajectory *[]*mcts.Edge[T], n *mcts.TableEntry[T], r *rand.Rand) (child *mcts.Edge[T]) {
 	actions := s.Expand(0)
 	if len(actions) == 0 {
 		return nil
@@ -21,7 +23,7 @@ func expand[T Counter](s SearchInterface[T], table map[uint64]*TableEntry[T], ha
 	for _, a := range actions {
 		// Dst will be filled in on the next Select.
 		// We call Hash after the next Select.
-		edge := &Edge[T]{Src: n, Dst: nil, Priority: math.Inf(-1), Node: makeNode[T](a)}
+		edge := &mcts.Edge[T]{Src: n, Dst: nil, Priority: math.Inf(-1), Node: makeNode[T](a)}
 		*n = append(*n, edge)
 		// Sum predictor weights to later normalize.
 		totalWeight += edge.PriorWeight

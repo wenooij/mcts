@@ -1,6 +1,9 @@
 package model
 
-import "github.com/wenooij/mcts"
+import (
+	"github.com/wenooij/mcts"
+	"github.com/wenooij/mcts/internal/graph"
+)
 
 func MakeSearchInterface[T mcts.Counter](x any, counter mcts.CounterInterface[T]) mcts.SearchInterface[T] {
 	var hash func() uint64
@@ -13,10 +16,11 @@ func MakeSearchInterface[T mcts.Counter](x any, counter mcts.CounterInterface[T]
 		Expand: x.(interface {
 			Expand(int) []mcts.FrontierAction
 		}).Expand,
-		Score:            x.(interface{ Score() mcts.Score[T] }).Score,
-		Hash:             hash,
-		RolloutInterface: makeRolloutInterface[T](x),
-		CounterInterface: counter,
+		Score:             x.(interface{ Score() mcts.Score[T] }).Score,
+		Hash:              hash,
+		RolloutInterface:  makeRolloutInterface[T](x),
+		CounterInterface:  counter,
+		InternalInterface: graph.InternalInterface[T](),
 	}
 }
 
