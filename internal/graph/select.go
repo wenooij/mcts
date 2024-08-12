@@ -3,7 +3,7 @@ package graph
 import "github.com/wenooij/mcts"
 
 // selectChild selects the highest priority child from the min heap.
-func selectChild[T mcts.Counter](s mcts.SearchInterface[T], table map[uint64]*mcts.TableEntry[T], hashTable map[*mcts.TableEntry[T]]uint64, trajectory *[]*mcts.Edge[T], n *mcts.TableEntry[T]) (child *mcts.Edge[T], expand bool) {
+func (g *graphInterface[T]) selectChild(s mcts.SearchInterface[T], path *[]*mcts.Edge[T], n *mcts.EdgeList[T]) (child *mcts.Edge[T], expand bool) {
 	if len(*n) == 0 {
 		return nil, true
 	}
@@ -18,19 +18,19 @@ func selectChild[T mcts.Counter](s mcts.SearchInterface[T], table map[uint64]*mc
 		// backprop the score from n.
 		return nil, false
 	}
-	*trajectory = append(*trajectory, child)
+	*path = append(*path, child)
 	if child.Dst == nil {
 		// Insert initial node.
 		// We couldn't do this in Expand because Hash
 		// expects to be called only after Select.
 		h := s.Hash()
 		// Dst will already be in Table if dst is a transposition.
-		dst, ok := table[h]
+		dst, ok := g.Table[h]
 		if !ok {
-			dst = &mcts.TableEntry[T]{}
-			table[h] = dst
-			if hashTable != nil {
-				hashTable[dst] = h
+			dst = &mcts.EdgeList[T]{}
+			g.Table[h] = dst
+			if g.InverseTable != nil {
+				g.InverseTable[dst] = h
 			}
 		}
 		child.Dst = dst

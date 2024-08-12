@@ -7,7 +7,7 @@ import (
 
 // Child searches the immediate children of n one-by-one and returns the subtree for a
 // Otherwise returns nil if a is not present.
-func Child[T mcts.Counter](n *mcts.TableEntry[T], a mcts.Action) *mcts.Edge[T] {
+func Child[T mcts.Counter](n *mcts.EdgeList[T], a mcts.Action) *mcts.Edge[T] {
 	for _, e := range *n {
 		if e.Action == a {
 			return e
@@ -19,7 +19,7 @@ func Child[T mcts.Counter](n *mcts.TableEntry[T], a mcts.Action) *mcts.Edge[T] {
 // Subtree returns a the subtree defined by the input actions.
 //
 // If not all actions are present, Subtree returns nil.
-func Subtree[T mcts.Counter](root *mcts.TableEntry[T], as ...mcts.Action) *mcts.TableEntry[T] {
+func Subtree[T mcts.Counter](root *mcts.EdgeList[T], as ...mcts.Action) *mcts.EdgeList[T] {
 	for _, a := range as {
 		child := Child(root, a)
 		if child == nil {

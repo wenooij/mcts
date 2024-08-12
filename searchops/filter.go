@@ -156,7 +156,7 @@ func HasObjective[T mcts.Counter]() EdgeFilter[T] {
 
 // VisitedFilter returns an EdgeFilter which filters out visited entries.
 func VisitedFilter[T mcts.Counter](s *mcts.Search[T]) EdgeFilter[T] {
-	visited := make(map[*mcts.TableEntry[T]]struct{})
+	visited := make(map[*mcts.EdgeList[T]]struct{})
 	root := s.RootEntry
 	visited[root] = struct{}{}
 	return func(es []*mcts.Edge[T]) []*mcts.Edge[T] {

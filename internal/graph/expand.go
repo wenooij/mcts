@@ -9,7 +9,7 @@ import (
 )
 
 // expand calls SearchInterface.Expand to add more Action edges to the given Node.
-func expand[T mcts.Counter](s mcts.SearchInterface[T], table map[uint64]*mcts.TableEntry[T], hashTable map[*mcts.TableEntry[T]]uint64, trajectory *[]*mcts.Edge[T], n *mcts.TableEntry[T], r *rand.Rand) (child *mcts.Edge[T]) {
+func (g *graphInterface[T]) expand(s mcts.SearchInterface[T], path *[]*mcts.Edge[T], n *mcts.EdgeList[T], r *rand.Rand) (child *mcts.Edge[T]) {
 	actions := s.Expand(0)
 	if len(actions) == 0 {
 		return nil
@@ -37,6 +37,6 @@ func expand[T mcts.Counter](s mcts.SearchInterface[T], table map[uint64]*mcts.Ta
 		(*n)[i].PriorWeight /= totalWeight
 	}
 	// Select a child element to expand.
-	child, _ = selectChild(s, table, hashTable, trajectory, n)
+	child, _ = g.selectChild(s, path, n)
 	return child
 }

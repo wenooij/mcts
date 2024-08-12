@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-// TableEntry represents an adjacency list of Edges available from this node.
-type TableEntry[T Counter] []*Edge[T]
+// EdgeList represents an adjacency list of EdgeList available from this node.
+type EdgeList[T Counter] []*Edge[T]
 
 type Edge[T Counter] struct {
-	Src, Dst *TableEntry[T]
+	Src, Dst *EdgeList[T]
 	Priority float64
 	Node[T]
 }

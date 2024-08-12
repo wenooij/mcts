@@ -57,7 +57,7 @@ func (v Variation[T]) String() (s string) {
 //
 // Filters are chained together until only one entry remains per step.
 // To guarantee a line is selected, add AnyFilter as the last element in the chain.
-func FilterV[T mcts.Counter](root *mcts.TableEntry[T], filters ...EdgeFilter[T]) Variation[T] {
+func FilterV[T mcts.Counter](root *mcts.EdgeList[T], filters ...EdgeFilter[T]) Variation[T] {
 	var res Variation[T]
 	edges := *root
 	for len(edges) > 0 {
@@ -91,14 +91,14 @@ func PV[T mcts.Counter](s *mcts.Search[T], extraFilters ...EdgeFilter[T]) Variat
 // AnyV returns a random variation with runs for this Search.
 //
 // AnyV is useful for statistical sampling of the Search tree.
-func AnyV[T mcts.Counter](root *mcts.TableEntry[T], r *rand.Rand) Variation[T] {
+func AnyV[T mcts.Counter](root *mcts.EdgeList[T], r *rand.Rand) Variation[T] {
 	return FilterV(root, AnyFilter[T](r))
 }
 
 // Stat returns a sequence of Search stats for the given variation according to this Search.
 //
 // The returned Variation stops if the next action is not present in the Search tree.
-func Stat[T mcts.Counter](root *mcts.TableEntry[T], vs ...mcts.Action) Variation[T] {
+func Stat[T mcts.Counter](root *mcts.EdgeList[T], vs ...mcts.Action) Variation[T] {
 	if root == nil {
 		return nil
 	}
@@ -133,16 +133,6 @@ func InsertV[T mcts.Counter](s *mcts.Search[T], v Variation[T]) {
 			panic("InsertV: insertion of TableEntry not yet implemented")
 		} else {
 			panic("InsertV: merge of TableEntry not yet implemented")
-		}
-	}
-}
-
-func MergeSearch[T mcts.Counter](s *mcts.Search[T], table map[uint64]*mcts.TableEntry[T]) {
-	for k, v := range table {
-		if _, ok := s.Table[k]; ok {
-			panic("MergeSearch: merge of TableEntry not yet implemented")
-		} else {
-			s.Table[k] = v
 		}
 	}
 }
