@@ -88,7 +88,7 @@ func main() {
 	for i := 0; i < 10; i++ {
 		s.Search()
 	}
-	fmt.Println("Search took", time.Since(start), "using", len(s.Table), "table entries and", s.NumEpisodes*10, "iterations")
+	fmt.Println("Search took", time.Since(start), " over ", s.NumEpisodes*10, "iterations")
 	pv := searchops.PV(s, searchops.MaxDepthFilter[int](gameMax/2))
 	fmt.Println(pv)
 	fmt.Println("PV len = ", len(pv))

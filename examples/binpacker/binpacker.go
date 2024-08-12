@@ -227,7 +227,7 @@ func main() {
 	for epoch := 0; ; epoch++ {
 		s.Search()
 		if time.Since(lastPrint) > time.Second {
-			fmt.Println("Search", time.Since(start), "using", len(s.Table), "table entries and", s.NumEpisodes*epoch, "iterations")
+			fmt.Println("Search", time.Since(start), " over ", s.NumEpisodes*epoch, "iterations")
 			pv := searchops.PV(s, searchops.MaxDepthFilter[int](*numItems))
 			fmt.Println(pv)
 			lastPrint = time.Now()

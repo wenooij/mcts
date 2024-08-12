@@ -229,7 +229,7 @@ func main() {
 	for i := 0; i < epochs; i++ {
 		s.Search()
 	}
-	fmt.Println("Search took", time.Since(start), "using", len(s.Table), "table entries and", s.NumEpisodes*epochs, "iterations")
+	fmt.Println("Search took", time.Since(start), " over ", s.NumEpisodes*epochs, "iterations")
 
 	// Reconstruct and print the best tour.
 	// Results can be pasted into the tool.
@@ -254,5 +254,5 @@ func main() {
 			}
 		}
 	}
-	fmt.Printf(" (%f; %f; N=%d)\n", pv[0].NumRollouts, pv[len(pv)-1].NumRollouts, len(s.Table))
+	fmt.Printf(" (%f; %f)\n", pv[0].NumRollouts, pv[len(pv)-1].NumRollouts)
 }

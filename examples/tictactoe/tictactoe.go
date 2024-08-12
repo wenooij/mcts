@@ -143,7 +143,7 @@ func main() {
 	for i := 0; i < epochs; i++ {
 		s.Search()
 	}
-	fmt.Println("Search took", time.Since(start), "using", len(s.Table), "table entries and", s.NumEpisodes*epochs, "iterations")
+	fmt.Println("Search took", time.Since(start), " over ", s.NumEpisodes*epochs, "iterations")
 	pv := searchops.PV(&s, searchops.MaxDepthFilter[[2]int64](10))
 	fmt.Println(pv)
 }
