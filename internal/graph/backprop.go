@@ -8,13 +8,13 @@ import (
 	"github.com/wenooij/mcts/internal/model"
 )
 
-func backprop[T mcts.Counter](trajectory []*mcts.Edge[T], counter mcts.CounterInterface[T], counters T, numRollouts, exploreFactor float64) {
-	for i := len(trajectory) - 1; i >= 0; i-- {
-		e := trajectory[i]
+func (g *graphInterface[T]) backprop(counter mcts.CounterInterface[T], counters T, numRollouts, exploreFactor float64) {
+	for i := len(g.ForwardPath) - 1; i >= 0; i-- {
+		e := g.ForwardPath[i]
 		counter.Add(&e.Score.Counter, counters)
 		e.NumRollouts += numRollouts
 		if i > 0 {
-			prev := trajectory[i-1]
+			prev := g.ForwardPath[i-1]
 			score := e.Score.Objective(e.Score.Counter)
 			exploreTerm := exploreFactor * math.Sqrt(prev.NumRollouts)
 			e.Priority = -model.PUCB(score, e.NumRollouts, e.PriorWeight, exploreTerm)

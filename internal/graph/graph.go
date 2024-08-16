@@ -12,6 +12,8 @@ type graphInterface[T mcts.Counter] struct {
 	// Table is the collection of Hashed Nodes and children.
 	Table map[uint64]*mcts.EdgeList[T]
 
+	ForwardPath []*mcts.Edge[T]
+
 	// InverseTable is only used for the default Hash implementation.
 	//
 	// NOTE: Key of *EdgeList prevents EdgeLists from changing freely.
@@ -19,12 +21,20 @@ type graphInterface[T mcts.Counter] struct {
 	m            maphash.Hash
 }
 
-func InternalInterface[T mcts.Counter]() mcts.InternalInterface[T] {
+// SearchInterface wraps the search interface using the internal graph topoology.
+func SearchInterface[T mcts.Counter](s mcts.SearchInterface[T]) mcts.SearchInterface[T] {
 	g := &graphInterface[T]{}
+	_ = g
+	s.InternalInterface = g.InternalInterface()
+	return s
+}
+
+func (g *graphInterface[T]) InternalInterface() mcts.InternalInterface[T] {
 	return mcts.InternalInterface[T]{
 		Init:        g.init,
 		Reset:       g.reset,
-		Backprop:    backprop[T],
+		Root:        g.Root,
+		Backprop:    g.backprop,
 		Rollout:     rollout[T],
 		Expand:      g.expand,
 		SelectChild: g.selectChild,
@@ -51,12 +61,12 @@ func (g *graphInterface[T]) init(s *mcts.Search[T]) {
 		// Provide a default hash implementation which hashes the last state and the next move.
 		s.Hash = func() uint64 {
 			g.m.Reset()
-			if len(s.ForwardPath) == 0 {
+			if len(g.ForwardPath) == 0 {
 				return g.m.Sum64()
 			}
-			binary.BigEndian.PutUint64(b[:], g.InverseTable[s.ForwardPath[len(s.ForwardPath)-1].Src])
+			binary.BigEndian.PutUint64(b[:], g.InverseTable[g.ForwardPath[len(g.ForwardPath)-1].Src])
 			g.m.Write(b[:])
-			g.m.WriteString(s.ForwardPath[len(s.ForwardPath)-1].Node.Action.String())
+			g.m.WriteString(g.ForwardPath[len(g.ForwardPath)-1].Node.Action.String())
 			return g.m.Sum64()
 		}
 	}
@@ -75,4 +85,8 @@ func (g *graphInterface[T]) init(s *mcts.Search[T]) {
 		}
 		s.RootEntry = e
 	}
+}
+
+func (g *graphInterface[T]) Root() {
+	g.ForwardPath = g.ForwardPath[:0]
 }

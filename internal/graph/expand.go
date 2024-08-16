@@ -9,7 +9,7 @@ import (
 )
 
 // expand calls SearchInterface.Expand to add more Action edges to the given Node.
-func (g *graphInterface[T]) expand(s mcts.SearchInterface[T], path *[]*mcts.Edge[T], n *mcts.EdgeList[T], r *rand.Rand) (child *mcts.Edge[T]) {
+func (g *graphInterface[T]) expand(s mcts.SearchInterface[T], n *mcts.EdgeList[T], r *rand.Rand) (child *mcts.Edge[T]) {
 	actions := s.Expand(0)
 	if len(actions) == 0 {
 		return nil
@@ -37,6 +37,6 @@ func (g *graphInterface[T]) expand(s mcts.SearchInterface[T], path *[]*mcts.Edge
 		(*n)[i].PriorWeight /= totalWeight
 	}
 	// Select a child element to expand.
-	child, _ = g.selectChild(s, path, n)
+	child, _ = g.selectChild(s, n)
 	return child
 }

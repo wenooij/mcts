@@ -10,18 +10,18 @@ func MakeSearchInterface[T mcts.Counter](x any, counter mcts.CounterInterface[T]
 	if h, ok := x.(interface{ Hash() uint64 }); ok {
 		hash = h.Hash
 	}
-	return mcts.SearchInterface[T]{
+	s := mcts.SearchInterface[T]{
 		Root:   x.(interface{ Root() }).Root,
 		Select: x.(interface{ Select(mcts.Action) bool }).Select,
 		Expand: x.(interface {
 			Expand(int) []mcts.FrontierAction
 		}).Expand,
-		Score:             x.(interface{ Score() mcts.Score[T] }).Score,
-		Hash:              hash,
-		RolloutInterface:  makeRolloutInterface[T](x),
-		CounterInterface:  counter,
-		InternalInterface: graph.InternalInterface[T](),
+		Score:            x.(interface{ Score() mcts.Score[T] }).Score,
+		Hash:             hash,
+		RolloutInterface: makeRolloutInterface[T](x),
+		CounterInterface: counter,
 	}
+	return graph.SearchInterface(s)
 }
 
 func makeRolloutInterface[T mcts.Counter](x any) mcts.RolloutInterface[T] {

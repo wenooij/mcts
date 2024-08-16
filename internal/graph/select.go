@@ -3,7 +3,7 @@ package graph
 import "github.com/wenooij/mcts"
 
 // selectChild selects the highest priority child from the min heap.
-func (g *graphInterface[T]) selectChild(s mcts.SearchInterface[T], path *[]*mcts.Edge[T], n *mcts.EdgeList[T]) (child *mcts.Edge[T], expand bool) {
+func (g *graphInterface[T]) selectChild(s mcts.SearchInterface[T], n *mcts.EdgeList[T]) (child *mcts.Edge[T], expand bool) {
 	if len(*n) == 0 {
 		return nil, true
 	}
@@ -18,7 +18,7 @@ func (g *graphInterface[T]) selectChild(s mcts.SearchInterface[T], path *[]*mcts
 		// backprop the score from n.
 		return nil, false
 	}
-	*path = append(*path, child)
+	g.ForwardPath = append(g.ForwardPath, child)
 	if child.Dst == nil {
 		// Insert initial node.
 		// We couldn't do this in Expand because Hash
