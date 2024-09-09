@@ -3,11 +3,18 @@ package graph
 import "github.com/wenooij/mcts"
 
 // selectChild selects the highest priority child from the min heap.
-func (g *graphInterface[T]) selectChild(s mcts.SearchInterface[T], n *mcts.EdgeList[T]) (child *mcts.Edge[T], expand bool) {
-	if len(*n) == 0 {
-		return nil, true
+func (g *graphInterface[T]) selectChild(s mcts.SearchInterface[T]) (hasChild, expand bool) {
+	var n *mcts.EdgeList[T]
+	switch len(g.ForwardPath) {
+	case 0:
+		n = g.RootEntry
+	default:
+		n = g.ForwardPath[len(g.ForwardPath)-1].Src
 	}
-	child = (*n)[0]
+	if len(*n) == 0 {
+		return false, true
+	}
+	child := (*n)[0]
 	if !s.Select(child.Action) {
 		// Select may return false if this node is no longer legal
 		// Possibly due to the outcome of chance node higher up the tree.
@@ -16,7 +23,7 @@ func (g *graphInterface[T]) selectChild(s mcts.SearchInterface[T], n *mcts.EdgeL
 		//
 		// In either case return child = nil, expand = false, then
 		// backprop the score from n.
-		return nil, false
+		return false, false
 	}
 	g.ForwardPath = append(g.ForwardPath, child)
 	if child.Dst == nil {
@@ -36,7 +43,7 @@ func (g *graphInterface[T]) selectChild(s mcts.SearchInterface[T], n *mcts.EdgeL
 		child.Dst = dst
 	}
 	initializeScore(s, child)
-	return child, false
+	return true, false
 }
 
 // initializeScore is called when selecting a node for the first time.

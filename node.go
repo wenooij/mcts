@@ -10,13 +10,13 @@ type EdgeList[T Counter] []*Edge[T]
 
 type Edge[T Counter] struct {
 	Src, Dst *EdgeList[T]
-	Priority float64
 	Node[T]
 }
 
 type Node[T Counter] struct {
 	Action      Action
 	Score       Score[T]
+	Priority    float64
 	NumRollouts float64
 	PriorWeight float64
 }

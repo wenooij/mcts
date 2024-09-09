@@ -4,9 +4,11 @@ package model
 import (
 	"fmt"
 	"math"
+	"math/rand/v2"
 	"slices"
 
 	"github.com/wenooij/mcts"
+	"github.com/wenooij/mcts/searchops"
 )
 
 const (
@@ -55,9 +57,8 @@ func (s *SummaryStats) String() string {
 	)
 }
 
-// FitParams tunes a search by computing stats from a smaller search
-// and updating the ExploreFactor.
-func Summarize[T mcts.Counter](s *mcts.Search[T]) SummaryStats {
+// Summarize computes score stats from a smaller Search.
+func Summarize[T mcts.Counter](s *mcts.Search[T], r *rand.Rand, ex func() searchops.Explorer[T]) SummaryStats {
 	// Initialize the search for now, but leave the root as we found it.
 	oldNumEpisodes := s.NumEpisodes
 	defer func() { s.NumEpisodes = oldNumEpisodes }()
@@ -75,20 +76,22 @@ func Summarize[T mcts.Counter](s *mcts.Search[T]) SummaryStats {
 		scoreSamples = make([]float64, 0, scoreSampleCap)
 	)
 	for i := 0; i < numAnyVSamples; i++ {
-		// Sample score from random variations using reservoir sampling.
-		var anyV []*mcts.Edge[T]
-		root := s.RootEntry
-		for n := root; n != nil; {
-			child := (*n)[s.Rand.Intn(len(*n))]
-			anyV = append(anyV, child)
-			n = child.Dst
-		}
-		for _, e := range anyV {
-			score := e.Score.Apply()
-			if math.IsInf(score, 0) {
-				// Inf scores cannot contribute to statistics.
+		e := ex()
+		// Collect score samples.
+		for {
+			n, ok := searchops.WeightedSample(e, r)
+			if !ok {
+				break
+			}
+			if !e.Select(n.Action) {
+				break
+			}
+			// Inf scores cannot contribute to statistics.
+			score, ok := n.Score.SafeApply()
+			if !ok || math.IsInf(score, 0) {
 				continue
 			}
+			// Reservoir sampling for the score.
 			if len(scoreSamples) < scoreSampleCap {
 				scoreSamples = append(scoreSamples, score)
 			} else if j := s.Rand.Intn(numSamples); j < scoreSampleCap {
@@ -126,4 +129,12 @@ func Summarize[T mcts.Counter](s *mcts.Search[T]) SummaryStats {
 	}
 	stats.Stddev = math.Sqrt(sdeSum / float64(stats.SampleN))
 	return stats
+}
+
+func UniformSample[T mcts.Counter](r *rand.Rand, ex func() searchops.Explorer[T], samples []mcts.Node[T]) (n int, err error) {
+	panic("not implemented")
+}
+
+func WeightedSample[T mcts.Counter](r *rand.Rand, ex func() searchops.Explorer[T], samples []mcts.Node[T]) (n int, err error) {
+	panic("not implemented")
 }

@@ -3,136 +3,105 @@ package searchops
 import (
 	"fmt"
 	"math"
-	"math/rand"
+	"math/rand/v2"
 	"strings"
 
 	"github.com/wenooij/mcts"
 )
 
-// Variation is a sequence of actions with Search statistics.
+// StripRoot removes the root node if any for use with FormatVariation
+// and other functions.
+func StripRoot[T any](vs []mcts.Node[T]) []mcts.Node[T] {
+	if len(vs) <= 0 {
+		return vs
+	}
+	return vs[1:]
+}
+
+// FormatVariation produces a format for a series of nodes in a game sequence.
+// Use StripRoot to remove the "root node" which usually has no associated Action.
 //
 // The first element in the Variation may be a root node.
 // It will have a nil Action as well among other differences.
 // Use NodeType.Root to check or Variation.TrimRoot to trim it.
-type Variation[T mcts.Counter] []*mcts.Edge[T]
-
-// First returns the first edge other than the root.
-//
-// First returns nil if the Variation is empty.
-func (v Variation[T]) First() *mcts.Edge[T] {
-	if len(v) == 0 {
-		return nil
-	}
-	return v[0]
-}
-
-// Last returns the Last edge for this variation.
-//
-// Last returns nil if the variation is empty.
-func (v Variation[T]) Last() *mcts.Edge[T] {
-	if len(v) == 0 {
-		return nil
-	}
-	return v[len(v)-1]
-}
-
-func (v Variation[T]) String() (s string) {
-	if len(v) == 0 {
-		return ""
-	}
+func FormatVariation[T any](vs []mcts.Node[T]) (s string) {
 	var sb strings.Builder
-	score := math.NaN()
-	if v[0].Score.Objective != nil {
-		score = v[0].Score.Apply() / v[0].NumRollouts
+	if len(vs) > 0 && vs[0].Score.Objective != nil {
+		score := vs[0].Score.Apply() / vs[0].NumRollouts
+		fmt.Fprintf(&sb, "[%f]", score)
+	} else {
+		sb.WriteString("[???]")
 	}
-	fmt.Fprintf(&sb, "[%f]", score)
-	for _, e := range v {
-		fmt.Fprintf(&sb, " %s", e.Action.String())
+	for _, v := range vs {
+		fmt.Fprintf(&sb, " %s", v.Action.String())
 	}
-	fmt.Fprintf(&sb, " (%d)", int64(v[0].NumRollouts))
+	fmt.Fprintf(&sb, " (%d)", int64(vs[0].NumRollouts))
 	return sb.String()
 }
 
-// FilterV creates a variation by calling filters as neccessary at every step.
-//
-// Filters are chained together until only one entry remains per step.
-// To guarantee a line is selected, add AnyFilter as the last element in the chain.
-func FilterV[T mcts.Counter](root *mcts.EdgeList[T], filters ...EdgeFilter[T]) Variation[T] {
-	var res Variation[T]
-	edges := *root
-	for len(edges) > 0 {
-		curr := FilterEdges(edges, filters...)
-		if curr == nil {
-			break
+// PrincipalVariation returns the main variation for this Search.
+func PrincipalVariation[T mcts.Counter](ex Explorer[T], r *rand.Rand, lastFilter LastFilter) []mcts.Node[T] {
+	out := []mcts.Node[T]{}
+	for {
+		n := ex.Len()
+		if n == 0 {
+			return out
 		}
-		res = append(res, curr)
-		if curr.Dst == nil {
-			break
+		maxNodes, err := Reduce(
+			ValueNodesMapper[T, MinMax](MinMaxMapper(RolloutsMapper[T]())),
+			ValueNodes[T, MinMax]{MinMax{math.Inf(+1), math.Inf(-1)}, nil},
+			ex,
+			ValueNodesReducer[T, MinMax](MinMaxReducer(RolloutsMapper[T]())))
+		if err != nil || len(maxNodes.Nodes) == 0 {
+			return out
 		}
-		edges = *curr.Dst
+		node, ok := applyLastFilter(maxNodes.Nodes, r, lastFilter)
+		if !ok {
+			return out
+		}
+		out = append(out, node)
+		ex.Select(node)
 	}
-	return res
 }
 
-// PV returns the principal variation for this Search.
+// RandomVariation returns a uniform random variation with runs for this Search.
 //
-// This is the line that the Search has searched deepest
-// and is usually the best one.
-//
-// Use Stat to test arbitrary sequences.
-func PV[T mcts.Counter](s *mcts.Search[T], extraFilters ...EdgeFilter[T]) Variation[T] {
-	var filters []EdgeFilter[T]
-	filters = append(filters, MaxRolloutsHashTreeFilter[T]())
-	filters = append(filters, extraFilters...)
-	filters = append(filters, FirstFilter[T]())
-	return FilterV[T](s.RootEntry, filters...)
-}
-
-// AnyV returns a random variation with runs for this Search.
-//
-// AnyV is useful for statistical sampling of the Search tree.
-func AnyV[T mcts.Counter](root *mcts.EdgeList[T], r *rand.Rand) Variation[T] {
-	return FilterV(root, AnyFilter[T](r))
-}
-
-// Stat returns a sequence of Search stats for the given variation according to this Search.
-//
-// The returned Variation stops if the next action is not present in the Search tree.
-func Stat[T mcts.Counter](root *mcts.EdgeList[T], vs ...mcts.Action) Variation[T] {
-	if root == nil {
-		return nil
-	}
-	res := make(Variation[T], 0, 1+len(vs))
-	for _, s := range vs {
-		child := Child(root, s)
-		if child == nil {
-			// No existing child.
-			break
+// RandomVariation is also useful for statistical sampling of the Search tree.
+func UniformRandomVariation[T mcts.Counter](ex Explorer[T], r *rand.Rand, visitFn func(n mcts.Node[T]) error) error {
+	for {
+		n := ex.Len()
+		if n == 0 {
+			return nil
 		}
-		// Add the StatEntry and continue down the line.
-		res = append(res, child)
-		root = child.Dst
+		i := r.IntN(n)
+		node := ex.At(i)
+		if err := visitFn(node); err != nil {
+			if err == ErrStopIteration {
+				return nil
+			}
+			return err
+		}
+		ex.Select(node)
 	}
-	return res
 }
 
-// InsertV merges a new variation into the search tree.
+// WeightedRandomVariation returns a run-weighted random variation with runs for this Search.
 //
-// Actions already present in the search have their scores added.
-// Node priorities are recomputed using UCT.
-//
-// The Search is initialized if it had not already done so.
-// InsertV will call root and Select as a part of inserting the variation.
-func InsertV[T mcts.Counter](s *mcts.Search[T], v Variation[T]) {
-	root := s.RootEntry
-	s.Root()
-	defer s.Root()
-	for _, stat := range v {
-		child := Child(root, stat.Action)
-		if child == nil {
-			panic("InsertV: insertion of TableEntry not yet implemented")
-		} else {
-			panic("InsertV: merge of TableEntry not yet implemented")
+// RandomVariation is also useful for statistical sampling of the Search tree.
+func WeightedRandomVariation[T mcts.Counter](ex Explorer[T], r *rand.Rand, visitFn func(n mcts.Node[T]) error) error {
+	for {
+		n := ex.Len()
+		if n == 0 {
+			return nil
 		}
+		i := r.IntN(n)
+		node := ex.At(i)
+		if err := visitFn(node); err != nil {
+			if err == ErrStopIteration {
+				return nil
+			}
+			return err
+		}
+		ex.Select(node)
 	}
 }

@@ -1,33 +1,64 @@
 package searchops
 
 import (
-	"math"
-
 	"github.com/wenooij/mcts"
 )
 
-// EdgeMapper represents a function which maps a Tree to a single value E.
-type EdgeMapper[T mcts.Counter, R any] func(*mcts.Edge[T]) R
-
-// MinMax is a simple structure with Min and Max fields.
+// MinMax records min and max floating point values.
 type MinMax struct {
 	Min float64
 	Max float64
 }
 
-// MinMax takes a scalar TreeReducer and returns a reducer which returns the min and max values.
-//
-// Note that MinMaxReducer returns a stateful TreeReducer which cannot be reused.
-func MinMaxReducer[T mcts.Counter](f EdgeMapper[T, float64]) EdgeMapper[T, MinMax] {
-	res := MinMax{math.Inf(+1), math.Inf(-1)}
-	return func(e *mcts.Edge[T]) MinMax {
-		v := f(e)
-		if v < res.Min {
-			res.Min = v
-		}
-		if v > res.Max {
-			res.Max = v
-		}
-		return res
+func MinMaxMapper[T mcts.Counter](m func(mcts.Node[T]) float64) func(mcts.Node[T]) MinMax {
+	return func(n mcts.Node[T]) MinMax {
+		v := m(n)
+		return MinMax{v, v}
 	}
+}
+
+type ValueNode[T mcts.Counter, E comparable] struct {
+	Value E
+	Node  mcts.Node[T]
+}
+
+func ValueNodeMapper[T mcts.Counter, E comparable](m func(mcts.Node[T]) E) func(mcts.Node[T]) ValueNode[T, E] {
+	return func(n mcts.Node[T]) ValueNode[T, E] {
+		return ValueNode[T, E]{m(n), n}
+	}
+}
+
+type ValueNodes[T mcts.Counter, E comparable] struct {
+	Value E
+	Nodes []mcts.Node[T]
+}
+
+func ValueNodesMapper[T mcts.Counter, E comparable](m func(mcts.Node[T]) E) func(mcts.Node[T]) ValueNodes[T, E] {
+	return func(n mcts.Node[T]) ValueNodes[T, E] {
+		return ValueNodes[T, E]{m(n), []mcts.Node[T]{n}}
+	}
+}
+
+func ActionMapper[T mcts.Counter]() func(mcts.Node[T]) mcts.Action {
+	return func(n mcts.Node[T]) mcts.Action { return n.Action }
+}
+
+func RawScoreMapper[T mcts.Counter]() func(mcts.Node[T]) mcts.Score[T] {
+	return func(n mcts.Node[T]) mcts.Score[T] { return n.Score }
+}
+
+func ScoreMapper[T mcts.Counter]() func(mcts.Node[T]) float64 {
+	return func(n mcts.Node[T]) float64 { return n.Score.Objective(n.Score.Counter) }
+}
+
+func PriorityMapper[T mcts.Counter]() func(mcts.Node[T]) float64 {
+	return func(n mcts.Node[T]) float64 { return n.Priority }
+}
+
+func RolloutsMapper[T mcts.Counter]() func(mcts.Node[T]) float64 {
+	return func(n mcts.Node[T]) float64 { return n.NumRollouts }
+}
+
+func WeightMapper[T mcts.Counter]() func(mcts.Node[T]) float64 {
+	return func(n mcts.Node[T]) float64 { return n.PriorWeight }
 }

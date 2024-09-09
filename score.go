@@ -14,6 +14,13 @@ type Score[T Counter] struct {
 
 func (s Score[T]) Apply() float64 { return s.Objective(s.Counter) }
 
+func (s Score[T]) SafeApply() (float64, bool) {
+	if s.Objective == nil {
+		return 0, false
+	}
+	return s.Objective(s.Counter), true
+}
+
 type CounterInterface[T Counter] struct {
 	// Add counters and store the result in x.
 	//

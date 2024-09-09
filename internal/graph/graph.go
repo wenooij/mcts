@@ -9,6 +9,8 @@ import (
 )
 
 type graphInterface[T mcts.Counter] struct {
+	RootEntry *mcts.EdgeList[T]
+
 	// Table is the collection of Hashed Nodes and children.
 	Table map[uint64]*mcts.EdgeList[T]
 
@@ -71,7 +73,7 @@ func (g *graphInterface[T]) init(s *mcts.Search[T]) {
 		}
 	}
 	// Find the root hash node.
-	if s.RootEntry == nil {
+	if g.RootEntry == nil {
 		s.Root()
 		h := s.Hash()
 		e, ok := g.Table[h]
@@ -83,7 +85,7 @@ func (g *graphInterface[T]) init(s *mcts.Search[T]) {
 				g.InverseTable[e] = h
 			}
 		}
-		s.RootEntry = e
+		g.RootEntry = e
 	}
 }
 

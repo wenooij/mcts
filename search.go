@@ -27,8 +27,6 @@ type Search[T Counter] struct {
 	// Optional counter implementation.
 	CounterInterface[T]
 
-	RootEntry *EdgeList[T]
-
 	// NumEpisodes ends the Search after the given fixed number
 	// of episodes. Default is 100.
 	NumEpisodes int
@@ -115,19 +113,15 @@ func (s *Search[T]) Search() {
 }
 
 func (s *Search[T]) searchEpisode() {
-	n := s.RootEntry
 	s.InternalInterface.Root()
 	s.SearchInterface.Root() // Reset to root.
 	// Select the best leaf node by MAB policy.
 	var doExpand bool
-	for child := (*Edge[T])(nil); ; n = child.Dst {
-		if child, doExpand = s.SelectChild(s.SearchInterface, n); child == nil {
-			break
-		}
+	for hasChild := true; hasChild; hasChild, doExpand = s.SelectChild(s.SearchInterface) {
 	}
 	// Expand a new frontier node.
 	if doExpand {
-		s.InternalInterface.Expand(s.SearchInterface, n, s.Rand)
+		s.InternalInterface.Expand(s.SearchInterface, s.Rand)
 	}
 	// Simulate and backprop score.
 	if counters, numRollouts := s.InternalInterface.Rollout(s.SearchInterface, s.RolloutInterface, s.Rand); numRollouts != 0 {
